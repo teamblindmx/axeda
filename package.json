@@ -1,0 +1,24 @@
+{
+  "name": "axs",
+  "version": "1.0.0",
+  "description": "Librería de control de accesos por rol, rutas de funcionalidad por endpoints.",
+  "keywords": [
+    "access",
+    "control",
+    "rol",
+    "endpoints",
+    "routes",
+    "request",
+    "database",
+    "db",
+    "permission",
+    "privileges"
+  ],
+  "license": "Apache-2.0",
+  "author": "TeamBlind",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
