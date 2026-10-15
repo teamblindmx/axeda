@@ -15,8 +15,6 @@ export default defineConfig({
   },
   test: {
     include: ['packages/*/test/**/*.test.ts'],
-    // Fase 0: aún no hay pruebas. Se quitará cuando llegue el código de la fase 1.
-    passWithNoTests: true,
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**'],

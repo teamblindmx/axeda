@@ -1,0 +1,37 @@
+import type { PermissionKey } from './permission-key.js';
+import type { AssignmentScope } from './scope.js';
+
+export type RoleStatus = 'active' | 'inactive';
+
+/** Una "función" en español: conjunto de permisos que se asigna a usuarios. Solo global (ADR-0003). */
+export interface Role {
+  readonly id: string;
+  readonly key: string;
+  readonly name: string;
+  readonly description: string | null;
+  readonly permissions: readonly PermissionKey[];
+  /** Exige que el usuario tenga el 2FA activado (se evalúa sobre el usuario, ADR-0009). */
+  readonly requireMfa: boolean;
+  readonly status: RoleStatus;
+  /** Declarada en el código: de solo lectura en la API. */
+  readonly managed: boolean;
+  /** Concurrencia optimista: cada actualización exige la versión que se leyó. */
+  readonly version: number;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+export interface RoleAssignment {
+  readonly id: string;
+  readonly userId: string;
+  readonly roleId: string;
+  readonly scope: AssignmentScope;
+  readonly grantedBy: string | null;
+  readonly createdAt: Date;
+  readonly expiresAt: Date | null;
+}
+
+/** Quien pide una autorización. Better Auth lo convierte a partir de la sesión. */
+export interface Principal {
+  readonly userId: string;
+}
