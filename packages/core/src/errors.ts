@@ -7,7 +7,9 @@ export type AxedaErrorCode =
   | 'AXEDA_ROLE_NOT_FOUND'
   | 'AXEDA_ROLE_KEY_TAKEN'
   | 'AXEDA_VERSION_CONFLICT'
-  | 'AXEDA_ASSIGNMENT_EXISTS';
+  | 'AXEDA_ASSIGNMENT_EXISTS'
+  | 'AXEDA_USER_NOT_FOUND'
+  | 'AXEDA_DATA_CORRUPT';
 
 export class AxedaError extends Error {
   readonly code: AxedaErrorCode;
