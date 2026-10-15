@@ -1,16 +1,45 @@
 import { resolveOptions, type AxedaOptions, type ResolvedOptions } from '../config/options.js';
+import { AXEDA_PERMISSIONS } from '../domain/axeda-permissions.js';
 import { isWildcard, parsePermissionKey, type PermissionKey } from '../domain/permission-key.js';
-import type { Principal, Role } from '../domain/role.js';
-import { GLOBAL_TARGET, type TargetScope } from '../domain/scope.js';
+import type { Actor, Principal } from '../domain/role.js';
+import { GLOBAL_TARGET, type AssignmentScope, type TargetScope } from '../domain/scope.js';
 import { AxedaError } from '../errors.js';
-import { effectivePermissions, type PermissionSet } from '../policy/effective-permissions.js';
-import type { AxedaPersistence } from '../ports/persistence.js';
+import {
+  effectivePermissions,
+  permissionsHeldAnywhere,
+  scopesGranting,
+  type PermissionSet,
+} from '../policy/effective-permissions.js';
+import type { ScopeResolver, UserDirectory } from '../ports/identity.js';
+import type { AuditFilter, AxedaPersistence, Page, PageRequest } from '../ports/persistence.js';
 import { systemClock, type Clock } from '../ports/platform.js';
+import type { AuditEvent } from '../domain/audit.js';
+import { createAssignmentService, type AssignmentService } from './assignments.js';
+import { AuthzCache } from './authz-cache.js';
+import { AuthzReader } from './authz-reader.js';
+import { bootstrapAdministrator, type BootstrapInput, type BootstrapResult } from './bootstrap.js';
+import { syncManagedRoles } from './managed-roles.js';
+import { createRoleService, type RoleService } from './roles.js';
+import { actorPermissions, resolveTarget, type Services } from './services.js';
 import { assertTransactional } from './startup-checks.js';
 
 export interface AxedaDependencies {
   readonly persistence: AxedaPersistence;
+  /** Dónde Axeda consulta a los usuarios (con Better Auth, `createBetterAuthUserDirectory`). */
+  readonly users: UserDirectory;
   readonly clock?: Clock;
+  /** Resuelve la compañía de un negocio desde la base de datos. Sin él, no hay alcances de negocio. */
+  readonly scopes?: ScopeResolver;
+}
+
+/** Alcances donde se concede un permiso, listos para filtrar las consultas de la aplicación. */
+export interface ScopeFilter {
+  /** Se concede en global: no hay que filtrar. */
+  readonly unrestricted: boolean;
+  /** Compañías donde se concede (incluye todos sus negocios). */
+  readonly companyIds: readonly string[];
+  /** Negocios concretos donde se concede. */
+  readonly businessIds: readonly string[];
 }
 
 export interface Axeda {
@@ -18,21 +47,27 @@ export interface Axeda {
   readonly catalog: readonly PermissionKey[];
   readonly options: ResolvedOptions;
   /**
-   * Comprueba la persistencia (transacciones reales). Es idempotente; si falla, el error se
-   * memoriza y ninguna operación posterior funciona con una persistencia sin verificar.
-   * Se recomienda esperarlo al arrancar; las demás operaciones también lo esperan.
+   * Comprueba la persistencia (transacciones reales) y sincroniza las funciones declaradas en el
+   * código. Es idempotente; si falla, el error se memoriza y ninguna operación posterior
+   * funciona con una persistencia sin verificar. Las demás operaciones también lo esperan.
    */
   start(): Promise<void>;
   /** Permisos efectivos del usuario en `target` (global por defecto). */
   effectivePermissions(principal: Principal, target?: TargetScope): Promise<PermissionSet>;
   /** ¿Puede el usuario ejercer `permission` en `target`? Se deniega por defecto. */
   can(principal: Principal, permission: string, target?: TargetScope): Promise<boolean>;
-}
-
-function assertPrincipal(principal: Principal): void {
-  if (typeof principal?.userId !== 'string' || principal.userId.length === 0) {
-    throw new AxedaError('AXEDA_INVALID_CONFIG', 'The principal must have a non-empty userId.');
-  }
+  /** ¿Tiene el usuario `permission` en algún alcance? Para decidir qué listados mostrar. */
+  canAnywhere(principal: Principal, permission: string): Promise<boolean>;
+  /** Alcances (global, compañías, negocios) donde el usuario tiene `permission`. */
+  scopesFor(principal: Principal, permission: string): Promise<readonly AssignmentScope[]>;
+  /** Lo mismo, en forma cómoda para filtrar las consultas de la aplicación (T5). */
+  scopeFilter(principal: Principal, permission: string): Promise<ScopeFilter>;
+  readonly roles: RoleService;
+  readonly assignments: AssignmentService;
+  /** Auditoría: global con `axeda:audit:read` global; de una compañía, con ese permiso allí. */
+  listAudit(actor: Actor, filter: AuditFilter, page: PageRequest): Promise<Page<AuditEvent>>;
+  /** Crea el primer administrador global (operación del servidor, no de la API). */
+  bootstrap(input: BootstrapInput): Promise<BootstrapResult>;
 }
 
 /** Se pide un permiso concreto y conocido: un error tipográfico es un error, no un "no". */
@@ -58,33 +93,73 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
   const { persistence } = dependencies;
   const clock = dependencies.clock ?? systemClock;
   const catalogSet: ReadonlySet<PermissionKey> = new Set(resolved.catalog);
+  const reader = new AuthzReader(persistence, new AuthzCache(resolved.limits.maxCachedUsers));
 
   let started: Promise<void> | undefined;
-  const start = (): Promise<void> => (started ??= assertTransactional(persistence));
+  const services: Services = {
+    persistence,
+    clock,
+    options: resolved,
+    catalog: catalogSet,
+    users: dependencies.users,
+    scopes: dependencies.scopes,
+    ready: () => start(),
+  };
+  const start = (): Promise<void> =>
+    (started ??= (async () => {
+      await assertTransactional(persistence);
+      await syncManagedRoles(services);
+    })());
 
-  async function loadEffectivePermissions(
-    principal: Principal,
-    target: TargetScope,
-  ): Promise<PermissionSet> {
-    assertPrincipal(principal);
+  async function snapshotData(principal: Principal) {
     await start();
-    const assignments = await persistence.assignments.listForUser(principal.userId);
-    const roleIds = [...new Set(assignments.map((assignment) => assignment.roleId))];
-    const roles = new Map<string, Role>(
-      (await persistence.roles.getMany(roleIds)).map((role) => [role.id, role]),
-    );
-    return effectivePermissions({ assignments, roles, target, now: clock.now() });
+    const snapshot = await reader.snapshotFor(principal);
+    return { ...snapshot, now: clock.now(), mfaEnabled: principal.twoFactorEnabled };
+  }
+
+  async function effective(principal: Principal, target: TargetScope): Promise<PermissionSet> {
+    return effectivePermissions({ ...(await snapshotData(principal)), target });
+  }
+
+  async function scopesFor(principal: Principal, permission: string) {
+    const key = requirePermission(catalogSet, permission);
+    return scopesGranting(await snapshotData(principal), key);
   }
 
   return {
     catalog: resolved.catalog,
     options: resolved,
     start,
-    effectivePermissions: (principal, target = GLOBAL_TARGET) =>
-      loadEffectivePermissions(principal, target),
+    effectivePermissions: (principal, target = GLOBAL_TARGET) => effective(principal, target),
     async can(principal, permission, target = GLOBAL_TARGET) {
       const key = requirePermission(catalogSet, permission);
-      return (await loadEffectivePermissions(principal, target)).allows(key);
+      return (await effective(principal, target)).allows(key);
     },
+    async canAnywhere(principal, permission) {
+      const key = requirePermission(catalogSet, permission);
+      return permissionsHeldAnywhere(await snapshotData(principal)).allows(key);
+    },
+    scopesFor,
+    async scopeFilter(principal, permission) {
+      const scopes = await scopesFor(principal, permission);
+      return {
+        unrestricted: scopes.some((scope) => scope.type === 'global'),
+        companyIds: scopes.flatMap((scope) => (scope.type === 'company' ? [scope.id] : [])),
+        businessIds: scopes.flatMap((scope) => (scope.type === 'business' ? [scope.id] : [])),
+      };
+    },
+    roles: createRoleService(services),
+    assignments: createAssignmentService(services),
+    async listAudit(actor, filter, page) {
+      await start();
+      const target =
+        filter.scope === undefined ? GLOBAL_TARGET : await resolveTarget(services, filter.scope);
+      const held = await actorPermissions(persistence, services, actor, target);
+      if (!held.allows(AXEDA_PERMISSIONS.auditRead)) {
+        throw new AxedaError('AXEDA_FORBIDDEN', 'You are not allowed to read the audit log.');
+      }
+      return persistence.audit.list(filter, page);
+    },
+    bootstrap: (input) => bootstrapAdministrator(services, input),
   };
 }

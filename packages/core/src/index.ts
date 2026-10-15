@@ -1,5 +1,14 @@
 // @axeda/core — dominio, política de autorización, casos de uso y puertos.
-export { createAxeda, type Axeda, type AxedaDependencies } from './application/create-axeda.js';
+export {
+  createAxeda,
+  type Axeda,
+  type AxedaDependencies,
+  type ScopeFilter,
+} from './application/create-axeda.js';
+export type { AssignInput, AssignmentService } from './application/assignments.js';
+export type { BootstrapInput, BootstrapResult } from './application/bootstrap.js';
+export type { RoleInput, RoleService, RoleUpdate } from './application/roles.js';
+export { SUPER_ADMIN_ROLE_KEY } from './application/services.js';
 export { assertTransactional, isTransactional } from './application/startup-checks.js';
 export {
   DEFAULT_LIMITS,
@@ -23,12 +32,29 @@ export {
   permissionKeyProblem,
   type PermissionKey,
 } from './domain/permission-key.js';
-export type { Principal, Role, RoleAssignment, RoleStatus } from './domain/role.js';
+export {
+  MAX_AUDIT_METADATA_BYTES,
+  createAuditIdFactory,
+  type AuditAction,
+  type AuditEvent,
+  type AuditOutcome,
+  type AuditTargetType,
+  type NewAuditEvent,
+} from './domain/audit.js';
+export type {
+  Actor,
+  Principal,
+  RequestMeta,
+  Role,
+  RoleAssignment,
+  RoleStatus,
+} from './domain/role.js';
 export {
   GLOBAL_SCOPE,
   GLOBAL_TARGET,
   assignmentApplies,
   sameAssignmentScope,
+  scopeContains,
   scopeKey,
   type AssignmentScope,
   type ScopeType,
