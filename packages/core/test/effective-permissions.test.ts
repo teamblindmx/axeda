@@ -24,7 +24,6 @@ describe('effectivePermissions', () => {
     });
     expect(set.keys).toEqual([]);
     expect(set.allows(k('invoice:read'))).toBe(false);
-    expect(set.requiresMfa).toBe(false);
     expect(EMPTY_PERMISSIONS.allows(k('invoice:read'))).toBe(false);
   });
 
@@ -114,33 +113,37 @@ describe('effectivePermissions', () => {
     expect(set.allows(k('order:delete'))).toBe(false);
   });
 
-  it('reports that MFA is required only when an applicable role asks for it', () => {
-    const strict = makeRole({ id: 'strict', permissions: keys('invoice:read'), requireMfa: true });
-    const make = (scope: 'A' | 'B') =>
+  describe('roles that require MFA', () => {
+    const strict = makeRole({ id: 'strict', permissions: keys('invoice:*'), requireMfa: true });
+    const plain = makeRole({ id: 'plain', permissions: keys('report:read') });
+    const run = (mfaEnabled: boolean | undefined, extra: Partial<typeof strict> = {}) =>
       effectivePermissions({
-        assignments: [makeAssignment({ roleId: 'strict', scope: { type: 'company', id: 'A' } })],
-        roles: rolesById(strict),
-        target: { type: 'company', companyId: scope },
+        assignments: [
+          makeAssignment({ roleId: 'strict', scope: GLOBAL_SCOPE }),
+          makeAssignment({ roleId: 'plain', scope: GLOBAL_SCOPE }),
+        ],
+        roles: rolesById(makeRole({ ...strict, ...extra }), plain),
+        target: global,
         now: NOW,
-      }).requiresMfa;
-    expect(make('A')).toBe(true);
-    expect(make('B')).toBe(false);
-  });
+        mfaEnabled,
+      });
 
-  it('does not count the MFA requirement of an inactive role', () => {
-    const strict = makeRole({
-      id: 'strict',
-      permissions: keys('invoice:read'),
-      requireMfa: true,
-      status: 'inactive',
+    it('grants their permissions only when the user has MFA enabled', () => {
+      expect(run(true).allows(k('invoice:read'))).toBe(true);
+      expect(run(false).allows(k('invoice:read'))).toBe(false);
     });
-    const set = effectivePermissions({
-      assignments: [makeAssignment({ roleId: 'strict', scope: GLOBAL_SCOPE })],
-      roles: rolesById(strict),
-      target: global,
-      now: NOW,
+
+    it('denies when the MFA state is unknown', () => {
+      expect(run(undefined).allows(k('invoice:read'))).toBe(false);
     });
-    expect(set.requiresMfa).toBe(false);
+
+    it('only withholds the permissions of that role, not the rest', () => {
+      expect(run(false).keys).toEqual(keys('report:read'));
+    });
+
+    it('does not need MFA for roles that do not ask for it', () => {
+      expect(run(false, { requireMfa: false }).allows(k('invoice:read'))).toBe(true);
+    });
   });
 });
 

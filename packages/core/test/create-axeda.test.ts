@@ -1,4 +1,4 @@
-import { createMemoryPersistence } from '@axeda/testing';
+import { createMemoryPersistence, createMemoryUserDirectory } from '@axeda/testing';
 import { describe, expect, it, vi } from 'vitest';
 import {
   AXEDA_PERMISSIONS,
@@ -17,11 +17,14 @@ const OPTIONS = {
 const alice = { userId: 'alice' };
 const perms = (...raw: string[]) => raw.map(parsePermissionKey);
 
+let users = createMemoryUserDirectory();
+
 function setup() {
+  users = createMemoryUserDirectory();
   const persistence = createMemoryPersistence();
   const clock = { current: new Date('2026-06-01T12:00:00.000Z') };
   const fakeClock: Clock = { now: () => clock.current };
-  const axeda = createAxeda(OPTIONS, { persistence, clock: fakeClock });
+  const axeda = createAxeda(OPTIONS, { persistence, clock: fakeClock, users });
   return { persistence, axeda, clock };
 }
 
@@ -31,7 +34,7 @@ describe('startup checks', () => {
   it('starts on a persistence with real transactions, and only probes once', async () => {
     const persistence = createMemoryPersistence();
     const transaction = vi.spyOn(persistence, 'transaction');
-    const axeda = createAxeda(OPTIONS, { persistence });
+    const axeda = createAxeda(OPTIONS, { persistence, users });
     await Promise.all([axeda.start(), axeda.start()]);
     await axeda.start();
     expect(transaction).toHaveBeenCalledTimes(1);
@@ -40,14 +43,14 @@ describe('startup checks', () => {
   it('refuses to start when transactions do not roll back', async () => {
     const real = createMemoryPersistence();
     const fake: AxedaPersistence = { ...real, transaction: (callback) => callback(real) };
-    const axeda = createAxeda(OPTIONS, { persistence: fake });
+    const axeda = createAxeda(OPTIONS, { persistence: fake, users });
     await expect(axeda.start()).rejects.toMatchObject({ code: 'AXEDA_TRANSACTIONS_UNSUPPORTED' });
   });
 
   it('never serves a decision on an unverified persistence, even after the failure', async () => {
     const real = createMemoryPersistence();
     const fake: AxedaPersistence = { ...real, transaction: (callback) => callback(real) };
-    const axeda = createAxeda(OPTIONS, { persistence: fake });
+    const axeda = createAxeda(OPTIONS, { persistence: fake, users });
     await expect(axeda.start()).rejects.toBeInstanceOf(Error);
     await expect(axeda.can(alice, 'invoice:read')).rejects.toMatchObject({
       code: 'AXEDA_TRANSACTIONS_UNSUPPORTED',
@@ -58,7 +61,7 @@ describe('startup checks', () => {
   it('cleans up the probe it leaves behind on a broken persistence', async () => {
     const real = createMemoryPersistence();
     const fake: AxedaPersistence = { ...real, transaction: (callback) => callback(real) };
-    await createAxeda(OPTIONS, { persistence: fake })
+    await createAxeda(OPTIONS, { persistence: fake, users })
       .start()
       .catch(() => undefined);
     expect((await real.roles.list({ limit: 10 })).items).toEqual([]);
@@ -71,14 +74,14 @@ describe('startup checks', () => {
       ...real,
       transaction: () => Promise.reject(outage),
     };
-    const axeda = createAxeda(OPTIONS, { persistence: down });
+    const axeda = createAxeda(OPTIONS, { persistence: down, users });
     await expect(axeda.start()).rejects.toBe(outage);
     await expect(axeda.can(alice, 'invoice:read')).rejects.toBe(outage);
   });
 
   it('uses the system clock when none is injected', async () => {
     const persistence = createMemoryPersistence();
-    const axeda = createAxeda(OPTIONS, { persistence });
+    const axeda = createAxeda(OPTIONS, { persistence, users });
     const role = await persistence.roles.create({
       key: 'r',
       name: 'R',
@@ -109,7 +112,7 @@ describe('startup checks', () => {
 
   it('rejects invalid options immediately', () => {
     expect(() =>
-      createAxeda({ permissions: ['nope'] }, { persistence: createMemoryPersistence() }),
+      createAxeda({ permissions: ['nope'] }, { persistence: createMemoryPersistence(), users }),
     ).toThrow(expect.objectContaining({ code: 'AXEDA_INVALID_CONFIG' }));
   });
 
@@ -239,60 +242,71 @@ describe('can()', () => {
 
 /**
  * Lección de aloux-iam: allí, desactivar una función ocultaba el menú pero la API seguía
- * autorizando sus permisos. Aquí, cada forma de revocar debe denegar en la SIGUIENTE petición.
+ * autorizando sus permisos. Aquí, cada forma de revocar debe denegar en la SIGUIENTE petición,
+ * aunque haya una caché de por medio. Se hace por los casos de uso, que son los que suben las
+ * versiones que la invalidan.
  */
 describe('revocation takes effect on the very next check', () => {
+  const admin = { userId: 'admin' };
+
   async function granted() {
     const ctx = setup();
-    const role = await ctx.persistence.roles.create({
+    users.add({ id: 'alice' });
+    users.add({ id: 'admin' });
+    await ctx.axeda.bootstrap({ userId: 'admin' });
+    const role = await ctx.axeda.roles.create(admin, {
       key: 'cashier',
       name: 'Cashier',
-      permissions: perms('invoice:read', 'invoice:create'),
+      permissions: ['invoice:read', 'invoice:create'],
     });
-    const assignment = await ctx.persistence.assignments.create({
+    const assignment = await ctx.axeda.assignments.assign(admin, {
       userId: 'alice',
       roleId: role.id,
       scope: GLOBAL_SCOPE,
     });
+    // Se consulta antes y después: la primera deja la entrada en la caché.
+    expect(await ctx.axeda.can(alice, 'invoice:read')).toBe(true);
     expect(await ctx.axeda.can(alice, 'invoice:read')).toBe(true);
     return { ...ctx, role, assignment };
   }
 
   it('when the role is deactivated', async () => {
-    const { persistence, axeda, role } = await granted();
-    await persistence.roles.update(role.id, role.version, { status: 'inactive' });
+    const { axeda, role } = await granted();
+    await axeda.roles.setStatus(admin, role.id, role.version, 'inactive');
     expect(await axeda.can(alice, 'invoice:read')).toBe(false);
   });
 
   it('when a permission is removed from the role', async () => {
-    const { persistence, axeda, role } = await granted();
-    await persistence.roles.update(role.id, role.version, { permissions: perms('invoice:create') });
+    const { axeda, role } = await granted();
+    await axeda.roles.update(admin, role.id, role.version, { permissions: ['invoice:create'] });
     expect(await axeda.can(alice, 'invoice:read')).toBe(false);
     expect(await axeda.can(alice, 'invoice:create')).toBe(true);
   });
 
   it('when the assignment is revoked', async () => {
-    const { persistence, axeda, assignment } = await granted();
-    await persistence.assignments.revoke(assignment.id);
+    const { axeda, assignment } = await granted();
+    await axeda.assignments.revoke(admin, assignment.id);
     expect(await axeda.can(alice, 'invoice:read')).toBe(false);
   });
 
   it('when the role is deleted', async () => {
-    const { persistence, axeda, role } = await granted();
-    await persistence.roles.delete(role.id);
+    const { axeda, role } = await granted();
+    await axeda.roles.delete(admin, role.id);
     expect(await axeda.can(alice, 'invoice:read')).toBe(false);
   });
 
-  it('when every assignment of the user is removed (user deletion)', async () => {
-    const { persistence, axeda } = await granted();
+  it('when the user is deleted (what the Better Auth hook does)', async () => {
+    const { axeda, persistence } = await granted();
     await persistence.assignments.deleteForUser('alice');
+    await persistence.authz.bumpUserVersion('alice');
     expect(await axeda.can(alice, 'invoice:read')).toBe(false);
   });
 
   it('and reactivating the role restores access', async () => {
-    const { persistence, axeda, role } = await granted();
-    const off = await persistence.roles.update(role.id, role.version, { status: 'inactive' });
-    await persistence.roles.update(off.id, off.version, { status: 'active' });
+    const { axeda, role } = await granted();
+    const off = await axeda.roles.setStatus(admin, role.id, role.version, 'inactive');
+    expect(await axeda.can(alice, 'invoice:read')).toBe(false);
+    await axeda.roles.setStatus(admin, off.id, off.version, 'active');
     expect(await axeda.can(alice, 'invoice:read')).toBe(true);
   });
 });

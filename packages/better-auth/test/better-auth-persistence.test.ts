@@ -5,7 +5,12 @@ import { betterAuth } from 'better-auth';
 import { getMigrations } from 'better-auth/db/migration';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
-import { MODELS, axeda, createBetterAuthPersistence } from '../src/index.js';
+import {
+  MODELS,
+  axeda,
+  createBetterAuthPersistence,
+  createBetterAuthUserDirectory,
+} from '../src/index.js';
 import { createAuth, createUsers, type DatabaseKind } from './support/harness.js';
 import { createPgliteDialect } from './support/pglite-dialect.js';
 
@@ -19,20 +24,63 @@ describe.each(kinds)('Axeda on a real Better Auth (%s)', (kind) => {
     return { ...ctx, persistence: createBetterAuthPersistence(ctx.adapter) };
   }
 
-  it('lets Axeda start and decide on top of it', async () => {
-    const { persistence } = await setup();
-    const axedaCore = createAxeda({ permissions: ['invoice:read'] }, { persistence });
+  it('runs the whole authorization flow on top of it: bootstrap, grant, check, revoke', async () => {
+    const { persistence, adapter } = await setup();
+    await createUsers(adapter, ['bob']);
+    const axedaCore = createAxeda(
+      { permissions: ['invoice:read'] },
+      { persistence, users: createBetterAuthUserDirectory(adapter) },
+    );
     await axedaCore.start();
-    const role = await persistence.roles.create({
+
+    const alice = { userId: 'alice' };
+    const bob = { userId: 'bob' };
+    await axedaCore.bootstrap({ userId: 'alice' });
+    const role = await axedaCore.roles.create(alice, {
       key: 'reader',
       name: 'Reader',
-      permissions: perms('invoice:read'),
+      permissions: ['invoice:read'],
     });
-    expect(await axedaCore.can({ userId: 'alice' }, 'invoice:read')).toBe(false);
-    await persistence.assignments.create({ userId: 'alice', roleId: role.id, scope: GLOBAL_SCOPE });
-    expect(await axedaCore.can({ userId: 'alice' }, 'invoice:read')).toBe(true);
-    await persistence.roles.update(role.id, role.version, { status: 'inactive' });
-    expect(await axedaCore.can({ userId: 'alice' }, 'invoice:read')).toBe(false);
+    expect(await axedaCore.can(bob, 'invoice:read')).toBe(false);
+
+    const assignment = await axedaCore.assignments.assign(alice, {
+      userId: 'bob',
+      roleId: role.id,
+      scope: GLOBAL_SCOPE,
+    });
+    expect(await axedaCore.can(bob, 'invoice:read')).toBe(true);
+
+    await axedaCore.roles.setStatus(alice, role.id, role.version, 'inactive');
+    expect(await axedaCore.can(bob, 'invoice:read')).toBe(false);
+    await axedaCore.roles.setStatus(alice, role.id, role.version + 1, 'active');
+    expect(await axedaCore.can(bob, 'invoice:read')).toBe(true);
+
+    await axedaCore.assignments.revoke(alice, assignment.id);
+    expect(await axedaCore.can(bob, 'invoice:read')).toBe(false);
+
+    const audit = await axedaCore.listAudit(alice, {}, { limit: 50 });
+    expect(audit.items.map((event) => event.action)).toEqual(
+      expect.arrayContaining([
+        'bootstrap',
+        'role.create',
+        'assignment.create',
+        'assignment.revoke',
+      ]),
+    );
+  });
+
+  it('reads users, their two-factor state and bans through the directory', async () => {
+    const { adapter } = await setup();
+    const directory = createBetterAuthUserDirectory(adapter);
+    expect(await directory.find('alice')).toEqual({
+      id: 'alice',
+      email: 'alice@test.dev',
+      twoFactorEnabled: false,
+      banned: false,
+    });
+    expect((await directory.findByEmail('  ALICE@test.dev '))?.id).toBe('alice');
+    expect(await directory.find('ghost')).toBeNull();
+    expect(await directory.findByEmail('ghost@test.dev')).toBeNull();
   });
 
   it('removes the assignments of a user when Better Auth deletes the user', async () => {
@@ -200,7 +248,7 @@ async function createSqliteWithoutForeignKeys() {
     baseURL: 'http://localhost:3000',
     database: db,
     emailAndPassword: { enabled: true },
-    plugins: [axeda()],
+    plugins: [axeda({ permissions: [] })],
   };
   await (await getMigrations(config)).runMigrations();
   const context = await betterAuth(config).$context;
@@ -217,7 +265,7 @@ describe('migrations', () => {
       baseURL: 'http://localhost:3000',
       database: db,
       emailAndPassword: { enabled: true },
-      plugins: [axeda()],
+      plugins: [axeda({ permissions: [] })],
     };
     const first = await getMigrations(options);
     const ddl = await first.compileMigrations();
@@ -270,7 +318,7 @@ describe('migrations', () => {
       });
 
       // 2) La misma base con el plugin añadido.
-      const withPlugin = { ...base, plugins: [axeda()] };
+      const withPlugin = { ...base, plugins: [axeda({ permissions: [] })] };
       await (await getMigrations(withPlugin)).runMigrations();
       const context = await betterAuth(withPlugin).$context;
       const persistence = createBetterAuthPersistence(context.adapter);

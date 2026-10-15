@@ -31,7 +31,7 @@ export async function createAuth(kind: DatabaseKind): Promise<TestAuth> {
     baseURL: 'http://localhost:3000',
     database,
     emailAndPassword: { enabled: true },
-    plugins: [axeda()],
+    plugins: [axeda({ permissions: [] })],
   };
   const { runMigrations } = await getMigrations(options);
   await runMigrations();
