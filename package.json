@@ -1,24 +1,31 @@
 {
-  "name": "axs",
-  "version": "1.0.0",
-  "description": "Librería de control de accesos por rol, rutas de funcionalidad por endpoints.",
+  "name": "axeda",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Axeda: hierarchical role-based access control (global → company → business) on top of Better Auth.",
   "keywords": [
-    "access",
-    "control",
-    "rol",
-    "endpoints",
-    "routes",
-    "request",
-    "database",
-    "db",
-    "permission",
-    "privileges"
+    "access-control",
+    "authorization",
+    "rbac",
+    "roles",
+    "permissions",
+    "multi-tenant",
+    "better-auth"
   ],
   "license": "Apache-2.0",
   "author": "TeamBlind",
+  "contributors": [
+    "DannieDev"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/teamblindmx/axeda.git"
+  },
   "type": "module",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
   }
 }
