@@ -8,7 +8,15 @@ import {
 } from '@axeda/core';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-export type PersistenceFactory = () => AxedaPersistence | Promise<AxedaPersistence>;
+/**
+ * Usuarios que la suite usa. Las persistencias respaldadas por una base con claves foráneas
+ * (Better Auth) deben tenerlos creados antes de empezar; la de memoria los ignora.
+ */
+export const CONTRACT_USERS: readonly string[] = ['u1', 'u2'];
+
+export type PersistenceFactory = (
+  users: readonly string[],
+) => AxedaPersistence | Promise<AxedaPersistence>;
 
 const perms = (...keys: string[]) => keys.map(parsePermissionKey);
 
@@ -35,7 +43,7 @@ export function runPersistenceContract(name: string, create: PersistenceFactory)
   describe(`persistence contract: ${name}`, () => {
     let db: AxedaPersistence;
     beforeEach(async () => {
-      db = await create();
+      db = await create(CONTRACT_USERS);
     });
 
     describe('roles', () => {
@@ -61,6 +69,22 @@ export function runPersistenceContract(name: string, create: PersistenceFactory)
       it('rejects a duplicate key', async () => {
         await db.roles.create(roleInput());
         await expectCode(db.roles.create(roleInput()), 'AXEDA_ROLE_KEY_TAKEN');
+      });
+
+      it('lets exactly one of two concurrent creations of the same key win', async () => {
+        const results = await Promise.allSettled([
+          db.roles.create(roleInput({ key: 'race' })),
+          db.roles.create(roleInput({ key: 'race' })),
+        ]);
+        expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+        const rejected = results.find((result) => result.status === 'rejected');
+        expect(
+          isAxedaError(
+            rejected?.status === 'rejected' ? rejected.reason : null,
+            'AXEDA_ROLE_KEY_TAKEN',
+          ),
+        ).toBe(true);
+        expect((await db.roles.list({ limit: 10 })).items).toHaveLength(1);
       });
 
       it('getMany returns only the roles that exist', async () => {
@@ -195,6 +219,23 @@ export function runPersistenceContract(name: string, create: PersistenceFactory)
         });
         await db.assignments.create({ userId: 'u1', roleId: role.id, scope: GLOBAL_SCOPE });
         expect(await db.assignments.countForUser('u1')).toBe(3);
+      });
+
+      it('lets exactly one of two concurrent identical assignments win', async () => {
+        const role = await db.roles.create(roleInput());
+        const results = await Promise.allSettled([
+          db.assignments.create({ userId: 'u1', roleId: role.id, scope: GLOBAL_SCOPE }),
+          db.assignments.create({ userId: 'u1', roleId: role.id, scope: GLOBAL_SCOPE }),
+        ]);
+        expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+        const rejected = results.find((result) => result.status === 'rejected');
+        expect(
+          isAxedaError(
+            rejected?.status === 'rejected' ? rejected.reason : null,
+            'AXEDA_ASSIGNMENT_EXISTS',
+          ),
+        ).toBe(true);
+        expect(await db.assignments.countForUser('u1')).toBe(1);
       });
 
       it('rejects an assignment to a role that does not exist', async () => {
