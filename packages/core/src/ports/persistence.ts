@@ -1,3 +1,4 @@
+import type { AuditAction, AuditEvent, AuditTargetType, NewAuditEvent } from '../domain/audit.js';
 import type { PermissionKey } from '../domain/permission-key.js';
 import type { Role, RoleAssignment, RoleStatus } from '../domain/role.js';
 import type { AssignmentScope } from '../domain/scope.js';
@@ -56,7 +57,10 @@ export interface NewAssignment {
 }
 
 export interface AssignmentStore {
+  get(id: string): Promise<RoleAssignment | null>;
   listForUser(userId: string): Promise<readonly RoleAssignment[]>;
+  /** Asignaciones de exactamente ese alcance, ordenadas por id. */
+  listForScope(scope: AssignmentScope, page: PageRequest): Promise<Page<RoleAssignment>>;
   countForUser(userId: string): Promise<number>;
   /** Lanza `AXEDA_ASSIGNMENT_EXISTS` si ya hay una igual (usuario, función y alcance). */
   create(input: NewAssignment): Promise<RoleAssignment>;
@@ -77,10 +81,29 @@ export interface AuthzStateStore {
   bumpPolicyVersion(): Promise<number>;
 }
 
+export interface AuditFilter {
+  readonly actorId?: string | undefined;
+  readonly action?: AuditAction | undefined;
+  readonly targetType?: AuditTargetType | undefined;
+  readonly targetId?: string | undefined;
+  /** Eventos de exactamente ese alcance. */
+  readonly scope?: AssignmentScope | undefined;
+}
+
+/**
+ * Registro de auditoría. Solo se añade: no hay actualizar ni borrar. Los identificadores
+ * ordenan cronológicamente, así que `list` devuelve primero lo más reciente.
+ */
+export interface AuditStore {
+  append(event: NewAuditEvent): Promise<AuditEvent>;
+  list(filter: AuditFilter, page: PageRequest): Promise<Page<AuditEvent>>;
+}
+
 export interface AxedaStores {
   readonly roles: RoleStore;
   readonly assignments: AssignmentStore;
   readonly authz: AuthzStateStore;
+  readonly audit: AuditStore;
 }
 
 /**

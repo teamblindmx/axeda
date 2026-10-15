@@ -24,6 +24,8 @@ export interface AxedaOptions {
   readonly limits?: {
     readonly maxAssignmentsPerUser?: number;
     readonly maxPermissionsPerRole?: number;
+    /** Usuarios cuyos permisos se guardan en la caché en memoria de cada proceso. */
+    readonly maxCachedUsers?: number;
   };
 }
 
@@ -42,15 +44,17 @@ export interface ResolvedOptions {
   readonly limits: {
     readonly maxAssignmentsPerUser: number;
     readonly maxPermissionsPerRole: number;
+    readonly maxCachedUsers: number;
   };
 }
 
 export const DEFAULT_LIMITS = Object.freeze({
   maxAssignmentsPerUser: 50,
   maxPermissionsPerRole: 100,
+  maxCachedUsers: 10_000,
 });
 
-const ROLE_KEY = /^[a-z][a-z0-9_-]{0,63}$/;
+export const ROLE_KEY = /^[a-z][a-z0-9_-]{0,63}$/;
 const RESERVED_PREFIX = 'axeda:';
 
 const limitSchema = z.number().int().positive().max(10_000);
@@ -74,6 +78,7 @@ const optionsSchema = z.strictObject({
     .strictObject({
       maxAssignmentsPerUser: limitSchema.optional(),
       maxPermissionsPerRole: limitSchema.optional(),
+      maxCachedUsers: limitSchema.optional(),
     })
     .optional(),
 });
@@ -106,7 +111,7 @@ function buildCatalog(permissions: readonly string[]): readonly PermissionKey[] 
   return [...AXEDA_CATALOG, ...permissions.map(parsePermissionKey)];
 }
 
-function resolveRole(
+export function resolveRoleDefinition(
   key: string,
   raw: readonly string[] | RoleDefinition,
   catalog: readonly PermissionKey[],
@@ -147,11 +152,12 @@ export function resolveOptions(options: AxedaOptions): ResolvedOptions {
       shape.limits?.maxAssignmentsPerUser ?? DEFAULT_LIMITS.maxAssignmentsPerUser,
     maxPermissionsPerRole:
       shape.limits?.maxPermissionsPerRole ?? DEFAULT_LIMITS.maxPermissionsPerRole,
+    maxCachedUsers: shape.limits?.maxCachedUsers ?? DEFAULT_LIMITS.maxCachedUsers,
   };
   const catalog = buildCatalog(shape.permissions);
   const roles = new Map<string, ResolvedRoleDefinition>();
   for (const [key, raw] of Object.entries(shape.roles ?? {})) {
-    roles.set(key, resolveRole(key, raw, catalog, limits.maxPermissionsPerRole));
+    roles.set(key, resolveRoleDefinition(key, raw, catalog, limits.maxPermissionsPerRole));
   }
   return { catalog, roles, limits };
 }
