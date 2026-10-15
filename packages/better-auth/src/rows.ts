@@ -3,6 +3,10 @@ import {
   GLOBAL_SCOPE,
   parsePermissionKey,
   type AssignmentScope,
+  type AuditAction,
+  type AuditEvent,
+  type AuditOutcome,
+  type AuditTargetType,
   type Role,
   type RoleAssignment,
 } from '@axeda/core';
@@ -85,3 +89,38 @@ export const scopeColumns = (scope: AssignmentScope): { scopeType: string; scope
   scope.type === 'global'
     ? { scopeType: 'global', scopeId: GLOBAL_SCOPE_ID }
     : { scopeType: scope.type, scopeId: scope.id };
+
+export interface AuditRow {
+  id: string;
+  actorId?: string | null;
+  action: string;
+  targetType: string;
+  targetId?: string | null;
+  scopeType?: string | null;
+  scopeId?: string | null;
+  outcome: string;
+  ip?: string | null;
+  userAgent?: string | null;
+  metadata: Record<string, unknown>;
+  at: Date;
+}
+
+export function toAuditEvent(row: AuditRow): AuditEvent {
+  return {
+    id: row.id,
+    at: row.at,
+    actorId: row.actorId ?? null,
+    // Los valores los escribe Axeda; una fila ajena o corrupta se rechaza en vez de adivinarse.
+    action: row.action as AuditAction,
+    targetType: row.targetType as AuditTargetType,
+    targetId: row.targetId ?? null,
+    scope:
+      row.scopeType === null || row.scopeType === undefined
+        ? null
+        : toScope({ id: row.id, scopeType: row.scopeType, scopeId: row.scopeId ?? '' }),
+    outcome: row.outcome as AuditOutcome,
+    ip: row.ip ?? null,
+    userAgent: row.userAgent ?? null,
+    metadata: row.metadata,
+  };
+}

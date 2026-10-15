@@ -5,6 +5,7 @@ export const MODELS = {
   role: 'axedaRole',
   assignment: 'axedaAssignment',
   state: 'axedaState',
+  audit: 'axedaAudit',
 } as const;
 
 /** Fila única de `axedaState` que guarda la versión de política (ADR-0005). */
@@ -63,12 +64,36 @@ export const axedaSchema = {
       createdAt: { type: 'date', required: true, input: false },
       expiresAt: { type: 'date', required: false, input: false },
     },
-    indexes: [{ fields: ['userId', 'roleId', 'scopeType', 'scopeId'], unique: true }],
+    indexes: [
+      { fields: ['userId', 'roleId', 'scopeType', 'scopeId'], unique: true },
+      { fields: ['scopeType', 'scopeId'] },
+    ],
   },
   [MODELS.state]: {
     fields: {
       key: { type: 'string', required: true, unique: true, input: false },
       version: { type: 'number', required: true, defaultValue: 0, input: false },
     },
+  },
+  [MODELS.audit]: {
+    fields: {
+      // Sin clave foránea: la auditoría debe sobrevivir al borrado del usuario.
+      actorId: { type: 'string', required: false, input: false },
+      action: { type: 'string', required: true, input: false },
+      targetType: { type: 'string', required: true, input: false },
+      targetId: { type: 'string', required: false, input: false },
+      scopeType: { type: 'string', required: false, input: false },
+      scopeId: { type: 'string', required: false, input: false },
+      outcome: { type: 'string', required: true, input: false },
+      ip: { type: 'string', required: false, input: false },
+      userAgent: { type: 'string', required: false, input: false },
+      metadata: { type: 'json', required: true, input: false },
+      at: { type: 'date', required: true, input: false },
+    },
+    indexes: [
+      { fields: ['actorId'] },
+      { fields: ['targetType', 'targetId'] },
+      { fields: ['scopeType', 'scopeId'] },
+    ],
   },
 } satisfies BetterAuthPluginDBSchema;
