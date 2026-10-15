@@ -1,2 +1,7 @@
-// @axeda/testing — stores en memoria y suites de contrato (fases 1 y 2). Paquete vacío por ahora.
-export {};
+// @axeda/testing — almacén en memoria y suites de contrato de los puertos.
+export { createMemoryPersistence, type MemoryPersistenceOptions } from './memory-persistence.js';
+export {
+  roleInput,
+  runPersistenceContract,
+  type PersistenceFactory,
+} from './persistence-contract.js';
