@@ -41,7 +41,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['packages/*/test/**/*.ts', 'vitest.config.ts'],
+    files: ['packages/*/test/**/*.ts', 'examples/**/*.ts', 'vitest.config.ts'],
     rules: { 'no-console': 'off' },
   },
 );
