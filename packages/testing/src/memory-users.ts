@@ -14,6 +14,7 @@ export function createMemoryUserDirectory(
   const add: MemoryUserDirectory['add'] = (user) => {
     const full: DirectoryUser = {
       email: `${user.id}@test.dev`,
+      emailVerified: true,
       twoFactorEnabled: false,
       banned: false,
       ...user,
