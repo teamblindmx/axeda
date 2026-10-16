@@ -13,6 +13,7 @@ import {
   actorPermissions,
   invalidInput,
   lockUsers,
+  resolveForActor as resolveForActorShared,
   resolveTarget,
   type Services,
 } from './services.js';
@@ -86,24 +87,18 @@ export function createAssignmentService(services: Services): AssignmentService {
     return user;
   }
 
-  /**
-   * Resuelve el alcance. Si no se puede (negocio inexistente o sin resolvedor), solo quien
-   * administra a nivel global ve el motivo; para los demás es una denegación, sin revelar nada.
-   */
-  async function resolveForActor(
+  const resolveForActor = (
     stores: AxedaStores,
     actor: Actor,
     scope: AssignmentScope,
     onDenied: () => Error = () => forbid('missing_assignment_permission'),
-  ): Promise<TargetScope> {
-    try {
-      return await resolveTarget(services, scope);
-    } catch (error) {
-      const global = await actorPermissions(stores, services, actor, { type: 'global' });
-      if (global.allows(AXEDA_PERMISSIONS.assignmentManage)) throw error;
-      throw onDenied();
-    }
-  }
+    requireUsable = true,
+  ): Promise<TargetScope> =>
+    resolveForActorShared(services, stores, actor, scope, {
+      permission: AXEDA_PERMISSIONS.assignmentManage,
+      onDenied,
+      requireUsable,
+    });
 
   async function assertCanManage(
     stores: AxedaStores,
@@ -117,7 +112,7 @@ export function createAssignmentService(services: Services): AssignmentService {
   }
 
   async function canManage(actor: Actor, scope: AssignmentScope): Promise<boolean> {
-    const target = await resolveTarget(services, scope);
+    const target = await resolveTarget(services, scope, { requireUsable: false });
     const held = await actorPermissions(persistence, services, actor, target);
     return held.allows(AXEDA_PERMISSIONS.assignmentManage);
   }
@@ -145,9 +140,19 @@ export function createAssignmentService(services: Services): AssignmentService {
         { ...snapshot, now: services.clock.now(), mfaEnabled: actor.twoFactorEnabled },
         AXEDA_PERMISSIONS.assignmentManage,
       );
-      // Una asignación de negocio solo se ve por un alcance de compañía si se conoce la compañía.
+      // Una asignación de negocio se ve a través de un alcance de compañía si es de esa compañía.
+      const businessIds = all.flatMap((a) => (a.scope.type === 'business' ? [a.scope.id] : []));
+      const businesses =
+        businessIds.length === 0 ? [] : await persistence.businesses.getMany(businessIds);
+      const companyOf = new Map(businesses.map((business) => [business.id, business.companyId]));
       return all.filter((assignment) =>
-        managed.some((container) => scopeContains(container, assignment.scope)),
+        managed.some((container) =>
+          scopeContains(
+            container,
+            assignment.scope,
+            assignment.scope.type === 'business' ? companyOf.get(assignment.scope.id) : undefined,
+          ),
+        ),
       );
     },
 
@@ -247,7 +252,7 @@ export function createAssignmentService(services: Services): AssignmentService {
         // Antes de la transacción (ver `assign`): leer la asignación y resolver su alcance.
         const first = await persistence.assignments.get(assignmentId);
         if (first === null) throw notFound();
-        const target = await resolveForActor(persistence, actor, first.scope, hidden);
+        const target = await resolveForActor(persistence, actor, first.scope, hidden, false);
 
         await persistence.transaction(async (stores) => {
           await lockUsers(stores, [actor.userId, first.userId]);
