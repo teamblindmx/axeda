@@ -24,6 +24,11 @@ export interface GrantInput {
   readonly granter: PermissionSet;
   readonly role: Role;
   readonly scopeType: ScopeType;
+  /**
+   * Permiso que debe tener quien concede en ese alcance. Por defecto `axeda:assignment:manage`;
+   * una invitación usa `axeda:invitation:manage`.
+   */
+  readonly via?: PermissionKey | undefined;
 }
 
 const deny = (
@@ -53,7 +58,7 @@ export function authorizeGrant(input: GrantInput): GrantDecision {
   const { granter, role, scopeType } = input;
 
   if (role.status !== 'active') return deny('role_inactive');
-  if (!granter.allows(AXEDA_PERMISSIONS.assignmentManage)) {
+  if (!granter.allows(input.via ?? AXEDA_PERMISSIONS.assignmentManage)) {
     return deny('missing_assignment_permission');
   }
 

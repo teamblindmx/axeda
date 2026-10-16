@@ -1,6 +1,7 @@
 import { covers, type PermissionKey } from '../domain/permission-key.js';
 import type { Role, RoleAssignment } from '../domain/role.js';
-import { assignmentApplies, type TargetScope } from '../domain/scope.js';
+import { assignmentApplies, scopeKey, type TargetScope } from '../domain/scope.js';
+import { businessKey, companyKey } from '../domain/tenant.js';
 
 /** Resultado de unir los permisos de todas las funciones aplicables en un alcance. */
 export class PermissionSet {
@@ -37,10 +38,28 @@ export interface PolicyData {
    * `false` o falta: ante la duda, se deniega.
    */
   readonly mfaEnabled?: boolean | undefined;
+  /**
+   * Claves (`scopeKey`) de compañías y negocios que no pueden conceder poder: inactivos,
+   * borrados o inexistentes. Una asignación en uno de ellos no cuenta.
+   */
+  readonly unusable?: ReadonlySet<string> | undefined;
 }
 
 export interface EffectivePermissionsInput extends PolicyData {
   readonly target: TargetScope;
+  /**
+   * Si es `true`, un destino inactivo o borrado no anula los permisos: para las operaciones de
+   * **administración** (un administrador global restaura una compañía borrada). Las consultas de
+   * la aplicación (`can`) no lo usan: dentro de una compañía borrada no se puede hacer nada.
+   */
+  readonly ignoreTargetStatus?: boolean | undefined;
+}
+
+/** ¿El destino (o su compañía) está inactivo, borrado o no existe? */
+function targetIsUnusable(target: TargetScope, unusable: ReadonlySet<string> | undefined): boolean {
+  if (unusable === undefined || target.type === 'global') return false;
+  if (unusable.has(companyKey(target.companyId))) return true;
+  return target.type === 'business' && unusable.has(businessKey(target.businessId));
 }
 
 /**
@@ -51,6 +70,7 @@ function liveRoles(data: PolicyData): Array<{ assignment: RoleAssignment; role: 
   const live: Array<{ assignment: RoleAssignment; role: Role }> = [];
   for (const assignment of data.assignments) {
     if (assignment.expiresAt !== null && assignment.expiresAt <= data.now) continue;
+    if (data.unusable?.has(scopeKey(assignment.scope)) === true) continue;
     const role = data.roles.get(assignment.roleId);
     if (role === undefined || role.status !== 'active') continue;
     if (role.requireMfa && data.mfaEnabled !== true) continue;
@@ -65,6 +85,9 @@ function liveRoles(data: PolicyData): Array<{ assignment: RoleAssignment; role: 
  * Función pura: no consulta nada.
  */
 export function effectivePermissions(input: EffectivePermissionsInput): PermissionSet {
+  if (input.ignoreTargetStatus !== true && targetIsUnusable(input.target, input.unusable)) {
+    return EMPTY_PERMISSIONS;
+  }
   const keys: PermissionKey[] = [];
   for (const { assignment, role } of liveRoles(input)) {
     if (assignmentApplies(assignment.scope, input.target)) keys.push(...role.permissions);
@@ -93,4 +116,9 @@ export function scopesGranting(
     }
   }
   return [...scopes.values()];
+}
+
+/** Los alcances de todas las asignaciones que cuentan ahora (con cualquier permiso). */
+export function liveAssignmentScopes(data: PolicyData): RoleAssignment['scope'][] {
+  return liveRoles(data).map(({ assignment }) => assignment.scope);
 }

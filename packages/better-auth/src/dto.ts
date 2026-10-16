@@ -1,4 +1,12 @@
-import type { AssignmentScope, AuditEvent, Role, RoleAssignment } from '@axeda/core';
+import type {
+  AssignmentScope,
+  AuditEvent,
+  Business,
+  Company,
+  Invitation,
+  Role,
+  RoleAssignment,
+} from '@axeda/core';
 
 /**
  * Salida por lista blanca (S17): cada respuesta enumera sus campos. Si el modelo gana un campo
@@ -79,4 +87,76 @@ export const toAuditEventDto = (event: AuditEvent): AuditEventDto => ({
   ip: event.ip,
   userAgent: event.userAgent,
   metadata: { ...event.metadata },
+});
+
+// ---------- compañías, negocios e invitaciones ----------
+
+interface TenantDto {
+  id: string;
+  slug: string;
+  name: string;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  status: 'active' | 'inactive';
+  metadata: Record<string, unknown>;
+  version: number;
+  deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CompanyDto extends TenantDto {
+  legalName: string | null;
+}
+
+export interface BusinessDto extends TenantDto {
+  companyId: string;
+}
+
+export interface InvitationDto {
+  id: string;
+  email: string;
+  scope: AssignmentScope;
+  roleIds: string[];
+  invitedBy: string;
+  expiresAt: string;
+  createdAt: string;
+  acceptedAt: string | null;
+  revokedAt: string | null;
+}
+
+const tenantFields = (entity: Company | Business): TenantDto => ({
+  id: entity.id,
+  slug: entity.slug,
+  name: entity.name,
+  logoUrl: entity.logoUrl,
+  faviconUrl: entity.faviconUrl,
+  status: entity.status,
+  metadata: { ...entity.metadata },
+  version: entity.version,
+  deletedAt: entity.deletedAt?.toISOString() ?? null,
+  createdAt: entity.createdAt.toISOString(),
+  updatedAt: entity.updatedAt.toISOString(),
+});
+
+export const toCompanyDto = (company: Company): CompanyDto => ({
+  ...tenantFields(company),
+  legalName: company.legalName,
+});
+
+export const toBusinessDto = (business: Business): BusinessDto => ({
+  ...tenantFields(business),
+  companyId: business.companyId,
+});
+
+export const toInvitationDto = (invitation: Invitation): InvitationDto => ({
+  id: invitation.id,
+  email: invitation.email,
+  scope: invitation.scope,
+  roleIds: [...invitation.roleIds],
+  invitedBy: invitation.invitedBy,
+  expiresAt: invitation.expiresAt.toISOString(),
+  createdAt: invitation.createdAt.toISOString(),
+  acceptedAt: invitation.acceptedAt?.toISOString() ?? null,
+  revokedAt: invitation.revokedAt?.toISOString() ?? null,
 });

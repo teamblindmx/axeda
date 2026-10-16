@@ -4,7 +4,6 @@ import {
   isAxedaError,
   type AssignmentScope,
   type AxedaErrorCode,
-  type ScopeResolver,
 } from '../src/index.js';
 import { createFixture, type Fixture } from './fixture.js';
 
@@ -21,8 +20,10 @@ const companyA: AssignmentScope = { type: 'company', id: 'A' };
 const companyB: AssignmentScope = { type: 'company', id: 'B' };
 
 /** Una compañía A con su administrador, un cajero y funciones de ejemplo. */
-async function scenario(extra: Parameters<typeof createFixture>[1] = {}) {
-  const f = await createFixture(undefined, extra);
+async function scenario() {
+  const f = await createFixture();
+  await f.company('A');
+  await f.company('B');
   await f.role('company-admin', ['axeda:assignment:manage', 'invoice:*']);
   await f.role('cashier', ['invoice:read', 'invoice:create']);
   await f.role('invoice-god', ['invoice:*', 'report:read']);
@@ -241,6 +242,7 @@ describe('assign: validation and limits', () => {
     });
     await f.role('r', ['a:b']);
     f.user('alice');
+    for (const id of ['1', '2', '3']) await f.company(id);
     const roleId = (await f.persistence.roles.getByKey('r'))?.id ?? '';
     for (const id of ['1', '2']) {
       await f.axeda.assignments.assign(f.admin, {
@@ -301,6 +303,7 @@ describe('assign: roles that require MFA', () => {
 
   it('does not count an MFA-gated admin role of the actor when the actor lacks MFA', async () => {
     const f = await createFixture();
+    await f.company('A');
     await f.role('mfa-admin', ['axeda:assignment:manage', 'invoice:read'], { requireMfa: true });
     await f.role('viewer', ['invoice:read']);
     f.user('target');
@@ -428,24 +431,27 @@ describe('revoke', () => {
 });
 
 describe('business scopes', () => {
-  const resolver: ScopeResolver = {
-    companyOfBusiness: async (id) => ({ b1: 'A', b2: 'B' })[id] ?? null,
-  };
+  async function withBusinesses() {
+    const f = await scenario();
+    await f.business('b1', 'A');
+    await f.business('b2', 'B');
+    return f;
+  }
 
-  it('are rejected when no scope resolver is configured', async () => {
+  it('are rejected when the business does not exist', async () => {
     const f = await scenario();
     await rejectsWith(
       f.axeda.assignments.assign(f.admin, {
         userId: 'alice',
         roleId: await f.roleId('cashier'),
-        scope: { type: 'business', id: 'b1' },
+        scope: { type: 'business', id: 'nope' },
       }),
       'AXEDA_INVALID_INPUT',
     );
   });
 
-  it('take the company from the resolver, so a company admin manages only their own businesses', async () => {
-    const f = await scenario({ scopes: resolver });
+  it('take the company from the database, so a company admin manages only their own businesses', async () => {
+    const f = await withBusinesses();
     const roleId = await f.roleId('cashier');
     await f.axeda.assignments.assign(f.boss, {
       userId: 'alice',
@@ -464,6 +470,23 @@ describe('business scopes', () => {
     // Quien no administra a nivel global no puede distinguir "no existe" de "no puedes".
     await rejectsWith(f.axeda.assignments.assign(f.boss, ghost), 'AXEDA_FORBIDDEN');
     await rejectsWith(f.axeda.assignments.assign(f.admin, ghost), 'AXEDA_INVALID_INPUT');
+  });
+
+  it('see a company admin through to the businesses of their company when listing', async () => {
+    const f = await withBusinesses();
+    const roleId = await f.roleId('cashier');
+    await f.axeda.assignments.assign(f.admin, {
+      userId: 'alice',
+      roleId,
+      scope: { type: 'business', id: 'b1' },
+    });
+    await f.axeda.assignments.assign(f.admin, {
+      userId: 'alice',
+      roleId,
+      scope: { type: 'business', id: 'b2' },
+    });
+    const seen = await f.axeda.assignments.listForUser(f.boss, 'alice');
+    expect(seen.map((item) => item.scope)).toEqual([{ type: 'business', id: 'b1' }]);
   });
 
   it('does not reveal whether a user exists to someone who cannot manage the scope', async () => {

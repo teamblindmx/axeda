@@ -6,9 +6,25 @@ export {
   type ScopeFilter,
 } from './application/create-axeda.js';
 export type { AssignInput, AssignmentService } from './application/assignments.js';
+export type { InvitationInput, InvitationService } from './application/invitations.js';
+export type {
+  BusinessInput,
+  BusinessService,
+  BusinessUpdate,
+  CompanyInput,
+  CompanyService,
+  CompanyUpdate,
+  DeleteOptions,
+  ListOptions,
+} from './application/tenants.js';
+export type { PublicIdentity, PurgeResult } from './application/tenant-lifecycle.js';
 export type { BootstrapInput, BootstrapResult } from './application/bootstrap.js';
 export type { RoleInput, RoleService, RoleUpdate } from './application/roles.js';
-export { SUPER_ADMIN_ROLE_KEY } from './application/services.js';
+export {
+  SUPER_ADMIN_ROLE_KEY,
+  type InvitationDelivery,
+  type InvitationMessage,
+} from './application/services.js';
 export { assertTransactional, isTransactional } from './application/startup-checks.js';
 export {
   DEFAULT_LIMITS,
@@ -32,6 +48,23 @@ export {
   permissionKeyProblem,
   type PermissionKey,
 } from './domain/permission-key.js';
+export {
+  invitationState,
+  withoutSecret,
+  type Invitation,
+  type InvitationState,
+  type StoredInvitation,
+} from './domain/invitation.js';
+export {
+  SLUG_PATTERN,
+  businessKey,
+  companyKey,
+  isUsable,
+  type Business,
+  type Company,
+  type TenantMetadata,
+  type TenantStatus,
+} from './domain/tenant.js';
 export {
   MAX_AUDIT_METADATA_BYTES,
   createAuditIdFactory,

@@ -9,6 +9,7 @@ import {
   type NewRole,
 } from '@axeda/core';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { defineTenantContract } from './tenant-contract.js';
 
 /**
  * Usuarios que la suite usa. Las persistencias respaldadas por una base con claves foráneas
@@ -47,6 +48,8 @@ export function runPersistenceContract(name: string, create: PersistenceFactory)
     beforeEach(async () => {
       db = await create(CONTRACT_USERS);
     });
+
+    defineTenantContract(() => db);
 
     describe('roles', () => {
       it('creates a role with defaults and reads it back by id and by key', async () => {

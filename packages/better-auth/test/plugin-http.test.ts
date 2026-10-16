@@ -13,6 +13,16 @@ async function world(options: Parameters<typeof createHttpApp>[0] = {}) {
   return { app, admin, alice, bob };
 }
 
+const createCompany = async (app: HttpApp, cookie: string, slug: string) => {
+  const response = await app.post(
+    '/axeda/company/create',
+    { slug, name: slug.toUpperCase() },
+    cookie,
+  );
+  expect(response.status, JSON.stringify(response.json)).toBe(200);
+  return response.json as { id: string; version: number; slug: string };
+};
+
 const createRole = async (
   app: HttpApp,
   cookie: string,
@@ -55,9 +65,18 @@ describe('startup', () => {
  * Si alguien añade un endpoint y olvida protegerlo, o no lo registra aquí, esta prueba falla.
  */
 describe('every endpoint requires a session and a permission', () => {
-  type Sample = { method: 'GET' | 'POST'; query?: Record<string, string>; body?: unknown };
+  interface Sample {
+    method: 'GET' | 'POST';
+    query?: Record<string, string>;
+    body?: unknown;
+    /** Estados válidos para alguien con sesión pero sin ningún permiso. */
+    unprivileged?: number[];
+    /** No exige sesión. */
+    public?: true;
+  }
+  const NOPE = { id: 'x', version: 1 };
   const SAMPLES: Record<string, Sample> = {
-    '/axeda/me': { method: 'GET' },
+    '/axeda/me': { method: 'GET', unprivileged: [200] },
     '/axeda/permission/list': { method: 'GET' },
     '/axeda/role/list': { method: 'GET' },
     '/axeda/role/get': { method: 'GET', query: { id: 'x' } },
@@ -65,8 +84,8 @@ describe('every endpoint requires a session and a permission', () => {
       method: 'POST',
       body: { key: 'walker', name: 'W', permissions: ['invoice:read'] },
     },
-    '/axeda/role/update': { method: 'POST', body: { id: 'x', version: 1, name: 'n' } },
-    '/axeda/role/set-status': { method: 'POST', body: { id: 'x', version: 1, status: 'inactive' } },
+    '/axeda/role/update': { method: 'POST', body: { ...NOPE, name: 'n' } },
+    '/axeda/role/set-status': { method: 'POST', body: { ...NOPE, status: 'inactive' } },
     '/axeda/role/delete': { method: 'POST', body: { id: 'x' } },
     '/axeda/assignment/list': { method: 'GET', query: { scopeType: 'global' } },
     '/axeda/assignment/create': {
@@ -75,6 +94,38 @@ describe('every endpoint requires a session and a permission', () => {
     },
     '/axeda/assignment/revoke': { method: 'POST', body: { id: 'x' } },
     '/axeda/audit/list': { method: 'GET' },
+    // Compañías y negocios: listar da una lista vacía a quien no pertenece a ninguna.
+    '/axeda/company/list': { method: 'GET', unprivileged: [200] },
+    '/axeda/company/get': { method: 'GET', query: { id: 'x' } },
+    '/axeda/company/create': { method: 'POST', body: { slug: 'walker', name: 'W' } },
+    '/axeda/company/update': { method: 'POST', body: { ...NOPE, name: 'n' } },
+    '/axeda/company/set-status': { method: 'POST', body: { ...NOPE, status: 'inactive' } },
+    '/axeda/company/delete': { method: 'POST', body: NOPE },
+    '/axeda/company/restore': { method: 'POST', body: NOPE },
+    '/axeda/business/list': { method: 'GET', query: { companyId: 'x' } },
+    '/axeda/business/get': { method: 'GET', query: { id: 'x' } },
+    '/axeda/business/create': {
+      method: 'POST',
+      body: { companyId: 'x', slug: 'walker', name: 'W' },
+    },
+    '/axeda/business/update': { method: 'POST', body: { ...NOPE, name: 'n' } },
+    '/axeda/business/set-status': { method: 'POST', body: { ...NOPE, status: 'inactive' } },
+    '/axeda/business/delete': { method: 'POST', body: NOPE },
+    '/axeda/business/restore': { method: 'POST', body: NOPE },
+    '/axeda/invitation/list': { method: 'GET', query: { scopeType: 'global' } },
+    '/axeda/invitation/create': {
+      method: 'POST',
+      body: { email: 'a@test.dev', scope: { type: 'global' }, roleIds: ['x'] },
+    },
+    // Aceptar solo pide sesión: lo autoriza el secreto, y uno inventado no sirve.
+    '/axeda/invitation/accept': { method: 'POST', body: { token: 'x.y' }, unprivileged: [400] },
+    '/axeda/invitation/revoke': { method: 'POST', body: { id: 'x' }, unprivileged: [400] },
+    '/axeda/public/identity': {
+      method: 'GET',
+      query: { company: 'x' },
+      unprivileged: [404],
+      public: true,
+    },
   };
 
   const send = (app: HttpApp, path: string, cookie?: string) => {
@@ -83,6 +134,7 @@ describe('every endpoint requires a session and a permission', () => {
       ? app.get(path, cookie, sample.query)
       : app.post(path, sample.body, cookie);
   };
+  const protectedPaths = Object.keys(SAMPLES).filter((path) => SAMPLES[path]?.public !== true);
 
   it('covers exactly the endpoints the plugin exposes', async () => {
     const { plugin } = await createHttpApp();
@@ -90,46 +142,48 @@ describe('every endpoint requires a session and a permission', () => {
     expect(paths.sort()).toEqual(Object.keys(SAMPLES).sort());
   });
 
-  it('declares what each one requires', async () => {
+  it('declares what each one requires, and only the public identity skips the session', async () => {
     const { plugin } = await createHttpApp();
     for (const endpoint of Object.values(plugin.endpoints)) {
-      const metadata = endpoint.options.metadata as { axeda?: { requires?: string } } | undefined;
+      const metadata = endpoint.options.metadata as
+        { axeda?: { requires?: string; public?: boolean } } | undefined;
       expect(metadata?.axeda?.requires, endpoint.path).toEqual(expect.any(String));
       expect(['GET', 'POST'], endpoint.path).toContain(endpoint.options.method);
+      expect(metadata?.axeda?.public === true, endpoint.path).toBe(
+        SAMPLES[endpoint.path]?.public === true,
+      );
     }
   });
 
-  it('answers 401 to every endpoint without a session', async () => {
+  it('answers 401 to every protected endpoint without a session', async () => {
     const { app } = await world();
-    for (const path of Object.keys(SAMPLES)) {
-      const response = await send(app, path);
-      expect(response.status, path).toBe(401);
+    for (const path of protectedPaths) {
+      expect((await send(app, path)).status, path).toBe(401);
     }
   });
 
   it('answers 401 for a forged or garbage session cookie', async () => {
     const { app } = await world();
     for (const cookie of ['better-auth.session_token=garbage', 'better-auth.session_token=a.b']) {
-      for (const path of Object.keys(SAMPLES)) {
+      for (const path of protectedPaths) {
         expect((await send(app, path, cookie)).status, path).toBe(401);
       }
     }
   });
 
-  it('denies every endpoint (except /me) to a signed-in user with no permissions', async () => {
+  it('gives a signed-in user with no permissions nothing but their own data', async () => {
     const { app, alice } = await world();
     for (const path of Object.keys(SAMPLES)) {
       const response = await send(app, path, alice.cookie);
-      if (path === '/axeda/me') {
-        expect(response.status).toBe(200);
-      } else {
-        expect(
-          [403, 404],
-          `${path} → ${response.status} ${JSON.stringify(response.json)}`,
-        ).toContain(response.status);
+      const allowed = SAMPLES[path]?.unprivileged ?? [403, 404];
+      expect(allowed, `${path} → ${response.status} ${JSON.stringify(response.json)}`).toContain(
+        response.status,
+      );
+      if (response.status >= 400)
         expect(response.json?.code, path).toEqual(expect.stringMatching(/^AXEDA_/));
-      }
     }
+    // y lo que se ve con permiso 200 está vacío
+    expect((await app.get('/axeda/company/list', alice.cookie)).json.items).toEqual([]);
   });
 
   it('lets the global administrator reach every endpoint', async () => {
@@ -178,6 +232,8 @@ describe('the administration flow over HTTP', () => {
 
   it('a company administrator manages only their own company, through the API', async () => {
     const { app, admin, alice, bob } = await world();
+    const acme = await createCompany(app, admin.cookie, 'acme');
+    const globex = await createCompany(app, admin.cookie, 'globex');
     const adminRole = await createRole(app, admin.cookie, 'company-admin', [
       'axeda:assignment:manage',
       'invoice:read',
@@ -186,18 +242,18 @@ describe('the administration flow over HTTP', () => {
     const boss = await app.signUp('boss');
     await app.post(
       '/axeda/assignment/create',
-      { userId: boss.id, roleId: adminRole.id, scope: { type: 'company', id: 'A' } },
+      { userId: boss.id, roleId: adminRole.id, scope: { type: 'company', id: acme.id } },
       admin.cookie,
     );
 
     const ownCompany = await app.post(
       '/axeda/assignment/create',
-      { userId: alice.id, roleId: reader.id, scope: { type: 'company', id: 'A' } },
+      { userId: alice.id, roleId: reader.id, scope: { type: 'company', id: acme.id } },
       boss.cookie,
     );
     expect(ownCompany.status).toBe(200);
 
-    for (const scope of [{ type: 'company', id: 'B' }, { type: 'global' }]) {
+    for (const scope of [{ type: 'company', id: globex.id }, { type: 'global' }]) {
       const denied = await app.post(
         '/axeda/assignment/create',
         { userId: bob.id, roleId: reader.id, scope },
@@ -209,7 +265,7 @@ describe('the administration flow over HTTP', () => {
 
     const team = await app.get('/axeda/assignment/list', boss.cookie, {
       scopeType: 'company',
-      scopeId: 'A',
+      scopeId: acme.id,
     });
     expect(team.status).toBe(200);
     expect(team.json.items.map((item: { userId: string }) => item.userId).sort()).toEqual(
@@ -217,7 +273,7 @@ describe('the administration flow over HTTP', () => {
     );
     const other = await app.get('/axeda/assignment/list', boss.cookie, {
       scopeType: 'company',
-      scopeId: 'B',
+      scopeId: globex.id,
     });
     expect(other.status).toBe(403);
   });
@@ -311,23 +367,18 @@ describe('errors and input validation', () => {
     expect([protectedRole.status, protectedRole.json.code]).toEqual([409, 'AXEDA_ROLE_MANAGED']);
   });
 
-  it('rejects business scopes in this version (they arrive with the entities)', async () => {
+  it('rejects an invalid scope, and a business that does not exist', async () => {
     const { app, admin, alice } = await world();
     const role = await createRole(app, admin.cookie, 'cashier', ['invoice:read']);
-    const response = await app.post(
-      '/axeda/assignment/create',
-      { userId: alice.id, roleId: role.id, scope: { type: 'business', id: 'b1' } },
-      admin.cookie,
-    );
-    expect(response.status).toBe(400);
-    expect(
-      (
-        await app.get('/axeda/assignment/list', admin.cookie, {
-          scopeType: 'business',
-          scopeId: 'b',
-        })
-      ).status,
-    ).toBe(400);
+    const send = (scope: unknown) =>
+      app.post(
+        '/axeda/assignment/create',
+        { userId: alice.id, roleId: role.id, scope },
+        admin.cookie,
+      );
+    expect((await send({ type: 'planet', id: 'x' })).status).toBe(400);
+    expect((await send({ type: 'business', id: 'nope' })).status).toBe(400);
+    expect((await send({ type: 'company', id: 'nope' })).status).toBe(400);
   });
 
   it('turns an unexpected failure into a generic 500 that leaks nothing', () => {

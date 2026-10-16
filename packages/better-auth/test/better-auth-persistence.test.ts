@@ -12,6 +12,7 @@ import {
   createBetterAuthUserDirectory,
 } from '../src/index.js';
 import { createAuth, createUsers, type DatabaseKind } from './support/harness.js';
+import { closeAfterTest } from './support/cleanup.js';
 import { createPgliteDialect } from './support/pglite-dialect.js';
 
 const kinds: DatabaseKind[] = ['sqlite', 'postgres'];
@@ -75,6 +76,7 @@ describe.each(kinds)('Axeda on a real Better Auth (%s)', (kind) => {
     expect(await directory.find('alice')).toEqual({
       id: 'alice',
       email: 'alice@test.dev',
+      emailVerified: false,
       twoFactorEnabled: false,
       banned: false,
     });
@@ -242,6 +244,7 @@ describe('databases without foreign keys (e.g. MongoDB)', () => {
 
 async function createSqliteWithoutForeignKeys() {
   const db = new Database(':memory:');
+  closeAfterTest(() => void db.close());
   db.pragma('foreign_keys = OFF');
   const config: BetterAuthOptions = {
     secret: 'test-secret-test-secret-test-secret-0123456789',
@@ -260,6 +263,7 @@ describe('migrations', () => {
 
   it('creates the Axeda tables, is idempotent and keeps foreign keys and the unique index', async () => {
     const db = new Database(':memory:');
+    closeAfterTest(() => void db.close());
     const options = {
       secret,
       baseURL: 'http://localhost:3000',
@@ -295,14 +299,17 @@ describe('migrations', () => {
   it.each(kinds)(
     'gives users that existed before the plugin an authzVersion of 0, not NULL (%s)',
     async (kind) => {
+      const sqlite = kind === 'sqlite' ? new Database(':memory:') : undefined;
+      const pglite = kind === 'postgres' ? new PGlite() : undefined;
+      if (sqlite) closeAfterTest(() => void sqlite.close());
+      if (pglite) closeAfterTest(() => pglite.close());
       const database =
-        kind === 'sqlite'
-          ? new Database(':memory:')
-          : {
-              dialect: createPgliteDialect(new PGlite()),
-              type: 'postgres' as const,
-              transaction: true,
-            };
+        sqlite ??
+        ({
+          dialect: createPgliteDialect(pglite as PGlite),
+          type: 'postgres' as const,
+          transaction: true,
+        } as const);
       const base = {
         secret,
         baseURL: 'http://localhost:3000',

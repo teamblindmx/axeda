@@ -21,6 +21,14 @@ export interface AxedaOptions {
   readonly permissions: readonly string[];
   /** Funciones declaradas en código (`managed`). La clave es el identificador estable. */
   readonly roles?: Readonly<Record<string, readonly string[] | RoleDefinition>>;
+  /** Días que una compañía o negocio borrado se conserva antes de poder purgarse. */
+  readonly retention?: { readonly graceDays?: number };
+  readonly invitations?: {
+    /** Horas de vigencia por defecto. */
+    readonly ttlHours?: number;
+    /** Máximo de funciones por invitación. */
+    readonly maxRoles?: number;
+  };
   readonly limits?: {
     readonly maxAssignmentsPerUser?: number;
     readonly maxPermissionsPerRole?: number;
@@ -41,12 +49,17 @@ export interface ResolvedOptions {
   /** Permisos de la aplicación más los propios de Axeda. */
   readonly catalog: readonly PermissionKey[];
   readonly roles: ReadonlyMap<string, ResolvedRoleDefinition>;
+  readonly retention: { readonly graceDays: number };
+  readonly invitations: { readonly ttlHours: number; readonly maxRoles: number };
   readonly limits: {
     readonly maxAssignmentsPerUser: number;
     readonly maxPermissionsPerRole: number;
     readonly maxCachedUsers: number;
   };
 }
+
+export const DEFAULT_RETENTION = Object.freeze({ graceDays: 30 });
+export const DEFAULT_INVITATIONS = Object.freeze({ ttlHours: 72, maxRoles: 10 });
 
 export const DEFAULT_LIMITS = Object.freeze({
   maxAssignmentsPerUser: 50,
@@ -73,6 +86,18 @@ const optionsSchema = z.strictObject({
         }),
       ]),
     )
+    .optional(),
+  retention: z.strictObject({ graceDays: z.number().int().min(0).max(3650).optional() }).optional(),
+  invitations: z
+    .strictObject({
+      ttlHours: z
+        .number()
+        .int()
+        .min(1)
+        .max(24 * 30)
+        .optional(),
+      maxRoles: z.number().int().min(1).max(50).optional(),
+    })
     .optional(),
   limits: z
     .strictObject({
@@ -144,20 +169,37 @@ export function resolveRoleDefinition(
   };
 }
 
+type Shape = z.infer<typeof optionsSchema>;
+
+const limitsOf = (limits: Shape['limits']): ResolvedOptions['limits'] => ({
+  maxAssignmentsPerUser: limits?.maxAssignmentsPerUser ?? DEFAULT_LIMITS.maxAssignmentsPerUser,
+  maxPermissionsPerRole: limits?.maxPermissionsPerRole ?? DEFAULT_LIMITS.maxPermissionsPerRole,
+  maxCachedUsers: limits?.maxCachedUsers ?? DEFAULT_LIMITS.maxCachedUsers,
+});
+
+const retentionOf = (retention: Shape['retention']): ResolvedOptions['retention'] => ({
+  graceDays: retention?.graceDays ?? DEFAULT_RETENTION.graceDays,
+});
+
+const invitationsOf = (invitations: Shape['invitations']): ResolvedOptions['invitations'] => ({
+  ttlHours: invitations?.ttlHours ?? DEFAULT_INVITATIONS.ttlHours,
+  maxRoles: invitations?.maxRoles ?? DEFAULT_INVITATIONS.maxRoles,
+});
+
 /** Valida las opciones y devuelve la configuración resuelta. Lanza `AXEDA_INVALID_CONFIG`. */
 export function resolveOptions(options: AxedaOptions): ResolvedOptions {
   const shape = parseShape(options);
-  const limits = {
-    maxAssignmentsPerUser:
-      shape.limits?.maxAssignmentsPerUser ?? DEFAULT_LIMITS.maxAssignmentsPerUser,
-    maxPermissionsPerRole:
-      shape.limits?.maxPermissionsPerRole ?? DEFAULT_LIMITS.maxPermissionsPerRole,
-    maxCachedUsers: shape.limits?.maxCachedUsers ?? DEFAULT_LIMITS.maxCachedUsers,
-  };
+  const limits = limitsOf(shape.limits);
   const catalog = buildCatalog(shape.permissions);
   const roles = new Map<string, ResolvedRoleDefinition>();
   for (const [key, raw] of Object.entries(shape.roles ?? {})) {
     roles.set(key, resolveRoleDefinition(key, raw, catalog, limits.maxPermissionsPerRole));
   }
-  return { catalog, roles, limits };
+  return {
+    catalog,
+    roles,
+    limits,
+    retention: retentionOf(shape.retention),
+    invitations: invitationsOf(shape.invitations),
+  };
 }

@@ -19,13 +19,22 @@ import {
   type RoleChanges,
   type RoleStore,
 } from '@axeda/core';
+import {
+  decodeCursor,
+  encodeCursor,
+  createBusinessStore,
+  createCompanyStore,
+  createInvitationStore,
+  type Run,
+  type TenantState,
+} from './memory-tenants.js';
 
 export interface MemoryPersistenceOptions {
   readonly now?: () => Date;
   readonly nextId?: () => string;
 }
 
-interface State {
+interface State extends TenantState {
   roles: Map<string, Role>;
   audit: AuditEvent[];
   assignments: Map<string, RoleAssignment>;
@@ -33,10 +42,10 @@ interface State {
   policyVersion: number;
 }
 
-/** Ejecuta `fn` con exclusión: las operaciones y transacciones se serializan. */
-type Run = <T>(fn: () => Promise<T>) => Promise<T>;
-
 const snapshot = (state: State): State => ({
+  companies: new Map(state.companies),
+  businesses: new Map(state.businesses),
+  invitations: new Map(state.invitations),
   roles: new Map(state.roles),
   audit: [...state.audit],
   assignments: new Map(state.assignments),
@@ -45,15 +54,15 @@ const snapshot = (state: State): State => ({
 });
 
 function restore(state: State, saved: State): void {
+  state.companies = saved.companies;
+  state.businesses = saved.businesses;
+  state.invitations = saved.invitations;
   state.roles = saved.roles;
   state.audit = saved.audit;
   state.assignments = saved.assignments;
   state.userVersions = saved.userVersions;
   state.policyVersion = saved.policyVersion;
 }
-
-const encodeCursor = (value: string): string => Buffer.from(value, 'utf8').toString('base64url');
-const decodeCursor = (cursor: string): string => Buffer.from(cursor, 'base64url').toString('utf8');
 
 function createRoleStore(state: State, run: Run, now: () => Date, nextId: () => string): RoleStore {
   return {
@@ -262,6 +271,9 @@ export function createMemoryPersistence(options: MemoryPersistenceOptions = {}):
   const now = options.now ?? (() => new Date());
   const nextId = options.nextId ?? (() => globalThis.crypto.randomUUID());
   const state: State = {
+    companies: new Map(),
+    businesses: new Map(),
+    invitations: new Map(),
     roles: new Map(),
     audit: [],
     assignments: new Map(),
@@ -278,6 +290,9 @@ export function createMemoryPersistence(options: MemoryPersistenceOptions = {}):
   const inline: Run = (fn) => fn();
 
   const storesFor = (run: Run): AxedaStores => ({
+    companies: createCompanyStore({ state, run, now, nextId }),
+    businesses: createBusinessStore({ state, run, now, nextId }),
+    invitations: createInvitationStore({ state, run, now, nextId }),
     roles: createRoleStore(state, run, now, nextId),
     assignments: createAssignmentStore(state, run, now, nextId),
     authz: createAuthzStore(state, run),

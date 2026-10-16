@@ -1,5 +1,5 @@
 import type { BetterAuthOptions } from '@better-auth/core';
-import type { DBAdapter, DBTransactionAdapter } from '@better-auth/core/db/adapter';
+import type { DBAdapter } from '@better-auth/core/db/adapter';
 import {
   AxedaError,
   createAuditIdFactory,
@@ -31,11 +31,8 @@ import {
   type RoleRow,
 } from './rows.js';
 import { MODELS, POLICY_STATE_KEY } from './schema.js';
-
-type Adapter = DBAdapter | DBTransactionAdapter;
-
-/** Ejecuta `work` de forma atómica con el adaptador que corresponda. */
-type Atomic = <T>(work: (adapter: Adapter) => Promise<T>) => Promise<T>;
+import { byId, decodeCursor, encodeCursor, type Adapter, type Atomic } from './shared.js';
+import { createBusinessStore, createCompanyStore, createInvitationStore } from './tenant-stores.js';
 
 export interface BetterAuthPersistenceOptions {
   /** Reloj para `createdAt` y `updatedAt`. Por defecto, la hora del sistema. */
@@ -47,11 +44,6 @@ export interface BetterAuthPersistenceOptions {
  * un tope silencioso es peligroso, así que siempre se pide un límite explícito.
  */
 const MAX_ASSIGNMENTS_READ = 1_000;
-
-const encodeCursor = (value: string): string => Buffer.from(value, 'utf8').toString('base64url');
-const decodeCursor = (cursor: string): string => Buffer.from(cursor, 'base64url').toString('utf8');
-
-const byId = (id: string) => [{ field: 'id', value: id }];
 
 function createRoleStore(adapter: Adapter, atomic: Atomic, now: () => Date): RoleStore {
   const model = MODELS.role;
@@ -422,6 +414,9 @@ export function createBetterAuthPersistence<Options extends BetterAuthOptions>(
     assignments: createAssignmentStore(target, now),
     authz: createAuthzStore(target, ensure),
     audit: createAuditStore(target, now),
+    companies: createCompanyStore(target, atomic, now),
+    businesses: createBusinessStore(target, atomic, now),
+    invitations: createInvitationStore(target, now),
   });
 
   const root = storesFor(

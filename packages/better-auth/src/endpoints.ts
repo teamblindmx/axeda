@@ -19,39 +19,38 @@ export interface EndpointAccess {
   readonly scope: 'own' | 'any' | 'global' | 'scope-parameter' | 'per-target';
 }
 
-const access = (requires: string, scope: EndpointAccess['scope']) => ({
+export const access = (requires: string, scope: EndpointAccess['scope']) => ({
   axeda: { requires, scope } satisfies EndpointAccess,
 });
 
 const MAX_PAGE = 100;
 const DEFAULT_PAGE = 50;
 
-const id = z.string().min(1).max(255);
-const cursor = z.string().min(1).max(512);
-const limit = z.coerce.number().int().min(1).max(MAX_PAGE);
+export const id = z.string().min(1).max(255);
+export const cursor = z.string().min(1).max(512);
+export const limit = z.coerce.number().int().min(1).max(MAX_PAGE);
 
-/** Alcances que admite la API en esta versión: los de negocio llegan con las entidades (fase 4). */
-const scopeBody = z.union([
+export const scopeBody = z.union([
   z.strictObject({ type: z.literal('global') }),
-  z.strictObject({ type: z.literal('company'), id }),
+  z.strictObject({ type: z.enum(['company', 'business']), id }),
 ]);
 
-const scopeQuery = {
-  scopeType: z.enum(['global', 'company']).optional(),
+export const scopeQuery = {
+  scopeType: z.enum(['global', 'company', 'business']).optional(),
   scopeId: id.optional(),
 };
 
-function scopeFromQuery(query: {
-  scopeType?: 'global' | 'company' | undefined;
+export function scopeFromQuery(query: {
+  scopeType?: 'global' | 'company' | 'business' | undefined;
   scopeId?: string | undefined;
 }): AssignmentScope | undefined {
   if (query.scopeType === undefined) return undefined;
   if (query.scopeType === 'global') return { type: 'global' };
-  // Un alcance de compañía sin identificador queda fuera de la lista blanca y el núcleo lo rechaza.
-  return { type: 'company', id: query.scopeId ?? '' };
+  // Un alcance sin identificador queda fuera de la lista blanca y el núcleo lo rechaza.
+  return { type: query.scopeType, id: query.scopeId ?? '' };
 }
 
-const pageOf = (query: { cursor?: string | undefined; limit?: number | undefined }) => ({
+export const pageOf = (query: { cursor?: string | undefined; limit?: number | undefined }) => ({
   limit: query.limit ?? DEFAULT_PAGE,
   ...(query.cursor === undefined ? {} : { cursor: query.cursor }),
 });
@@ -80,10 +79,10 @@ export function actorFromSession(ctx: SessionContext): Actor {
   };
 }
 
-type CoreProvider = () => Axeda;
+export type CoreProvider = () => Axeda;
 
 /** Ejecuta un caso de uso con el actor de la sesión y traduce sus errores a respuestas HTTP. */
-async function run<T>(
+export async function run<T>(
   ctx: SessionContext,
   core: CoreProvider,
   work: (axeda: Axeda, actor: Actor) => Promise<T>,

@@ -4,6 +4,8 @@ import type { Role, RoleAssignment } from '../domain/role.js';
 export interface AuthzSnapshot {
   readonly assignments: readonly RoleAssignment[];
   readonly roles: ReadonlyMap<string, Role>;
+  /** Compañías y negocios de sus asignaciones que no pueden conceder poder (`scopeKey`). */
+  readonly unusable: ReadonlySet<string>;
 }
 
 interface Entry {

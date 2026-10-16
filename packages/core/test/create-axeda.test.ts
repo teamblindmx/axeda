@@ -18,10 +18,20 @@ const alice = { userId: 'alice' };
 const perms = (...raw: string[]) => raw.map(parsePermissionKey);
 
 let users = createMemoryUserDirectory();
+const ids: string[] = [];
+
+/** Crea la compañía A y su negocio A1 con esos identificadores. */
+async function seedTenants(persistence: AxedaPersistence): Promise<void> {
+  ids.push('A', 'A1');
+  const company = await persistence.companies.create({ slug: 'a', name: 'A' });
+  await persistence.businesses.create({ companyId: company.id, slug: 'a1', name: 'A1' });
+}
 
 function setup() {
   users = createMemoryUserDirectory();
-  const persistence = createMemoryPersistence();
+  const persistence = createMemoryPersistence({
+    nextId: () => ids.shift() ?? globalThis.crypto.randomUUID(),
+  });
   const clock = { current: new Date('2026-06-01T12:00:00.000Z') };
   const fakeClock: Clock = { now: () => clock.current };
   const axeda = createAxeda(OPTIONS, { persistence, clock: fakeClock, users });
@@ -145,6 +155,7 @@ describe('can()', () => {
 
   it('checks the global scope by default', async () => {
     const { persistence, axeda } = setup();
+    await seedTenants(persistence);
     const role = await persistence.roles.create({
       key: 'r',
       name: 'R',
@@ -161,6 +172,7 @@ describe('can()', () => {
 
   it('inherits downwards and never sideways', async () => {
     const { persistence, axeda } = setup();
+    await seedTenants(persistence);
     const role = await persistence.roles.create({
       key: 'r',
       name: 'R',
