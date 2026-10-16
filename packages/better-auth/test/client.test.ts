@@ -87,6 +87,17 @@ export async function typeChecks(app: HttpApp) {
   // @ts-expect-error el endpoint no existe
   await client.axeda.nonexistent();
 
+  // Usuarios y menú: también tipados de punta a punta.
+  await client.axeda.user.create({ email: 'a@test.dev', name: 'A' });
+  await client.axeda.user.ban({ id: 'u', reason: 'abuse', expiresAt: new Date().toISOString() });
+  // @ts-expect-error Axeda no maneja contraseñas: el cuerpo no tiene ese campo
+  await client.axeda.user.create({ email: 'a@test.dev', name: 'A', password: 'secret123' });
+  // @ts-expect-error la fecha de fin viaja como texto ISO
+  await client.axeda.user.ban({ id: 'u', expiresAt: new Date() });
+  const menu = await client.axeda.menu({ query: { locale: 'es' } });
+  const firstLabel: string | undefined = menu.data?.items[0]?.label;
+  void firstLabel;
+
   const me = await client.axeda.me();
   const role = await client.axeda.role.get({ query: { id: 'x' } });
   type Me = NonNullable<typeof me.data>;

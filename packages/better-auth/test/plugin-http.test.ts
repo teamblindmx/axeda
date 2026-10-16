@@ -120,6 +120,13 @@ describe('every endpoint requires a session and a permission', () => {
     // Aceptar solo pide sesión: lo autoriza el secreto, y uno inventado no sirve.
     '/axeda/invitation/accept': { method: 'POST', body: { token: 'x.y' }, unprivileged: [400] },
     '/axeda/invitation/revoke': { method: 'POST', body: { id: 'x' }, unprivileged: [400] },
+    // Usuarios (solo global) y menú (cada persona ve el suyo).
+    '/axeda/user/list': { method: 'GET' },
+    '/axeda/user/create': { method: 'POST', body: { email: 'walker@test.dev', name: 'W' } },
+    '/axeda/user/ban': { method: 'POST', body: { id: 'x' } },
+    '/axeda/user/unban': { method: 'POST', body: { id: 'x' } },
+    '/axeda/user/revoke-sessions': { method: 'POST', body: { id: 'x' } },
+    '/axeda/menu': { method: 'GET', unprivileged: [200] },
     '/axeda/public/identity': {
       method: 'GET',
       query: { company: 'x' },

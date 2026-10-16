@@ -13,6 +13,19 @@ export const PASSWORD = 'correct-horse-battery-12';
 
 export const APP_PERMISSIONS = ['invoice:read', 'invoice:create', 'invoice:delete', 'report:read'];
 
+export const APP_MENUS = [
+  { key: 'billing', label: { es: 'Facturación', en: 'Billing' }, icon: 'receipt', order: 1 },
+  {
+    key: 'invoices',
+    parent: 'billing',
+    path: '/facturas',
+    label: { es: 'Facturas', en: 'Invoices' },
+    requires: 'invoice:read',
+    actions: ['invoice:create', 'invoice:delete'],
+  },
+  { key: 'reports', path: '/reportes', label: 'Reports', requires: 'report:read', order: 2 },
+];
+
 export interface HttpResult {
   readonly status: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -73,6 +86,7 @@ export async function createHttpApp(options: HttpAppOptions = {}): Promise<HttpA
   const sent: SentInvitation[] = [];
   const plugin = axeda({
     permissions: APP_PERMISSIONS,
+    menus: APP_MENUS,
     publicIdentity: true,
     ...(options.withoutInvitations === true
       ? {}
