@@ -10,18 +10,25 @@ import {
   scopesGranting,
   type PermissionSet,
 } from '../policy/effective-permissions.js';
-import type { UserDirectory } from '../ports/identity.js';
+import type { UserAdmin, UserDirectory } from '../ports/identity.js';
 import type { AuditFilter, AxedaPersistence, Page, PageRequest } from '../ports/persistence.js';
 import { systemClock, type Clock } from '../ports/platform.js';
 import type { AuditEvent } from '../domain/audit.js';
 import { createAssignmentService, type AssignmentService } from './assignments.js';
+import { buildMenu, type MenuNode } from './menu.js';
+import { createUserService, type UserService } from './users.js';
 import { AuthzCache } from './authz-cache.js';
 import { AuthzReader } from './authz-reader.js';
 import { bootstrapAdministrator, type BootstrapInput, type BootstrapResult } from './bootstrap.js';
 import { syncManagedRoles } from './managed-roles.js';
 import { createRoleService, type RoleService } from './roles.js';
 import { createInvitationService, type InvitationService } from './invitations.js';
-import { actorPermissions, type InvitationDelivery, type Services } from './services.js';
+import {
+  actorPermissions,
+  resolveTarget,
+  type InvitationDelivery,
+  type Services,
+} from './services.js';
 import {
   purgeExpiredDeletions,
   publicIdentity,
@@ -36,6 +43,11 @@ export interface AxedaDependencies {
   /** Dónde Axeda consulta a los usuarios (con Better Auth, `createBetterAuthUserDirectory`). */
   readonly users: UserDirectory;
   readonly clock?: Clock;
+  /**
+   * Administración de usuarios (crear, bloquear, cerrar sesiones). Sin esto está desactivada
+   * (con Better Auth, `createBetterAuthUserAdmin`).
+   */
+  readonly userAdmin?: UserAdmin;
   /**
    * Cómo hacer llegar las invitaciones. Axeda genera el secreto y llama a `send`; la aplicación
    * decide el correo. Sin esto las invitaciones están desactivadas.
@@ -78,6 +90,18 @@ export interface Axeda {
   readonly companies: CompanyService;
   readonly businesses: BusinessService;
   readonly invitations: InvitationService;
+  readonly users: UserService;
+  /**
+   * El menú de la persona en un alcance (global por defecto): solo lo que tiene permiso de ver.
+   * Un alcance que no existe o está inactivo da un menú vacío, sin revelar nada.
+   */
+  menu(
+    principal: Principal,
+    options?: {
+      readonly scope?: AssignmentScope | undefined;
+      readonly locale?: string | undefined;
+    },
+  ): Promise<MenuNode[]>;
   /** Identidad pública de una compañía o negocio activo, o `null`. No requiere sesión. */
   publicIdentity(query: {
     readonly company: string;
@@ -127,6 +151,7 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     catalog: catalogSet,
     users: dependencies.users,
     delivery: dependencies.invitations,
+    userAdmin: dependencies.userAdmin,
     ready: () => start(),
   };
   const start = (): Promise<void> =>
@@ -152,6 +177,7 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
       unusable,
       now: clock.now(),
       mfaEnabled: principal.twoFactorEnabled,
+      banned: principal.banned,
     };
   }
 
@@ -175,6 +201,16 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     return business === null
       ? GLOBAL_TARGET
       : { type: 'business', companyId: business.companyId, businessId: business.id };
+  }
+
+  /** El alcance del menú. Si no se puede resolver, el menú es vacío (no se revela si existe). */
+  async function menuTarget(scope: AssignmentScope | undefined): Promise<TargetScope | null> {
+    if (scope === undefined) return GLOBAL_TARGET;
+    try {
+      return await resolveTarget(services, scope, { requireUsable: false });
+    } catch {
+      return null;
+    }
   }
 
   const tenants = createTenantServices(services);
@@ -206,6 +242,12 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     companies: tenants.companies,
     businesses: tenants.businesses,
     invitations: createInvitationService(services),
+    users: createUserService(services),
+    async menu(principal, menuOptions = {}) {
+      const target = await menuTarget(menuOptions.scope);
+      if (target === null) return [];
+      return buildMenu(resolved.menus, await effective(principal, target), menuOptions.locale);
+    },
     publicIdentity: (query) => publicIdentity(services, query),
     purgeDeleted: () => purgeExpiredDeletions(services),
     async listAudit(actor, filter, page) {

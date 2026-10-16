@@ -5,7 +5,7 @@ import type { AssignmentScope, TargetScope } from '../domain/scope.js';
 import { isUsable } from '../domain/tenant.js';
 import { AxedaError } from '../errors.js';
 import { effectivePermissions, type PermissionSet } from '../policy/effective-permissions.js';
-import type { UserDirectory } from '../ports/identity.js';
+import type { UserAdmin, UserDirectory } from '../ports/identity.js';
 import type { AxedaPersistence, AxedaStores } from '../ports/persistence.js';
 import type { Clock } from '../ports/platform.js';
 import { assertPrincipal, loadSnapshot } from './authz-reader.js';
@@ -36,6 +36,8 @@ export interface Services {
   readonly options: ResolvedOptions;
   readonly catalog: ReadonlySet<PermissionKey>;
   readonly users: UserDirectory;
+  /** Sin esto la administración de usuarios está desactivada. */
+  readonly userAdmin: UserAdmin | undefined;
   /** Sin esto las invitaciones están desactivadas. */
   readonly delivery: InvitationDelivery | undefined;
   /** Espera a que el arranque (transacciones, funciones declaradas) haya terminado bien. */
@@ -110,6 +112,7 @@ export async function actorPermissions(
     target,
     now: services.clock.now(),
     mfaEnabled: actor.twoFactorEnabled,
+    banned: actor.banned,
     ignoreTargetStatus: true,
   });
 }
