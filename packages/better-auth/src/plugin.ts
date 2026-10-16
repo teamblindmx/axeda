@@ -2,13 +2,16 @@ import type { BetterAuthPlugin } from '@better-auth/core';
 import {
   AxedaError,
   createAxeda,
+  isBanned,
   type Axeda,
   type AxedaOptions,
   type AxedaPersistence,
   type Clock,
   type InvitationMessage,
 } from '@axeda/core';
+import { APIError } from 'better-auth/api';
 import { createEndpoints } from './endpoints.js';
+import { createUserEndpoints } from './endpoints-users.js';
 import {
   createInvitationEndpoints,
   createPublicEndpoints,
@@ -16,6 +19,7 @@ import {
 } from './endpoints-tenants.js';
 import { axedaSchema } from './schema.js';
 import { createBetterAuthPersistence } from './stores.js';
+import { createBetterAuthUserAdmin } from './user-admin.js';
 import { createBetterAuthUserDirectory } from './users.js';
 
 /** Cómo hacer llegar una invitación. Sin esto las invitaciones están desactivadas. */
@@ -41,6 +45,11 @@ export interface AxedaPluginOptions extends AxedaOptions {
   readonly publicIdentity?: boolean;
 }
 
+interface BanRow {
+  banned?: boolean | null;
+  banExpires?: Date | string | null;
+}
+
 /** Las opciones del núcleo: todo menos lo que es propio del plugin (reloj, envío, identidad pública). */
 function coreOptions(options: AxedaPluginOptions): AxedaOptions {
   return {
@@ -49,6 +58,7 @@ function coreOptions(options: AxedaPluginOptions): AxedaOptions {
     ...(options.limits === undefined ? {} : { limits: options.limits }),
     ...(options.retention === undefined ? {} : { retention: options.retention }),
     ...(options.invitations === undefined ? {} : { invitations: options.invitations }),
+    ...(options.menus === undefined ? {} : { menus: options.menus }),
   };
 }
 
@@ -90,6 +100,7 @@ export function axeda(options: AxedaPluginOptions) {
       ...createEndpoints(instance),
       ...createTenantEndpoints(instance),
       ...createInvitationEndpoints(instance),
+      ...createUserEndpoints(instance),
       // Siempre registrado (los tipos del cliente no dependen de la configuración); si está
       // desactivado responde 404, igual que una compañía que no existe.
       ...createPublicEndpoints(instance, () => options.publicIdentity === true),
@@ -110,9 +121,11 @@ export function axeda(options: AxedaPluginOptions) {
       });
       persistence = stores;
       const { clock, invitationDelivery } = options;
+      const clockOption = clock === undefined ? {} : { now: () => clock.now() };
       core = createAxeda(coreOptions(options), {
         persistence: stores,
-        users: createBetterAuthUserDirectory(ctx.adapter),
+        users: createBetterAuthUserDirectory(ctx.adapter, clockOption),
+        userAdmin: createBetterAuthUserAdmin(ctx, clockOption),
         ...(clock === undefined ? {} : { clock }),
         ...(invitationDelivery === undefined
           ? {}
@@ -130,6 +143,27 @@ export function axeda(options: AxedaPluginOptions) {
       return {
         options: {
           databaseHooks: {
+            session: {
+              create: {
+                // Un usuario bloqueado no puede abrir sesión (las que tenía se cerraron al bloquearlo).
+                // Se consulta con `internalAdapter`, que usa la transacción en curso: Better Auth abre
+                // sesión DENTRO de la transacción del registro, y con el adaptador raíz la consulta
+                // esperaría para siempre a una conexión que la propia transacción tiene tomada.
+                before: async (session: { userId: string }) => {
+                  const row = (await ctx.internalAdapter.findUserById(
+                    session.userId,
+                  )) as BanRow | null;
+                  const now = clock?.now() ?? new Date();
+                  const banExpires = row?.banExpires ? new Date(row.banExpires) : null;
+                  if (row !== null && isBanned({ banned: row.banned === true, banExpires }, now)) {
+                    throw new APIError('FORBIDDEN', {
+                      code: 'AXEDA_USER_BANNED',
+                      message: 'This account is suspended.',
+                    });
+                  }
+                },
+              },
+            },
             user: {
               delete: {
                 // Las claves foráneas ya lo hacen en SQL; MongoDB no las tiene. Se deja constancia.

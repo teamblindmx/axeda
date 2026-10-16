@@ -31,6 +31,10 @@ export const axedaSchema = {
     fields: {
       /** Sube con cada cambio que afecta a la autorización de ese usuario (ADR-0005). */
       authzVersion: { type: 'number', required: false, defaultValue: 0, input: false },
+      // Mismos nombres y tipos que el plugin `admin` de Better Auth, para que convivan.
+      banned: { type: 'boolean', required: false, defaultValue: false, input: false },
+      banReason: { type: 'string', required: false, input: false },
+      banExpires: { type: 'date', required: false, input: false },
     },
   },
   [MODELS.role]: {

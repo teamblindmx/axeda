@@ -4,6 +4,7 @@ import type {
   Business,
   Company,
   Invitation,
+  ManagedUser,
   Role,
   RoleAssignment,
 } from '@axeda/core';
@@ -159,4 +160,30 @@ export const toInvitationDto = (invitation: Invitation): InvitationDto => ({
   createdAt: invitation.createdAt.toISOString(),
   acceptedAt: invitation.acceptedAt?.toISOString() ?? null,
   revokedAt: invitation.revokedAt?.toISOString() ?? null,
+});
+
+// ---------- usuarios ----------
+
+export interface ManagedUserDto {
+  id: string;
+  email: string;
+  name: string;
+  emailVerified: boolean;
+  twoFactorEnabled: boolean;
+  banned: boolean;
+  banReason: string | null;
+  banExpires: string | null;
+  createdAt: string;
+}
+
+export const toManagedUserDto = (user: ManagedUser): ManagedUserDto => ({
+  id: user.id,
+  email: user.email,
+  name: user.name,
+  emailVerified: user.emailVerified,
+  twoFactorEnabled: user.twoFactorEnabled,
+  banned: user.banned,
+  banReason: user.banReason,
+  banExpires: user.banExpires?.toISOString() ?? null,
+  createdAt: user.createdAt.toISOString(),
 });
