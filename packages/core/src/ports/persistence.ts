@@ -1,18 +1,11 @@
 import type { AuditAction, AuditEvent, AuditTargetType, NewAuditEvent } from '../domain/audit.js';
+import type { Page, PageRequest } from './paging.js';
+import type { BusinessStore, CompanyStore, InvitationStore } from './tenants.js';
 import type { PermissionKey } from '../domain/permission-key.js';
 import type { Role, RoleAssignment, RoleStatus } from '../domain/role.js';
 import type { AssignmentScope } from '../domain/scope.js';
 
-export interface Page<T> {
-  readonly items: readonly T[];
-  /** Cursor opaco para pedir la página siguiente; `null` si no hay más. */
-  readonly nextCursor: string | null;
-}
-
-export interface PageRequest {
-  readonly limit: number;
-  readonly cursor?: string | undefined;
-}
+export type { Page, PageRequest } from './paging.js';
 
 export interface NewRole {
   readonly key: string;
@@ -100,6 +93,9 @@ export interface AuditStore {
 }
 
 export interface AxedaStores {
+  readonly companies: CompanyStore;
+  readonly businesses: BusinessStore;
+  readonly invitations: InvitationStore;
   readonly roles: RoleStore;
   readonly assignments: AssignmentStore;
   readonly authz: AuthzStateStore;

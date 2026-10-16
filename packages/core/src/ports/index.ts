@@ -13,4 +13,16 @@ export type {
   RoleStore,
 } from './persistence.js';
 export { systemClock, type Clock } from './platform.js';
-export type { DirectoryUser, ScopeResolver, UserDirectory } from './identity.js';
+export type { DirectoryUser, UserDirectory } from './identity.js';
+export type {
+  BusinessChanges,
+  BusinessStore,
+  CompanyChanges,
+  CompanyStore,
+  DeletedFilter,
+  InvitationStore,
+  NewBusiness,
+  NewCompany,
+  NewInvitation,
+  TenantFilter,
+} from './tenants.js';

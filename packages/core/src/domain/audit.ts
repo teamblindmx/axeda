@@ -10,11 +10,27 @@ export type AuditAction =
   | 'assignment.create'
   | 'assignment.revoke'
   | 'user.delete'
+  | 'company.create'
+  | 'company.update'
+  | 'company.set_status'
+  | 'company.delete'
+  | 'company.restore'
+  | 'company.purge'
+  | 'business.create'
+  | 'business.update'
+  | 'business.set_status'
+  | 'business.delete'
+  | 'business.restore'
+  | 'business.purge'
+  | 'invitation.create'
+  | 'invitation.accept'
+  | 'invitation.revoke'
   | 'bootstrap';
 
 export type AuditOutcome = 'success' | 'denied';
 
-export type AuditTargetType = 'role' | 'assignment' | 'user' | 'system';
+export type AuditTargetType =
+  'role' | 'assignment' | 'user' | 'company' | 'business' | 'invitation' | 'system';
 
 export interface AuditEvent {
   readonly id: string;

@@ -2,6 +2,7 @@ export {
   EMPTY_PERMISSIONS,
   PermissionSet,
   effectivePermissions,
+  liveAssignmentScopes,
   permissionsHeldAnywhere,
   scopesGranting,
   type EffectivePermissionsInput,

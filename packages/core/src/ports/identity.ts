@@ -2,6 +2,8 @@
 export interface DirectoryUser {
   readonly id: string;
   readonly email: string;
+  /** Solo un correo verificado puede aceptar una invitación enviada a esa dirección. */
+  readonly emailVerified: boolean;
   readonly twoFactorEnabled: boolean;
   readonly banned: boolean;
 }
@@ -10,14 +12,4 @@ export interface DirectoryUser {
 export interface UserDirectory {
   find(userId: string): Promise<DirectoryUser | null>;
   findByEmail(email: string): Promise<DirectoryUser | null>;
-}
-
-/**
- * Resuelve el padre de un negocio desde la base de datos (T2): la compañía de un negocio nunca
- * se toma de lo que envíe el cliente. Las compañías y los negocios llegan en la fase 4; hasta
- * entonces, sin este puerto los alcances de negocio se rechazan.
- */
-export interface ScopeResolver {
-  /** `null` si el negocio no existe. */
-  companyOfBusiness(businessId: string): Promise<string | null>;
 }
