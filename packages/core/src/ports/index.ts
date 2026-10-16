@@ -13,7 +13,14 @@ export type {
   RoleStore,
 } from './persistence.js';
 export { systemClock, type Clock } from './platform.js';
-export type { DirectoryUser, UserDirectory } from './identity.js';
+export type {
+  BanDetails,
+  DirectoryUser,
+  NewUser,
+  UserAdmin,
+  UserDirectory,
+  UserFilter,
+} from './identity.js';
 export type {
   BusinessChanges,
   BusinessStore,

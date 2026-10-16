@@ -1,6 +1,6 @@
 import type { BetterAuthOptions } from '@better-auth/core';
 import type { DBAdapter } from '@better-auth/core/db/adapter';
-import type { DirectoryUser, UserDirectory } from '@axeda/core';
+import { isBanned, type DirectoryUser, type UserDirectory } from '@axeda/core';
 
 interface UserRow {
   id: string;
@@ -9,15 +9,20 @@ interface UserRow {
   // Solo existen si la aplicación activa los plugins de Better Auth que los añaden.
   twoFactorEnabled?: boolean | null;
   banned?: boolean | null;
+  banExpires?: Date | string | null;
 }
 
-const toDirectoryUser = (row: UserRow): DirectoryUser => ({
+const toDirectoryUser = (row: UserRow, now: Date): DirectoryUser => ({
   id: row.id,
   email: row.email,
   emailVerified: row.emailVerified === true,
   // Ante la duda, sin 2FA: las funciones que lo exigen no se asignan ni conceden.
   twoFactorEnabled: row.twoFactorEnabled === true,
-  banned: row.banned === true,
+  // Un bloqueo con fecha de fin deja de valer al llegar esa fecha.
+  banned: isBanned(
+    { banned: row.banned === true, banExpires: row.banExpires ? new Date(row.banExpires) : null },
+    now,
+  ),
 });
 
 /**
@@ -26,11 +31,13 @@ const toDirectoryUser = (row: UserRow): DirectoryUser => ({
  */
 export function createBetterAuthUserDirectory<Options extends BetterAuthOptions>(
   databaseAdapter: DBAdapter<Options>,
+  options: { readonly now?: () => Date } = {},
 ): UserDirectory {
+  const now = options.now ?? (() => new Date());
   const adapter = databaseAdapter as unknown as DBAdapter;
   const find = async (field: 'id' | 'email', value: string): Promise<DirectoryUser | null> => {
     const row = await adapter.findOne<UserRow>({ model: 'user', where: [{ field, value }] });
-    return row === null ? null : toDirectoryUser(row);
+    return row === null ? null : toDirectoryUser(row, now());
   };
 
   return {

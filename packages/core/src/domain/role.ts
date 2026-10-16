@@ -46,6 +46,11 @@ export interface Principal {
    * `requireMfa` no conceden nada (ante la duda, se deniega).
    */
   readonly twoFactorEnabled?: boolean | undefined;
+  /**
+   * El usuario está bloqueado ahora. Un usuario bloqueado no puede nada, aunque llegue por una
+   * vía que no crea sesión (p. ej. la llave de API de su cuenta).
+   */
+  readonly banned?: boolean | undefined;
 }
 
 /** Datos de la petición para la auditoría. */

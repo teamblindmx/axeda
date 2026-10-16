@@ -106,8 +106,8 @@ export async function createFixture(
   const persistence = createMemoryPersistence({
     nextId: () => forcedIds.shift() ?? globalThis.crypto.randomUUID(),
   });
-  const directory = createMemoryUserDirectory();
   const clock = { current: new Date('2026-06-01T12:00:00.000Z') };
+  const directory = createMemoryUserDirectory([], { now: () => clock.current });
   const fakeClock: Clock = { now: () => clock.current };
   const sent: InvitationMessage[] = [];
   const failDelivery = { on: false };
@@ -123,10 +123,16 @@ export async function createFixture(
     ...directory,
     find: outside('UserDirectory.find', directory.find),
     findByEmail: outside('UserDirectory.findByEmail', directory.findByEmail),
+    get: outside('UserAdmin.get', directory.get),
+    list: outside('UserAdmin.list', directory.list),
+    create: outside('UserAdmin.create', directory.create),
+    setBan: outside('UserAdmin.setBan', directory.setBan),
+    revokeSessions: outside('UserAdmin.revokeSessions', directory.revokeSessions),
   };
   const axeda = createAxeda(options, {
     persistence,
     users,
+    userAdmin: users,
     clock: fakeClock,
     ...(extra.invitations === false ? {} : { invitations: delivery }),
   });

@@ -26,6 +26,9 @@ export {
   type InvitationMessage,
 } from './application/services.js';
 export { assertTransactional, isTransactional } from './application/startup-checks.js';
+export { MAX_MENU_DEPTH, type MenuDefinition, type ResolvedMenu } from './config/menus.js';
+export { pickLabel, type MenuNode } from './application/menu.js';
+export type { BanInput, UserInput, UserService } from './application/users.js';
 export {
   DEFAULT_LIMITS,
   resolveOptions,
@@ -55,6 +58,7 @@ export {
   type InvitationState,
   type StoredInvitation,
 } from './domain/invitation.js';
+export { isBanned, type ManagedUser } from './domain/user.js';
 export {
   SLUG_PATTERN,
   businessKey,

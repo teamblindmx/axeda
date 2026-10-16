@@ -40,6 +40,25 @@ const axedaPlugin = axeda({
     send: async ({ email, link }) => void outbox.push({ email, link }),
   },
   publicIdentity: true,
+  // El menú se declara en el código; cada persona recibe solo lo que puede usar.
+  menus: [
+    { key: 'facturacion', label: { es: 'Facturación', en: 'Billing' }, icon: 'receipt', order: 1 },
+    {
+      key: 'facturas',
+      parent: 'facturacion',
+      path: '/facturas',
+      label: { es: 'Facturas', en: 'Invoices' },
+      requires: 'invoice:read',
+      actions: ['invoice:create', 'invoice:delete'],
+    },
+    {
+      key: 'reportes',
+      path: '/reportes',
+      label: { es: 'Reportes', en: 'Reports' },
+      requires: 'report:read',
+      order: 2,
+    },
+  ],
 });
 
 // 2. Better Auth autentica; Axeda solo autoriza. Un plugin y listo.
@@ -421,7 +440,99 @@ const identity = show(
 );
 say(`Solo nombre y logos: ${JSON.stringify(identity)}`);
 
-title('10. Todo queda en la auditoría');
+title('10. Administrar usuarios: bloquear corta todo, y no se puede tocar a quien tiene más poder');
+const userAdminRole = show(
+  '(root crea "soporte")',
+  await http('POST', '/axeda/role/create', root.cookie, {
+    key: 'support',
+    name: 'Soporte',
+    permissions: ['axeda:user:manage'],
+  }),
+  200,
+);
+const soporte = await signUp('soporte');
+show(
+  'root da "soporte" a una persona',
+  await http('POST', '/axeda/assignment/create', root.cookie, {
+    userId: soporte.id,
+    roleId: userAdminRole.id,
+    scope: { type: 'global' },
+  }),
+  200,
+);
+const nuevo = show(
+  'soporte crea una cuenta SIN contraseña',
+  await http('POST', '/axeda/user/create', soporte.cookie, {
+    email: 'nuevo@demo.dev',
+    name: 'Nuevo',
+  }),
+  200,
+);
+say(
+  `La cuenta nace sin credencial (emailVerified: ${nuevo.emailVerified}); la persona la establece por el flujo normal de Better Auth.`,
+);
+show(
+  'soporte intenta bloquear a root',
+  await http('POST', '/axeda/user/ban', soporte.cookie, { id: root.id }),
+  403,
+  FORBIDDEN,
+);
+show(
+  'soporte intenta bloquearse a sí mismo',
+  await http('POST', '/axeda/user/ban', soporte.cookie, { id: soporte.id }),
+  400,
+  'AXEDA_INVALID_INPUT',
+);
+say(
+  `mallory tiene sesión abierta: /me → ${(await http('GET', '/axeda/me', mallory.cookie)).status}`,
+);
+show(
+  'soporte bloquea a mallory',
+  await http('POST', '/axeda/user/ban', soporte.cookie, { id: mallory.id, reason: 'abuso' }),
+  200,
+);
+say(
+  `su sesión se cerró al instante: /me → ${(await http('GET', '/axeda/me', mallory.cookie)).status}`,
+);
+const login = await fetch(`${origin}/api/auth/sign-in/email`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json', origin },
+  body: JSON.stringify({ email: 'mallory@demo.dev', password: PASSWORD }),
+});
+say(
+  `y no puede abrir otra: iniciar sesión → ${login.status} (${((await login.json()) as { code?: string }).code})`,
+);
+show(
+  'soporte la desbloquea',
+  await http('POST', '/axeda/user/unban', soporte.cookie, { id: mallory.id }),
+  200,
+);
+
+title('11. El menú: cada persona ve solo lo que puede usar, en su idioma');
+const verMenu = async (quien: { cookie: string }, idioma: string) =>
+  (await http('GET', '/axeda/menu', quien.cookie, undefined, `?locale=${idioma}`)).body
+    .items as Array<{
+    label: string;
+    children: Array<{ label: string; path: string; can: Record<string, boolean> }>;
+  }>;
+say(`root (todo): ${JSON.stringify((await verMenu(root, 'es')).map((n) => n.label))}`);
+const menuDeAna = await verMenu(ana, 'es');
+say(`ana (cajera de ACME) en global: ${JSON.stringify(menuDeAna)}  ← el menú depende del alcance`);
+const menuAcme = (
+  await http(
+    'GET',
+    '/axeda/menu',
+    ana.cookie,
+    undefined,
+    `?scopeType=company&scopeId=${acme.id}&locale=es`,
+  )
+).body.items;
+say(
+  `ana en ACME: ${menuAcme[0].label} → ${menuAcme[0].children[0].label} (${menuAcme[0].children[0].path}), acciones: ${JSON.stringify(menuAcme[0].children[0].can)}`,
+);
+say('Un menú nunca muestra una opción sin su permiso; la seguridad la impone siempre el servidor.');
+
+title('12. Todo queda en la auditoría');
 const log = await http('GET', '/axeda/audit/list', root.cookie, undefined, '?limit=100');
 for (const event of [...log.body.items].reverse()) {
   const mark = event.outcome === 'success' ? paint(32, 'ok      ') : paint(31, 'DENEGADO');

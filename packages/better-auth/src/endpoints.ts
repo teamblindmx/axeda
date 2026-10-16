@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   AXEDA_PERMISSIONS,
   AxedaError,
+  isBanned,
   type Actor,
   type AssignmentScope,
   type Axeda,
@@ -66,6 +67,11 @@ interface SessionContext {
  * usuario que Better Auth acaba de leer de la base de datos (nunca del cliente): ahorran
  * consultas y permiten evaluar `requireMfa`.
  */
+const asDate = (value: unknown): Date | null =>
+  value instanceof Date || typeof value === 'string' || typeof value === 'number'
+    ? new Date(value)
+    : null;
+
 export function actorFromSession(ctx: SessionContext): Actor {
   const user = ctx.context.session.user as { id: string } & Record<string, unknown>;
   const request = ctx.request;
@@ -74,6 +80,10 @@ export function actorFromSession(ctx: SessionContext): Actor {
     userId: user.id,
     authzVersion: typeof user['authzVersion'] === 'number' ? user['authzVersion'] : undefined,
     twoFactorEnabled: user['twoFactorEnabled'] === true,
+    banned: isBanned(
+      { banned: user['banned'] === true, banExpires: asDate(user['banExpires']) },
+      new Date(),
+    ),
     ip,
     userAgent: ctx.headers?.get('user-agent') ?? request?.headers.get('user-agent') ?? undefined,
   };

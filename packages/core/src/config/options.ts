@@ -8,6 +8,7 @@ import {
   type PermissionKey,
 } from '../domain/permission-key.js';
 import { AxedaError } from '../errors.js';
+import { resolveMenus, type MenuDefinition, type ResolvedMenu } from './menus.js';
 
 export interface RoleDefinition {
   readonly name?: string | undefined;
@@ -22,6 +23,8 @@ export interface AxedaOptions {
   /** Funciones declaradas en código (`managed`). La clave es el identificador estable. */
   readonly roles?: Readonly<Record<string, readonly string[] | RoleDefinition>>;
   /** Días que una compañía o negocio borrado se conserva antes de poder purgarse. */
+  /** Menú de la aplicación, declarado en el código (`GET /axeda/menu`). */
+  readonly menus?: readonly MenuDefinition[];
   readonly retention?: { readonly graceDays?: number };
   readonly invitations?: {
     /** Horas de vigencia por defecto. */
@@ -49,6 +52,7 @@ export interface ResolvedOptions {
   /** Permisos de la aplicación más los propios de Axeda. */
   readonly catalog: readonly PermissionKey[];
   readonly roles: ReadonlyMap<string, ResolvedRoleDefinition>;
+  readonly menus: ResolvedMenu;
   readonly retention: { readonly graceDays: number };
   readonly invitations: { readonly ttlHours: number; readonly maxRoles: number };
   readonly limits: {
@@ -87,6 +91,7 @@ const optionsSchema = z.strictObject({
       ]),
     )
     .optional(),
+  menus: z.array(z.unknown()).optional(),
   retention: z.strictObject({ graceDays: z.number().int().min(0).max(3650).optional() }).optional(),
   invitations: z
     .strictObject({
@@ -199,6 +204,7 @@ export function resolveOptions(options: AxedaOptions): ResolvedOptions {
     catalog,
     roles,
     limits,
+    menus: resolveMenus(shape.menus, new Set(catalog)),
     retention: retentionOf(shape.retention),
     invitations: invitationsOf(shape.invitations),
   };

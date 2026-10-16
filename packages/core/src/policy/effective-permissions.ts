@@ -38,6 +38,8 @@ export interface PolicyData {
    * `false` o falta: ante la duda, se deniega.
    */
   readonly mfaEnabled?: boolean | undefined;
+  /** El usuario está bloqueado: no cuenta ninguna asignación. */
+  readonly banned?: boolean | undefined;
   /**
    * Claves (`scopeKey`) de compañías y negocios que no pueden conceder poder: inactivos,
    * borrados o inexistentes. Una asignación en uno de ellos no cuenta.
@@ -68,15 +70,21 @@ function targetIsUnusable(target: TargetScope, unusable: ReadonlySet<string> | u
  */
 function liveRoles(data: PolicyData): Array<{ assignment: RoleAssignment; role: Role }> {
   const live: Array<{ assignment: RoleAssignment; role: Role }> = [];
+  if (data.banned === true) return live;
   for (const assignment of data.assignments) {
-    if (assignment.expiresAt !== null && assignment.expiresAt <= data.now) continue;
-    if (data.unusable?.has(scopeKey(assignment.scope)) === true) continue;
+    if (!assignmentIsLive(assignment, data)) continue;
     const role = data.roles.get(assignment.roleId);
     if (role === undefined || role.status !== 'active') continue;
     if (role.requireMfa && data.mfaEnabled !== true) continue;
     live.push({ assignment, role });
   }
   return live;
+}
+
+/** La asignación no ha caducado y su compañía o negocio puede conceder poder. */
+function assignmentIsLive(assignment: RoleAssignment, data: PolicyData): boolean {
+  if (assignment.expiresAt !== null && assignment.expiresAt <= data.now) return false;
+  return data.unusable?.has(scopeKey(assignment.scope)) !== true;
 }
 
 /**
