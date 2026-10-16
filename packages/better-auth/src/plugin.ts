@@ -6,19 +6,56 @@ import {
   type AxedaOptions,
   type AxedaPersistence,
   type Clock,
+  type InvitationMessage,
 } from '@axeda/core';
 import { createEndpoints } from './endpoints.js';
+import {
+  createInvitationEndpoints,
+  createPublicEndpoints,
+  createTenantEndpoints,
+} from './endpoints-tenants.js';
 import { axedaSchema } from './schema.js';
 import { createBetterAuthPersistence } from './stores.js';
 import { createBetterAuthUserDirectory } from './users.js';
 
+/** Cómo hacer llegar una invitación. Sin esto las invitaciones están desactivadas. */
+export interface InvitationDeliveryOptions {
+  /**
+   * El enlace de aceptación a partir del secreto. Lo construye la aplicación con su URL base
+   * configurada: nunca debe salir de la cabecera `Host` de una petición.
+   */
+  readonly acceptUrl: (token: string) => string;
+  /** Envía el correo. Recibe datos, no HTML: escapa lo que muestres. */
+  readonly send: (message: InvitationMessage & { readonly link: string }) => Promise<void>;
+}
+
 export interface AxedaPluginOptions extends AxedaOptions {
   /** Solo para pruebas. */
   readonly clock?: Clock;
+  /** Cómo enviar las invitaciones. Sin esto están desactivadas. */
+  readonly invitationDelivery?: InvitationDeliveryOptions;
+  /**
+   * Publica `GET /axeda/public/identity` (nombre y logos de una compañía o negocio activo, sin
+   * sesión). Desactivado por defecto: es el único endpoint que no exige iniciar sesión.
+   */
+  readonly publicIdentity?: boolean;
+}
+
+/** Las opciones del núcleo: todo menos lo que es propio del plugin (reloj, envío, identidad pública). */
+function coreOptions(options: AxedaPluginOptions): AxedaOptions {
+  return {
+    permissions: options.permissions,
+    ...(options.roles === undefined ? {} : { roles: options.roles }),
+    ...(options.limits === undefined ? {} : { limits: options.limits }),
+    ...(options.retention === undefined ? {} : { retention: options.retention }),
+    ...(options.invitations === undefined ? {} : { invitations: options.invitations }),
+  };
 }
 
 /** Límites de peticiones por IP y minuto de los endpoints de administración. */
 const RATE_LIMITS = [
+  // El único endpoint sin sesión, más estricto (T10: enumeración).
+  { pathMatcher: (path: string) => path.startsWith('/axeda/public/'), max: 30, window: 60 },
   { pathMatcher: (path: string) => path.startsWith('/axeda/'), max: 120, window: 60 },
 ];
 
@@ -49,7 +86,14 @@ export function axeda(options: AxedaPluginOptions) {
   const plugin = {
     id: 'axeda',
     schema: axedaSchema,
-    endpoints: createEndpoints(instance),
+    endpoints: {
+      ...createEndpoints(instance),
+      ...createTenantEndpoints(instance),
+      ...createInvitationEndpoints(instance),
+      // Siempre registrado (los tipos del cliente no dependen de la configuración); si está
+      // desactivado responde 404, igual que una compañía que no existe.
+      ...createPublicEndpoints(instance, () => options.publicIdentity === true),
+    },
     rateLimit: RATE_LIMITS,
     init(ctx) {
       // La caché de cookie de sesión haría que `authzVersion` llegue desactualizado y que una
@@ -65,11 +109,22 @@ export function axeda(options: AxedaPluginOptions) {
         ...(options.clock === undefined ? {} : { now: () => options.clock?.now() ?? new Date() }),
       });
       persistence = stores;
-      const { clock, ...axedaOptions } = options;
-      core = createAxeda(axedaOptions, {
+      const { clock, invitationDelivery } = options;
+      core = createAxeda(coreOptions(options), {
         persistence: stores,
         users: createBetterAuthUserDirectory(ctx.adapter),
         ...(clock === undefined ? {} : { clock }),
+        ...(invitationDelivery === undefined
+          ? {}
+          : {
+              invitations: {
+                send: (message) =>
+                  invitationDelivery.send({
+                    ...message,
+                    link: invitationDelivery.acceptUrl(message.token),
+                  }),
+              },
+            }),
       });
 
       return {

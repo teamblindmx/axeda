@@ -6,6 +6,9 @@ export const MODELS = {
   assignment: 'axedaAssignment',
   state: 'axedaState',
   audit: 'axedaAudit',
+  company: 'axedaCompany',
+  business: 'axedaBusiness',
+  invitation: 'axedaInvitation',
 } as const;
 
 /** Fila única de `axedaState` que guarda la versión de política (ADR-0005). */
@@ -95,5 +98,66 @@ export const axedaSchema = {
       { fields: ['targetType', 'targetId'] },
       { fields: ['scopeType', 'scopeId'] },
     ],
+  },
+  [MODELS.company]: {
+    fields: {
+      slug: { type: 'string', required: true, unique: true, input: false },
+      name: { type: 'string', required: true, input: false },
+      legalName: { type: 'string', required: false, input: false },
+      logoUrl: { type: 'string', required: false, input: false },
+      faviconUrl: { type: 'string', required: false, input: false },
+      status: { type: 'string', required: true, defaultValue: 'active', input: false },
+      metadata: { type: 'json', required: true, input: false },
+      version: { type: 'number', required: true, defaultValue: 1, input: false },
+      deletedAt: { type: 'date', required: false, input: false },
+      createdAt: { type: 'date', required: true, input: false },
+      updatedAt: { type: 'date', required: true, input: false },
+    },
+    indexes: [{ fields: ['deletedAt'] }],
+  },
+  [MODELS.business]: {
+    fields: {
+      companyId: {
+        type: 'string',
+        required: true,
+        input: false,
+        references: { model: MODELS.company, field: 'id', onDelete: 'cascade' },
+      },
+      slug: { type: 'string', required: true, input: false },
+      name: { type: 'string', required: true, input: false },
+      logoUrl: { type: 'string', required: false, input: false },
+      faviconUrl: { type: 'string', required: false, input: false },
+      status: { type: 'string', required: true, defaultValue: 'active', input: false },
+      metadata: { type: 'json', required: true, input: false },
+      version: { type: 'number', required: true, defaultValue: 1, input: false },
+      deletedAt: { type: 'date', required: false, input: false },
+      createdAt: { type: 'date', required: true, input: false },
+      updatedAt: { type: 'date', required: true, input: false },
+    },
+    indexes: [{ fields: ['companyId', 'slug'], unique: true }, { fields: ['deletedAt'] }],
+  },
+  [MODELS.invitation]: {
+    fields: {
+      email: { type: 'string', required: true, input: false },
+      scopeType: { type: 'string', required: true, input: false },
+      scopeId: { type: 'string', required: true, input: false },
+      roleIds: { type: 'string[]', required: true, input: false },
+      // Sin clave foránea: la invitación puede sobrevivir al usuario que invitó.
+      invitedBy: { type: 'string', required: true, input: false },
+      secretHash: { type: 'string', required: true, input: false },
+      expiresAt: { type: 'date', required: true, input: false },
+      acceptedAt: { type: 'date', required: false, input: false },
+      revokedAt: { type: 'date', required: false, input: false },
+      /**
+       * Clave única mientras la invitación está pendiente (hash de correo + alcance); al
+       * cerrarla pasa a `closed:<id>`. Así dos invitaciones iguales a la vez no caben, sin
+       * depender de índices parciales que no todas las bases tienen.
+       */
+      pendingKey: { type: 'string', required: true, unique: true, input: false },
+      /** 0 mientras está pendiente. Se sube con `incrementOne`: solo un cierre lo consigue. */
+      consumed: { type: 'number', required: true, defaultValue: 0, input: false },
+      createdAt: { type: 'date', required: true, input: false },
+    },
+    indexes: [{ fields: ['scopeType', 'scopeId'] }, { fields: ['email'] }],
   },
 } satisfies BetterAuthPluginDBSchema;

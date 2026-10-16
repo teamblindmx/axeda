@@ -5,6 +5,7 @@ import type { DirectoryUser, UserDirectory } from '@axeda/core';
 interface UserRow {
   id: string;
   email: string;
+  emailVerified?: boolean | null;
   // Solo existen si la aplicación activa los plugins de Better Auth que los añaden.
   twoFactorEnabled?: boolean | null;
   banned?: boolean | null;
@@ -13,6 +14,7 @@ interface UserRow {
 const toDirectoryUser = (row: UserRow): DirectoryUser => ({
   id: row.id,
   email: row.email,
+  emailVerified: row.emailVerified === true,
   // Ante la duda, sin 2FA: las funciones que lo exigen no se asignan ni conceden.
   twoFactorEnabled: row.twoFactorEnabled === true,
   banned: row.banned === true,
