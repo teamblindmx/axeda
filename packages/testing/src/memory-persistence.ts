@@ -1,11 +1,16 @@
 import {
   AxedaError,
+  createAuditIdFactory,
   scopeKey,
   type AssignmentStore,
+  type AuditEvent,
+  type AuditFilter,
+  type AuditStore,
   type AuthzStateStore,
   type AxedaPersistence,
   type AxedaStores,
   type NewAssignment,
+  type NewAuditEvent,
   type NewRole,
   type Page,
   type PageRequest,
@@ -22,6 +27,7 @@ export interface MemoryPersistenceOptions {
 
 interface State {
   roles: Map<string, Role>;
+  audit: AuditEvent[];
   assignments: Map<string, RoleAssignment>;
   userVersions: Map<string, number>;
   policyVersion: number;
@@ -32,6 +38,7 @@ type Run = <T>(fn: () => Promise<T>) => Promise<T>;
 
 const snapshot = (state: State): State => ({
   roles: new Map(state.roles),
+  audit: [...state.audit],
   assignments: new Map(state.assignments),
   userVersions: new Map(state.userVersions),
   policyVersion: state.policyVersion,
@@ -39,6 +46,7 @@ const snapshot = (state: State): State => ({
 
 function restore(state: State, saved: State): void {
   state.roles = saved.roles;
+  state.audit = saved.audit;
   state.assignments = saved.assignments;
   state.userVersions = saved.userVersions;
   state.policyVersion = saved.policyVersion;
@@ -133,6 +141,21 @@ function createAssignmentStore(
     [...state.assignments.values()].filter((assignment) => assignment.userId === userId);
 
   return {
+    get: (id) => run(async () => state.assignments.get(id) ?? null),
+    listForScope: (scope, page: PageRequest): Promise<Page<RoleAssignment>> =>
+      run(async () => {
+        const after = page.cursor === undefined ? null : decodeCursor(page.cursor);
+        const sorted = [...state.assignments.values()]
+          .filter((assignment) => scopeKey(assignment.scope) === scopeKey(scope))
+          .sort((a, b) => a.id.localeCompare(b.id));
+        const remaining = after === null ? sorted : sorted.filter((item) => item.id > after);
+        const items = remaining.slice(0, page.limit);
+        const last = items.at(-1);
+        return {
+          items,
+          nextCursor: remaining.length > items.length && last ? encodeCursor(last.id) : null,
+        };
+      }),
     listForUser: (userId) =>
       run(async () =>
         forUser(userId).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
@@ -189,6 +212,47 @@ function createAuthzStore(state: State, run: Run): AuthzStateStore {
   };
 }
 
+const matchesFilter = (event: AuditEvent, filter: AuditFilter): boolean => {
+  const same = (wanted: string | undefined, actual: string | null): boolean =>
+    wanted === undefined || actual === wanted;
+  const sameScope =
+    filter.scope === undefined ||
+    (event.scope !== null && scopeKey(event.scope) === scopeKey(filter.scope));
+  return (
+    same(filter.actorId, event.actorId) &&
+    same(filter.action, event.action) &&
+    same(filter.targetType, event.targetType) &&
+    same(filter.targetId, event.targetId) &&
+    sameScope
+  );
+};
+
+function createAuditStore(state: State, run: Run, now: () => Date): AuditStore {
+  const nextAuditId = createAuditIdFactory();
+  return {
+    append: (input: NewAuditEvent) =>
+      run(async () => {
+        const at = now();
+        const event: AuditEvent = { ...input, id: nextAuditId(at), at };
+        state.audit.push(event);
+        return event;
+      }),
+    list: (filter, page) =>
+      run(async () => {
+        const after = page.cursor === undefined ? null : decodeCursor(page.cursor);
+        const sorted = state.audit.filter((event) => matchesFilter(event, filter));
+        sorted.sort((a, b) => b.id.localeCompare(a.id));
+        const remaining = after === null ? sorted : sorted.filter((event) => event.id < after);
+        const items = remaining.slice(0, page.limit);
+        const last = items.at(-1);
+        return {
+          items,
+          nextCursor: remaining.length > items.length && last ? encodeCursor(last.id) : null,
+        };
+      }),
+  };
+}
+
 /**
  * Persistencia en memoria con **transacciones reales**: si el callback lanza, el estado vuelve al
  * de antes. Las operaciones y transacciones se serializan. Es la implementación de referencia y
@@ -199,6 +263,7 @@ export function createMemoryPersistence(options: MemoryPersistenceOptions = {}):
   const nextId = options.nextId ?? (() => globalThis.crypto.randomUUID());
   const state: State = {
     roles: new Map(),
+    audit: [],
     assignments: new Map(),
     userVersions: new Map(),
     policyVersion: 0,
@@ -216,6 +281,7 @@ export function createMemoryPersistence(options: MemoryPersistenceOptions = {}):
     roles: createRoleStore(state, run, now, nextId),
     assignments: createAssignmentStore(state, run, now, nextId),
     authz: createAuthzStore(state, run),
+    audit: createAuditStore(state, run, now),
   });
 
   const root = storesFor(withLock);

@@ -1,5 +1,7 @@
 export type {
   AssignmentStore,
+  AuditFilter,
+  AuditStore,
   AuthzStateStore,
   AxedaPersistence,
   AxedaStores,
@@ -11,3 +13,4 @@ export type {
   RoleStore,
 } from './persistence.js';
 export { systemClock, type Clock } from './platform.js';
+export type { DirectoryUser, ScopeResolver, UserDirectory } from './identity.js';

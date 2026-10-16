@@ -31,7 +31,28 @@ export interface RoleAssignment {
   readonly expiresAt: Date | null;
 }
 
-/** Quien pide una autorización. Better Auth lo convierte a partir de la sesión. */
+/**
+ * Quien pide una autorización. Better Auth lo convierte a partir de la sesión.
+ *
+ * Los campos opcionales ahorran consultas y **deben venir de la base de datos** (la fila del
+ * usuario de la sesión), nunca del cliente.
+ */
 export interface Principal {
   readonly userId: string;
+  /** `authzVersion` del usuario. Si falta, Axeda la consulta. */
+  readonly authzVersion?: number | undefined;
+  /**
+   * El usuario tiene el 2FA activado. Si falta se asume `false`: las funciones con
+   * `requireMfa` no conceden nada (ante la duda, se deniega).
+   */
+  readonly twoFactorEnabled?: boolean | undefined;
 }
+
+/** Datos de la petición para la auditoría. */
+export interface RequestMeta {
+  readonly ip?: string | undefined;
+  readonly userAgent?: string | undefined;
+}
+
+/** Quien ejecuta una operación de administración. */
+export interface Actor extends Principal, RequestMeta {}

@@ -43,3 +43,20 @@ export function sameAssignmentScope(a: AssignmentScope, b: AssignmentScope): boo
 
 /** Objetivo global, para comprobaciones que no pertenecen a una compañía ni a un negocio. */
 export const GLOBAL_TARGET: TargetScope = Object.freeze({ type: 'global' });
+
+/**
+ * ¿Contiene `container` a `inner`? (un alcance es la herencia hacia abajo de otro). Un alcance de
+ * compañía contiene a los negocios de esa compañía, pero eso exige saber la compañía del negocio;
+ * `companyOfInner` la aporta cuando se conoce (si no, solo se compara por igualdad).
+ */
+export function scopeContains(
+  container: AssignmentScope,
+  inner: AssignmentScope,
+  companyOfInner?: string,
+): boolean {
+  if (container.type === 'global') return true;
+  if (scopeKey(container) === scopeKey(inner)) return true;
+  return (
+    container.type === 'company' && inner.type === 'business' && companyOfInner === container.id
+  );
+}

@@ -2,7 +2,10 @@ export {
   EMPTY_PERMISSIONS,
   PermissionSet,
   effectivePermissions,
+  permissionsHeldAnywhere,
+  scopesGranting,
   type EffectivePermissionsInput,
+  type PolicyData,
 } from './effective-permissions.js';
 export {
   authorizeGrant,
@@ -10,3 +13,5 @@ export {
   type GrantDenialReason,
   type GrantInput,
 } from './grant.js';
+export { authorizeRevoke, type RevokeDecision } from './revoke.js';
+export { authorizeRoleChange, type RoleChangeDecision } from './role-change.js';

@@ -3,7 +3,9 @@ import {
   isAxedaError,
   isTransactional,
   parsePermissionKey,
+  type AuditFilter,
   type AxedaPersistence,
+  type NewAuditEvent,
   type NewRole,
 } from '@axeda/core';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -279,6 +281,155 @@ export function runPersistenceContract(name: string, create: PersistenceFactory)
         expect(await db.assignments.countForUser('u1')).toBe(0);
         expect(await db.assignments.countForUser('u2')).toBe(1);
         expect(await db.assignments.deleteForUser('u1')).toBe(0);
+      });
+    });
+
+    describe('assignment lookups', () => {
+      it('gets an assignment by id, or null', async () => {
+        const role = await db.roles.create(roleInput());
+        const created = await db.assignments.create({
+          userId: 'u1',
+          roleId: role.id,
+          scope: { type: 'business', id: 'b1' },
+          grantedBy: 'admin',
+        });
+        expect(await db.assignments.get(created.id)).toEqual(created);
+        expect(await db.assignments.get('missing')).toBeNull();
+      });
+
+      it('lists only the assignments of exactly one scope, with cursor pagination', async () => {
+        const role = await db.roles.create(roleInput());
+        const inA = { type: 'company', id: 'A' } as const;
+        await db.assignments.create({ userId: 'u1', roleId: role.id, scope: inA });
+        await db.assignments.create({ userId: 'u2', roleId: role.id, scope: inA });
+        await db.assignments.create({ userId: 'u1', roleId: role.id, scope: GLOBAL_SCOPE });
+        await db.assignments.create({
+          userId: 'u1',
+          roleId: role.id,
+          scope: { type: 'company', id: 'B' },
+        });
+        await db.assignments.create({
+          userId: 'u1',
+          roleId: role.id,
+          scope: { type: 'business', id: 'A' },
+        });
+
+        const first = await db.assignments.listForScope(inA, { limit: 1 });
+        expect(first.items).toHaveLength(1);
+        expect(first.nextCursor).not.toBeNull();
+        const second = await db.assignments.listForScope(inA, {
+          limit: 1,
+          cursor: first.nextCursor ?? '',
+        });
+        expect(second.items).toHaveLength(1);
+        expect(second.nextCursor).toBeNull();
+        const users = [...first.items, ...second.items].map((item) => item.userId).sort();
+        expect(users).toEqual(['u1', 'u2']);
+
+        const global = await db.assignments.listForScope(GLOBAL_SCOPE, { limit: 10 });
+        expect(global.items).toHaveLength(1);
+        expect(
+          (await db.assignments.listForScope({ type: 'company', id: 'none' }, { limit: 10 })).items,
+        ).toEqual([]);
+      });
+    });
+
+    describe('audit', () => {
+      const event = (overrides: Partial<NewAuditEvent> = {}): NewAuditEvent => ({
+        actorId: 'admin',
+        action: 'assignment.create',
+        targetType: 'assignment',
+        targetId: 'x',
+        scope: null,
+        outcome: 'success',
+        ip: null,
+        userAgent: null,
+        metadata: {},
+        ...overrides,
+      });
+
+      it('appends an event and returns it with an id and a timestamp', async () => {
+        const stored = await db.audit.append(
+          event({
+            scope: { type: 'company', id: 'A' },
+            ip: '203.0.113.7',
+            userAgent: 'curl/8',
+            metadata: { roleKey: 'cashier', nested: { ok: true }, list: [1, 'two'] },
+          }),
+        );
+        expect(stored.id).toEqual(expect.any(String));
+        expect(stored.at).toBeInstanceOf(Date);
+        expect(stored).toMatchObject({
+          actorId: 'admin',
+          action: 'assignment.create',
+          scope: { type: 'company', id: 'A' },
+          ip: '203.0.113.7',
+          userAgent: 'curl/8',
+          metadata: { roleKey: 'cashier', nested: { ok: true }, list: [1, 'two'] },
+        });
+        expect((await db.audit.list({}, { limit: 10 })).items).toEqual([stored]);
+      });
+
+      it('keeps system events (no actor) and a global scope', async () => {
+        const stored = await db.audit.append(
+          event({
+            actorId: null,
+            action: 'bootstrap',
+            targetType: 'system',
+            targetId: null,
+            scope: GLOBAL_SCOPE,
+          }),
+        );
+        const [read] = (await db.audit.list({}, { limit: 10 })).items;
+        expect(read).toEqual(stored);
+        expect(read?.actorId).toBeNull();
+        expect(read?.scope).toEqual(GLOBAL_SCOPE);
+      });
+
+      it('lists the newest first and paginates without gaps or repeats', async () => {
+        const ids: string[] = [];
+        for (let index = 0; index < 5; index += 1) {
+          ids.push((await db.audit.append(event({ targetId: String(index) }))).id);
+        }
+        const seen: string[] = [];
+        let cursor: string | undefined;
+        for (let guard = 0; guard < 10; guard += 1) {
+          const page = await db.audit.list({}, { limit: 2, ...(cursor ? { cursor } : {}) });
+          seen.push(...page.items.map((item) => item.id));
+          if (page.nextCursor === null) break;
+          cursor = page.nextCursor;
+        }
+        expect(seen).toEqual([...ids].reverse());
+      });
+
+      it('filters by actor, action, target and scope', async () => {
+        await db.audit.append(event({ actorId: 'a1', action: 'role.create', targetType: 'role' }));
+        await db.audit.append(event({ actorId: 'a2', scope: { type: 'company', id: 'A' } }));
+        await db.audit.append(event({ actorId: 'a2', scope: { type: 'company', id: 'B' } }));
+        await db.audit.append(event({ actorId: 'a2', targetId: 'needle' }));
+        const count = async (filter: AuditFilter) =>
+          (await db.audit.list(filter, { limit: 50 })).items.length;
+
+        expect(await count({ actorId: 'a2' })).toBe(3);
+        expect(await count({ action: 'role.create' })).toBe(1);
+        expect(await count({ targetType: 'role' })).toBe(1);
+        expect(await count({ targetId: 'needle' })).toBe(1);
+        expect(await count({ scope: { type: 'company', id: 'A' } })).toBe(1);
+        expect(await count({ actorId: 'a2', scope: { type: 'company', id: 'B' } })).toBe(1);
+        expect(await count({ actorId: 'nobody' })).toBe(0);
+        expect(await count({})).toBe(4);
+      });
+
+      it('is rolled back with the transaction that wrote it', async () => {
+        await expect(
+          db.transaction(async (tx) => {
+            await tx.audit.append(event());
+            throw new Error('boom');
+          }),
+        ).rejects.toThrow('boom');
+        expect((await db.audit.list({}, { limit: 10 })).items).toEqual([]);
+        await db.transaction((tx) => tx.audit.append(event()));
+        expect((await db.audit.list({}, { limit: 10 })).items).toHaveLength(1);
       });
     });
 

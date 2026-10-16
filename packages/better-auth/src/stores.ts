@@ -2,11 +2,16 @@ import type { BetterAuthOptions } from '@better-auth/core';
 import type { DBAdapter, DBTransactionAdapter } from '@better-auth/core/db/adapter';
 import {
   AxedaError,
+  createAuditIdFactory,
   type AssignmentStore,
+  type AuditEvent,
+  type AuditFilter,
+  type AuditStore,
   type AuthzStateStore,
   type AxedaPersistence,
   type AxedaStores,
   type NewAssignment,
+  type NewAuditEvent,
   type NewRole,
   type Page,
   type PageRequest,
@@ -16,7 +21,15 @@ import {
   type RoleStore,
 } from '@axeda/core';
 import { isForeignKeyViolation, isUniqueViolation } from './errors.js';
-import { scopeColumns, toAssignment, toRole, type AssignmentRow, type RoleRow } from './rows.js';
+import {
+  scopeColumns,
+  toAssignment,
+  toAuditEvent,
+  toRole,
+  type AssignmentRow,
+  type AuditRow,
+  type RoleRow,
+} from './rows.js';
 import { MODELS, POLICY_STATE_KEY } from './schema.js';
 
 type Adapter = DBAdapter | DBTransactionAdapter;
@@ -157,6 +170,32 @@ function createAssignmentStore(adapter: Adapter, now: () => Date): AssignmentSto
   const model = MODELS.assignment;
 
   return {
+    async get(id) {
+      const row = await adapter.findOne<AssignmentRow>({ model, where: byId(id) });
+      return row ? toAssignment(row) : null;
+    },
+
+    async listForScope(scope, page: PageRequest) {
+      const columns = scopeColumns(scope);
+      const after = page.cursor === undefined ? null : decodeCursor(page.cursor);
+      const rows = await adapter.findMany<AssignmentRow>({
+        model,
+        where: [
+          { field: 'scopeType', value: columns.scopeType },
+          { field: 'scopeId', value: columns.scopeId },
+          ...(after === null ? [] : [{ field: 'id', operator: 'gt' as const, value: after }]),
+        ],
+        sortBy: { field: 'id', direction: 'asc' },
+        limit: page.limit + 1,
+      });
+      const items = rows.slice(0, page.limit).map(toAssignment);
+      const last = items.at(-1);
+      return {
+        items,
+        nextCursor: rows.length > page.limit && last ? encodeCursor(last.id) : null,
+      };
+    },
+
     async listForUser(userId) {
       const rows = await adapter.findMany<AssignmentRow>({
         model,
@@ -217,6 +256,73 @@ function createAssignmentStore(adapter: Adapter, now: () => Date): AssignmentSto
 
     deleteForUser: (userId) =>
       adapter.deleteMany({ model, where: [{ field: 'userId', value: userId }] }),
+  };
+}
+
+/** Condiciones de `AuditStore.list`: cada filtro presente, más el cursor (`id` menor que el anterior). */
+function auditWhere(filter: AuditFilter, after: string | null) {
+  const columns = filter.scope === undefined ? null : scopeColumns(filter.scope);
+  const conditions: Array<{ field: string; value: string; operator?: 'lt' }> = [];
+  if (filter.actorId !== undefined) conditions.push({ field: 'actorId', value: filter.actorId });
+  if (filter.action !== undefined) conditions.push({ field: 'action', value: filter.action });
+  if (filter.targetType !== undefined) {
+    conditions.push({ field: 'targetType', value: filter.targetType });
+  }
+  if (filter.targetId !== undefined) conditions.push({ field: 'targetId', value: filter.targetId });
+  if (columns !== null) {
+    conditions.push({ field: 'scopeType', value: columns.scopeType });
+    conditions.push({ field: 'scopeId', value: columns.scopeId });
+  }
+  if (after !== null) conditions.push({ field: 'id', operator: 'lt', value: after });
+  return conditions;
+}
+
+function createAuditStore(adapter: Adapter, now: () => Date): AuditStore {
+  const model = MODELS.audit;
+  const nextId = createAuditIdFactory();
+
+  return {
+    async append(input: NewAuditEvent): Promise<AuditEvent> {
+      const at = now();
+      const scope = input.scope === null ? null : scopeColumns(input.scope);
+      const row = await adapter.create<Omit<AuditRow, 'id'>, AuditRow>({
+        model,
+        forceAllowId: true,
+        data: {
+          // El identificador ordena cronológicamente; `list` se apoya en eso.
+          id: nextId(at),
+          actorId: input.actorId,
+          action: input.action,
+          targetType: input.targetType,
+          targetId: input.targetId,
+          scopeType: scope?.scopeType ?? null,
+          scopeId: scope?.scopeId ?? null,
+          outcome: input.outcome,
+          ip: input.ip,
+          userAgent: input.userAgent,
+          metadata: { ...input.metadata },
+          at,
+        } as Omit<AuditRow, 'id'>,
+      });
+      return toAuditEvent(row);
+    },
+
+    async list(filter: AuditFilter, page: PageRequest) {
+      const after = page.cursor === undefined ? null : decodeCursor(page.cursor);
+      const where = auditWhere(filter, after);
+      const rows = await adapter.findMany<AuditRow>({
+        model,
+        ...(where.length === 0 ? {} : { where }),
+        sortBy: { field: 'id', direction: 'desc' },
+        limit: page.limit + 1,
+      });
+      const items = rows.slice(0, page.limit).map(toAuditEvent);
+      const last = items.at(-1);
+      return {
+        items,
+        nextCursor: rows.length > page.limit && last ? encodeCursor(last.id) : null,
+      };
+    },
   };
 }
 
@@ -315,6 +421,7 @@ export function createBetterAuthPersistence<Options extends BetterAuthOptions>(
     roles: createRoleStore(target, atomic, now),
     assignments: createAssignmentStore(target, now),
     authz: createAuthzStore(target, ensure),
+    audit: createAuditStore(target, now),
   });
 
   const root = storesFor(
