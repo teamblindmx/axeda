@@ -16,3 +16,4 @@ export {
 } from './grant.js';
 export { authorizeRevoke, type RevokeDecision } from './revoke.js';
 export { authorizeRoleChange, type RoleChangeDecision } from './role-change.js';
+export { administrativePower, authorizeUserAction, type UserActionDecision } from './user-admin.js';
