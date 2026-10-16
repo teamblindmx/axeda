@@ -57,15 +57,18 @@ const PERMISSIONS = [
   'invoice:*',
   'axeda:role:manage',
   'axeda:assignment:manage',
+  'axeda:invitation:manage',
   '*',
 ];
 
-const stats = { granted: 0, denied: 0, roleChanges: 0 };
+const stats = { granted: 0, denied: 0, roleChanges: 0, accepted: 0 };
 
 async function build(): Promise<Fixture & { actors: Record<string, Actor>; roleIds: string[] }> {
-  const f = await createFixture(undefined, {
-    scopes: { companyOfBusiness: async (id) => ({ bx: 'X', by: 'Y' })[id] ?? null },
-  });
+  const f = await createFixture();
+  await f.company('X');
+  await f.company('Y');
+  await f.business('bx', 'X');
+  await f.business('by', 'Y');
   await f.role('viewer', ['invoice:read']);
   await f.role('editor', ['invoice:read', 'invoice:update']);
   await f.role('deleter', ['invoice:delete']);
@@ -73,8 +76,17 @@ async function build(): Promise<Fixture & { actors: Record<string, Actor>; roleI
   await f.role('reporter', ['report:read']);
   await f.role('role-admin', ['axeda:role:manage']);
   await f.role('assign-admin', ['axeda:assignment:manage']);
-  await f.role('company-admin', ['axeda:assignment:manage', 'invoice:read']);
-  await f.role('manager', ['axeda:role:manage', 'axeda:assignment:manage', 'invoice:read']);
+  await f.role('company-admin', [
+    'axeda:assignment:manage',
+    'axeda:invitation:manage',
+    'invoice:read',
+  ]);
+  await f.role('manager', [
+    'axeda:role:manage',
+    'axeda:assignment:manage',
+    'axeda:invitation:manage',
+    'invoice:read',
+  ]);
 
   const actors = Object.fromEntries(USERS.map((id) => [id, f.user(id)])) as Record<string, Actor>;
   await f.give('A', 'company-admin', COMPANY_X);
@@ -91,7 +103,10 @@ type Op =
   | { kind: 'create'; actor: number; permissions: number[]; n: number }
   | { kind: 'update'; actor: number; role: number; permissions: number[] }
   | { kind: 'status'; actor: number; role: number; active: boolean }
-  | { kind: 'delete'; actor: number; role: number };
+  | { kind: 'delete'; actor: number; role: number }
+  | { kind: 'invite'; actor: number; user: number; roles: number[]; scope: number }
+  | { kind: 'accept'; user: number; pick: number }
+  | { kind: 'join'; actor: number; user: number; roles: number[]; scope: number };
 
 const idx = (max: number) => fc.nat({ max: max - 1 });
 const opArb: fc.Arbitrary<Op> = fc.oneof(
@@ -138,6 +153,35 @@ const opArb: fc.Arbitrary<Op> = fc.oneof(
       actor: idx(USERS.length),
       role: idx(ROLE_KEYS.length),
       active: fc.boolean(),
+    }),
+  },
+  {
+    weight: 3,
+    arbitrary: fc.record({
+      kind: fc.constant('invite' as const),
+      actor: idx(USERS.length),
+      user: idx(USERS.length),
+      roles: fc.array(idx(ROLE_KEYS.length), { minLength: 1, maxLength: 3 }),
+      scope: idx(SCOPES.length),
+    }),
+  },
+  {
+    // invitar y que la persona acepte enseguida: el camino feliz (y sus variantes de escalada)
+    weight: 5,
+    arbitrary: fc.record({
+      kind: fc.constant('join' as const),
+      actor: idx(USERS.length),
+      user: idx(USERS.length),
+      roles: fc.array(idx(ROLE_KEYS.length), { minLength: 1, maxLength: 3 }),
+      scope: idx(SCOPES.length),
+    }),
+  },
+  {
+    weight: 3,
+    arbitrary: fc.record({
+      kind: fc.constant('accept' as const),
+      user: idx(USERS.length),
+      pick: fc.nat({ max: 20 }),
     }),
   },
   {
@@ -196,14 +240,45 @@ const handlers: {
     );
   },
   delete: (f, actor, op) => f.axeda.roles.delete(actor, f.roleIds[op.role] ?? ''),
+  invite: (f, actor, op) =>
+    f.axeda.invitations.create(actor, {
+      email: `${USERS[op.user] ?? 'B'}@test.dev`.toLowerCase(),
+      scope: SCOPES[op.scope] ?? GLOBAL_SCOPE,
+      roleIds: [...new Set(op.roles.map((n) => f.roleIds[n] ?? ''))],
+    }),
+  join: async (f, actor, op) => {
+    const invitee = f.actors[USERS[op.user] ?? 'B'] as Actor;
+    await f.axeda.invitations.create(actor, {
+      email: `${invitee.userId}@test.dev`.toLowerCase(),
+      scope: SCOPES[op.scope] ?? GLOBAL_SCOPE,
+      roleIds: [...new Set(op.roles.map((n) => f.roleIds[n] ?? ''))],
+    });
+    return f.axeda.invitations.accept(invitee, f.sent.at(-1)?.token ?? 'none');
+  },
+  accept: (f, _actor, op) => {
+    const message = f.sent[op.pick % Math.max(f.sent.length, 1)];
+    // Lo normal es que acepte el dueño del correo (si no, casi nunca habría aceptaciones válidas);
+    // una de cada cuatro veces lo intenta otra persona con el mismo enlace.
+    const owner = USERS.find((id) => `${id}@test.dev`.toLowerCase() === message?.email);
+    const thief = op.pick % 4 === 0;
+    const who = thief || owner === undefined ? (USERS[op.user] ?? 'B') : owner;
+    return f.axeda.invitations.accept(f.actors[who] as Actor, message?.token ?? 'none');
+  },
 };
 
 async function run(f: World, op: Op): Promise<void> {
-  const actor = f.actors[USERS[op.actor] ?? 'B'] as Actor;
+  const actor = f.actors[USERS['actor' in op ? op.actor : op.user] ?? 'B'] as Actor;
   const handler = handlers[op.kind] as (f: World, actor: Actor, op: Op) => Promise<unknown>;
   try {
-    await handler(f, actor, op);
-    stats[op.kind === 'assign' || op.kind === 'revoke' ? 'granted' : 'roleChanges'] += 1;
+    const outcome = await handler(f, actor, op);
+    if (
+      (op.kind === 'accept' || op.kind === 'join') &&
+      Array.isArray(outcome) &&
+      outcome.length > 0
+    )
+      stats.accepted += 1;
+    const grants = ['assign', 'revoke', 'invite', 'accept', 'join'];
+    stats[grants.includes(op.kind) ? 'granted' : 'roleChanges'] += 1;
   } catch (error) {
     if (!isAxedaError(error)) throw error;
     stats.denied += 1;
@@ -247,13 +322,15 @@ describe('privilege escalation (property)', () => {
           }
         }
       }),
-      { numRuns: 120 },
+      { numRuns: 200 },
     );
   }, 120_000);
 
   it('is not vacuous: the generator really exercises grants, denials and role edits', () => {
-    expect(stats.granted).toBeGreaterThan(50);
-    expect(stats.denied).toBeGreaterThan(200);
-    expect(stats.roleChanges).toBeGreaterThan(20);
+    expect(stats.granted).toBeGreaterThan(40);
+    expect(stats.denied).toBeGreaterThan(300);
+    expect(stats.roleChanges).toBeGreaterThan(10);
+    // invitaciones aceptadas de verdad (con asignaciones creadas), no solo intentos
+    expect(stats.accepted).toBeGreaterThan(3);
   });
 });

@@ -16,7 +16,7 @@ const rejectsWith = async (promise: Promise<unknown>, code: AxedaErrorCode) => {
   expect(isAxedaError(error, code), `expected ${code}, got ${String(error)}`).toBe(true);
 };
 
-const empty = { assignments: [], roles: new Map() };
+const empty = { assignments: [], roles: new Map(), unusable: new Set<string>() };
 
 describe('AuthzCache', () => {
   it('serves an entry only while both versions match', () => {
@@ -161,9 +161,10 @@ describe('the version-validated cache', () => {
 
 describe('scopesFor and scopeFilter', () => {
   async function multi() {
-    const f = await createFixture(undefined, {
-      scopes: { companyOfBusiness: async (id) => (id.startsWith('b') ? 'A' : null) },
-    });
+    const f = await createFixture();
+    for (const id of ['A', 'B', 'C']) await f.company(id);
+    await f.business('b1', 'A');
+    await f.business('b9', 'A');
     await f.role('reader', ['invoice:read']);
     await f.role('writer', ['invoice:create']);
     f.user('alice');
@@ -258,6 +259,7 @@ describe('scopesFor and scopeFilter', () => {
 describe('the audit log', () => {
   it('is readable globally only with a global audit:read, and per company with a company grant', async () => {
     const f = await createFixture();
+    await f.company('A');
     await f.role('auditor', ['axeda:audit:read']);
     f.user('carol');
     f.user('dave');

@@ -5,6 +5,7 @@ import { betterAuth, type Auth } from 'better-auth';
 import { getMigrations } from 'better-auth/db/migration';
 import Database from 'better-sqlite3';
 import { axeda } from '../../src/index.js';
+import { closeAfterTest } from './cleanup.js';
 import { createPgliteDialect } from './pglite-dialect.js';
 
 export type DatabaseKind = 'sqlite' | 'postgres';
@@ -17,14 +18,17 @@ export interface TestAuth {
 
 /** Un Better Auth real con el plugin de Axeda, migrado, sobre una base de datos nueva. */
 export async function createAuth(kind: DatabaseKind): Promise<TestAuth> {
+  const sqlite = kind === 'sqlite' ? new Database(':memory:') : undefined;
+  const pglite = kind === 'postgres' ? new PGlite() : undefined;
+  if (sqlite) closeAfterTest(() => void sqlite.close());
+  if (pglite) closeAfterTest(() => pglite.close());
   const database =
-    kind === 'sqlite'
-      ? new Database(':memory:')
-      : {
-          dialect: createPgliteDialect(new PGlite()),
-          type: 'postgres' as const,
-          transaction: true,
-        };
+    sqlite ??
+    ({
+      dialect: createPgliteDialect(pglite as PGlite),
+      type: 'postgres' as const,
+      transaction: true,
+    } as const);
 
   const options: BetterAuthOptions = {
     secret: 'test-secret-test-secret-test-secret-0123456789',

@@ -81,8 +81,8 @@ export async function typeChecks(app: HttpApp) {
   await client.axeda.assignment.create({
     userId: 'u',
     roleId: 'r',
-    // @ts-expect-error un alcance de negocio no existe todavía en la API
-    scope: { type: 'business', id: 'b' },
+    // @ts-expect-error un tipo de alcance inexistente
+    scope: { type: 'planet', id: 'b' },
   });
   // @ts-expect-error el endpoint no existe
   await client.axeda.nonexistent();

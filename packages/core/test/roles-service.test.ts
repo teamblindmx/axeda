@@ -281,6 +281,7 @@ describe('roles: status and deletion', () => {
 describe('roles: reading', () => {
   it('lets role managers and assignment managers read, and nobody else', async () => {
     const f = await createFixture();
+    await f.company('A');
     await f.role('assigner', ['axeda:assignment:manage']);
     const r = await f.role('viewer', ['invoice:read']);
     const assigner = f.user('assigner');
