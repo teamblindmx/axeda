@@ -46,6 +46,21 @@ import { runPersistenceContract } from '@axeda/testing';
 runPersistenceContract('mi base de datos', async (userIds) => createMyPersistence(userIds));
 ```
 
+## Contra un servidor PostgreSQL real
+
+Por omisión, las pruebas del propio repositorio usan SQLite y un PostgreSQL dentro del proceso
+(PGlite). Define `AXEDA_TEST_POSTGRES_URL` y las mismas pruebas corren además contra un servidor
+real con un grupo de 10 conexiones, creando y borrando una base de datos por prueba:
+
+```bash
+AXEDA_TEST_POSTGRES_URL=postgres://usuario:clave@localhost:5432/postgres npm test
+```
+
+Las pruebas de concurrencia afirman invariantes que deben cumplirse sin importar cuántos
+escritores compitan (un ganador entre N ediciones idénticas, el límite de asignaciones nunca
+rebasado, ninguna subida de versión perdida). Con una sola conexión comprueban la lógica; con un
+servidor y un grupo de conexiones los escritores se superponen de verdad.
+
 Trampas que nos enseñaron la suite y las pruebas reales:
 
 - **Nunca consultes dentro de una transacción con nada que no sean los almacenes de esa

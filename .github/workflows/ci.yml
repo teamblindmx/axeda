@@ -39,6 +39,47 @@ jobs:
       - name: Tests
         run: npm run test
 
+  postgres:
+    name: PostgreSQL ${{ matrix.postgres }} (real server)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: [16, 18]
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Las pruebas crean y borran una base de datos por prueba en este servidor.
+      AXEDA_TEST_POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tests against a real PostgreSQL server with a connection pool
+        run: npx vitest run packages/better-auth
+      - name: Benchmark against the same server (fails over budget)
+        run: npm run bench -- --check --json bench-results.json
+      - name: Keep the numbers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-postgres-${{ matrix.postgres }}
+          path: bench-results.json
+          if-no-files-found: ignore
+
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest

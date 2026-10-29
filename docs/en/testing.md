@@ -44,6 +44,20 @@ import { runPersistenceContract } from '@axeda/testing';
 runPersistenceContract('my database', async (userIds) => createMyPersistence(userIds));
 ```
 
+## Against a real PostgreSQL server
+
+By default the repository's own tests use SQLite and an in-process PostgreSQL (PGlite). Set
+`AXEDA_TEST_POSTGRES_URL` and the same tests also run against a real server with a pool of 10
+connections, creating and dropping one database per test:
+
+```bash
+AXEDA_TEST_POSTGRES_URL=postgres://user:password@localhost:5432/postgres npm test
+```
+
+The concurrency tests assert invariants that must hold however many writers race (one winner among
+N identical edits, the assignment limit never exceeded, no lost version bump). On a single
+connection they check the logic; on a server with a pool the writers genuinely overlap.
+
 Pitfalls the suite and the real tests taught us:
 
 - **Never query inside a transaction through anything but the transaction's own stores.** On a

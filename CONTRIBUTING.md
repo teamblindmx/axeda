@@ -7,16 +7,27 @@
 
 ## Comandos
 
-| Comando                           | Qué hace                                                                         |
-| --------------------------------- | -------------------------------------------------------------------------------- |
-| `npm run check`                   | Todo lo que valida el CI: tipos, lint, formato, reglas de arquitectura y pruebas |
-| `npm run typecheck`               | Comprobación de tipos (TypeScript estricto)                                      |
-| `npm run lint`                    | ESLint, incluidas las reglas de capas del núcleo                                 |
-| `npm run format` / `format:check` | Formatea o comprueba el formato con Prettier                                     |
-| `npm run deps:check`              | Reglas de arquitectura con dependency-cruiser (capas y sin ciclos)               |
-| `npm test` / `npm run test:watch` | Pruebas con Vitest                                                               |
-| `npm run coverage`                | Informe de cobertura (orientativo, no bloquea)                                   |
-| `npm run changeset`               | Añade una nota de cambio para la próxima versión                                 |
+| Comando                           | Qué hace                                                                                                                                              |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check`                   | Todo lo que valida el CI: tipos, lint, formato, reglas de arquitectura y pruebas                                                                      |
+| `npm run typecheck`               | Comprobación de tipos (TypeScript estricto)                                                                                                           |
+| `npm run lint`                    | ESLint, incluidas las reglas de capas del núcleo                                                                                                      |
+| `npm run format` / `format:check` | Formatea o comprueba el formato con Prettier                                                                                                          |
+| `npm run deps:check`              | Reglas de arquitectura con dependency-cruiser (capas y sin ciclos)                                                                                    |
+| `npm test` / `npm run test:watch` | Pruebas con Vitest                                                                                                                                    |
+| `npm run bench`                   | Mide el rendimiento (SQLite en memoria; con `AXEDA_TEST_POSTGRES_URL`, un PostgreSQL real con pool). `-- --check` falla si algo supera su presupuesto |
+| `npm run coverage`                | Informe de cobertura (orientativo, no bloquea)                                                                                                        |
+| `npm run changeset`               | Añade una nota de cambio para la próxima versión                                                                                                      |
+
+## PostgreSQL real
+
+Por defecto las pruebas usan SQLite y PostgreSQL dentro del proceso (PGlite), sin instalar nada. Con un servidor PostgreSQL de verdad corren además las mismas pruebas, con un grupo de 10 conexiones, y las de concurrencia compiten de verdad:
+
+```
+AXEDA_TEST_POSTGRES_URL=postgres://usuario:clave@localhost:5432/postgres npm test
+```
+
+Cada prueba crea y borra su propia base de datos en ese servidor, así que usa uno de desarrollo. El CI lo hace con un servicio de PostgreSQL 16 y 18.
 
 ## Flujo de ramas
 

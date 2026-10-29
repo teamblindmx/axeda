@@ -6,7 +6,8 @@
     "apps/*/src/**/*.ts",
     "apps/*/test/**/*.ts",
     "examples/**/*.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "bench/**/*.ts"
   ],
   "exclude": ["**/dist", "node_modules"]
 }
