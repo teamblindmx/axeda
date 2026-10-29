@@ -24,6 +24,10 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       '@typescript-eslint/no-non-null-assertion': 'error',
       eqeqeq: ['error', 'always'],
       'no-console': 'error',
@@ -41,7 +45,13 @@ export default tseslint.config(
     },
   },
   {
-    files: ['packages/*/test/**/*.ts', 'examples/**/*.ts', 'vitest.config.ts'],
+    files: [
+      'packages/*/test/**/*.ts',
+      'apps/*/test/**/*.ts',
+      'apps/*/src/**/*.ts',
+      'examples/**/*.ts',
+      'vitest.config.ts',
+    ],
     rules: { 'no-console': 'off' },
   },
 );
