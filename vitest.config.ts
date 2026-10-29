@@ -17,7 +17,7 @@ export default defineConfig({
     // Registrar usuarios en Better Auth cifra la contraseña (scrypt): es lento a propósito.
     testTimeout: 60_000,
     hookTimeout: 60_000,
-    include: ['packages/*/test/**/*.test.ts'],
+    include: ['packages/*/test/**/*.test.ts', 'apps/*/test/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**'],

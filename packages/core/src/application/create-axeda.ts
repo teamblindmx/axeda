@@ -81,6 +81,12 @@ export interface Axeda {
   can(principal: Principal, permission: string, target?: TargetScope): Promise<boolean>;
   /** ¿Tiene el usuario `permission` en algún alcance? Para decidir qué listados mostrar. */
   canAnywhere(principal: Principal, permission: string): Promise<boolean>;
+  /**
+   * Pasa de un alcance que llega en una petición (el `id` de una compañía o negocio) al lugar
+   * donde decidir un permiso, **leyendo la base de datos**: la compañía de un negocio nunca se
+   * toma de la petición (T2). `null` si no existe. Para proteger rutas de tu aplicación.
+   */
+  resolveTarget(scope: AssignmentScope): Promise<TargetScope | null>;
   /** Alcances (global, compañías, negocios) donde el usuario tiene `permission`. */
   scopesFor(principal: Principal, permission: string): Promise<readonly AssignmentScope[]>;
   /** Lo mismo, en forma cómoda para filtrar las consultas de la aplicación (T5). */
@@ -203,9 +209,13 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
       : { type: 'business', companyId: business.companyId, businessId: business.id };
   }
 
-  /** El alcance del menú. Si no se puede resolver, el menú es vacío (no se revela si existe). */
-  async function menuTarget(scope: AssignmentScope | undefined): Promise<TargetScope | null> {
+  /**
+   * Del alcance de una petición al lugar donde decidir. Si no existe da `null` (sin revelar
+   * por qué); un alcance inactivo o borrado sí se resuelve, y `can` lo deniega por su estado.
+   */
+  async function targetOf(scope: AssignmentScope | undefined): Promise<TargetScope | null> {
     if (scope === undefined) return GLOBAL_TARGET;
+    await start();
     try {
       return await resolveTarget(services, scope, { requireUsable: false });
     } catch {
@@ -228,6 +238,7 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
       const key = requirePermission(catalogSet, permission);
       return permissionsHeldAnywhere(await snapshotData(principal)).allows(key);
     },
+    resolveTarget: (scope) => targetOf(scope),
     scopesFor,
     async scopeFilter(principal, permission) {
       const scopes = await scopesFor(principal, permission);
@@ -244,7 +255,7 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     invitations: createInvitationService(services),
     users: createUserService(services),
     async menu(principal, menuOptions = {}) {
-      const target = await menuTarget(menuOptions.scope);
+      const target = await targetOf(menuOptions.scope);
       if (target === null) return [];
       return buildMenu(resolved.menus, await effective(principal, target), menuOptions.locale);
     },

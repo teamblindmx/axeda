@@ -60,6 +60,16 @@ Tipos: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `style`, `build`, `ci`
 - Los adaptadores (`better-auth`, `express`) dependen solo del núcleo, no entre sí.
 - El código de producción no importa utilidades de prueba.
 
+## Documentación
+
+- Vive en `docs/en` y `docs/es`, con los **mismos archivos**. Un cambio en uno se hace en el otro.
+- Una prueba (`apps/example/test/docs.test.ts`) falla si falta un endpoint, un código de error o un permiso en la referencia, si los idiomas se desfasan, si un enlace se rompe o si un bloque `ts` no es válido. Al añadir un endpoint, actualiza `reference.md` en ambos idiomas.
+- No documentes lo que no se ha probado: lo no verificado se dice como tal.
+
+## Aplicación de ejemplo
+
+`apps/example` es lo que la guía ejecuta. Si cambias un patrón de uso, cambia el ejemplo, su prueba y la guía a la vez.
+
 ## Seguridad
 
 Las vulnerabilidades se reportan en privado; ver [SECURITY.md](SECURITY.md). Nunca subas secretos (`.env`, claves, tokens).

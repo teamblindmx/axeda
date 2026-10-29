@@ -46,6 +46,20 @@ describe('startup', () => {
     ).rejects.toMatchObject({ code: 'AXEDA_INVALID_CONFIG' });
   });
 
+  it.each([
+    ['advanced.disableCSRFCheck', { advanced: { disableCSRFCheck: true } }],
+    ['advanced.disableOriginCheck', { advanced: { disableOriginCheck: true } }],
+    [
+      'advanced.ipAddress.disableIpTracking',
+      { advanced: { ipAddress: { disableIpTracking: true } } },
+    ],
+  ])('refuses to run with %s', async (option, betterAuth) => {
+    await expect(createHttpApp({ betterAuth })).rejects.toMatchObject({
+      code: 'AXEDA_INVALID_CONFIG',
+      message: expect.stringContaining(option),
+    });
+  });
+
   it('exposes the core only after Better Auth has been created', async () => {
     const { axeda } = await import('../src/index.js');
     const plugin = axeda({ permissions: [] });

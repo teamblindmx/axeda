@@ -62,6 +62,52 @@ function coreOptions(options: AxedaPluginOptions): AxedaOptions {
   };
 }
 
+/**
+ * Opciones de Better Auth con las que Axeda se niega a arrancar. Cada una anula algo que protege
+ * a los endpoints `/axeda/*` (todos con cookie de sesión) o a la propia autorización.
+ */
+const UNSAFE_AUTH_OPTIONS: ReadonlyArray<{
+  readonly path: readonly string[];
+  readonly why: string;
+}> = [
+  {
+    // La caché de cookie de sesión haría que `authzVersion` llegue desactualizado y que una
+    // sesión revocada siga siendo válida (ADR-0005, ADR-0009).
+    path: ['session', 'cookieCache', 'enabled'],
+    why: 'a revoked session or a changed permission would stay valid until the cookie expires.',
+  },
+  {
+    path: ['advanced', 'disableCSRFCheck'],
+    why: 'every /axeda/* endpoint is authenticated by a cookie and would be open to cross-site requests.',
+  },
+  {
+    path: ['advanced', 'disableOriginCheck'],
+    why: 'callback and redirect URLs would no longer be validated against trustedOrigins.',
+  },
+  {
+    path: ['advanced', 'ipAddress', 'disableIpTracking'],
+    why: 'rate limits and the audit log depend on the client address.',
+  },
+];
+
+function assertSafeAuthOptions(options: object): void {
+  for (const { path, why } of UNSAFE_AUTH_OPTIONS) {
+    const value = path.reduce<unknown>(
+      (node, key) =>
+        typeof node === 'object' && node !== null
+          ? (node as Record<string, unknown>)[key]
+          : undefined,
+      options,
+    );
+    if (value === true) {
+      throw new AxedaError(
+        'AXEDA_INVALID_CONFIG',
+        `Axeda cannot run with ${path.join('.')}: ${why} Remove the option.`,
+      );
+    }
+  }
+}
+
 /** Límites de peticiones por IP y minuto de los endpoints de administración. */
 const RATE_LIMITS = [
   // El único endpoint sin sesión, más estricto (T10: enumeración).
@@ -107,15 +153,7 @@ export function axeda(options: AxedaPluginOptions) {
     },
     rateLimit: RATE_LIMITS,
     init(ctx) {
-      // La caché de cookie de sesión haría que `authzVersion` llegue desactualizado y que una
-      // sesión revocada siga siendo válida (ADR-0005, ADR-0009): Axeda no arranca con ella.
-      if (ctx.options.session?.cookieCache?.enabled === true) {
-        throw new AxedaError(
-          'AXEDA_INVALID_CONFIG',
-          'Axeda cannot run with session.cookieCache enabled: a revoked session or a changed ' +
-            'permission would stay valid until the cookie expires. Disable it.',
-        );
-      }
+      assertSafeAuthOptions(ctx.options);
       const stores = createBetterAuthPersistence(ctx.adapter, {
         ...(options.clock === undefined ? {} : { now: () => options.clock?.now() ?? new Date() }),
       });

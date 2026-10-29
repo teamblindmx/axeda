@@ -3,7 +3,6 @@ import { z } from 'zod';
 import {
   AXEDA_PERMISSIONS,
   AxedaError,
-  isBanned,
   type Actor,
   type AssignmentScope,
   type Axeda,
@@ -12,6 +11,7 @@ import {
 } from '@axeda/core';
 import { toAssignmentDto, toAuditEventDto, toRoleDto } from './dto.js';
 import { toApiError } from './http-errors.js';
+import { principalFromUser } from './principal.js';
 
 /** Lo que cada endpoint exige, para la prueba que recorre todos y para la documentación. */
 export interface EndpointAccess {
@@ -63,27 +63,15 @@ interface SessionContext {
 }
 
 /**
- * Quien actúa, a partir de la sesión. `authzVersion` y `twoFactorEnabled` salen de la fila del
- * usuario que Better Auth acaba de leer de la base de datos (nunca del cliente): ahorran
- * consultas y permiten evaluar `requireMfa`.
+ * Quien actúa, a partir de la sesión: el `Principal` (ver `principalFromUser`) más los datos de la
+ * petición para la auditoría.
  */
-const asDate = (value: unknown): Date | null =>
-  value instanceof Date || typeof value === 'string' || typeof value === 'number'
-    ? new Date(value)
-    : null;
-
 export function actorFromSession(ctx: SessionContext): Actor {
   const user = ctx.context.session.user as { id: string } & Record<string, unknown>;
   const request = ctx.request;
   const ip = request === undefined ? undefined : (getIP(request, {}) ?? undefined);
   return {
-    userId: user.id,
-    authzVersion: typeof user['authzVersion'] === 'number' ? user['authzVersion'] : undefined,
-    twoFactorEnabled: user['twoFactorEnabled'] === true,
-    banned: isBanned(
-      { banned: user['banned'] === true, banExpires: asDate(user['banExpires']) },
-      new Date(),
-    ),
+    ...principalFromUser(user),
     ip,
     userAgent: ctx.headers?.get('user-agent') ?? request?.headers.get('user-agent') ?? undefined,
   };

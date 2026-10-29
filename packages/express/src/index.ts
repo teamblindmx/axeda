@@ -1,2 +1,16 @@
-// @axeda/express — ayudas para Express (fase 6). Paquete vacío por ahora.
-export {};
+// @axeda/express — protege las rutas de tu aplicación con los permisos de Axeda.
+export {
+  createAxedaExpress,
+  type AxedaExpress,
+  type AxedaExpressOptions,
+  type PrincipalResolver,
+  type RequirePermissionOptions,
+} from './middleware.js';
+export {
+  globalScope,
+  resolveScope,
+  type RequestedScope,
+  type ScopeRequest,
+  type ScopeResolver,
+  type ScopeSource,
+} from './scope.js';
