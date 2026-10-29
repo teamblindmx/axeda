@@ -1,4 +1,3 @@
-import { PGlite } from '@electric-sql/pglite';
 import type { BetterAuthOptions } from '@better-auth/core';
 import { GLOBAL_SCOPE, createAxeda, isAxedaError, parsePermissionKey } from '@axeda/core';
 import { betterAuth } from 'better-auth';
@@ -11,14 +10,13 @@ import {
   createBetterAuthPersistence,
   createBetterAuthUserDirectory,
 } from '../src/index.js';
-import { createAuth, createUsers, type DatabaseKind } from './support/harness.js';
 import { closeAfterTest } from './support/cleanup.js';
-import { createPgliteDialect } from './support/pglite-dialect.js';
+import { databaseKinds, openDatabase } from './support/databases.js';
+import { createAuth, createUsers } from './support/harness.js';
 
-const kinds: DatabaseKind[] = ['sqlite', 'postgres'];
 const perms = (...keys: string[]) => keys.map(parsePermissionKey);
 
-describe.each(kinds)('Axeda on a real Better Auth (%s)', (kind) => {
+describe.each(databaseKinds)('Axeda on a real Better Auth (%s)', (kind) => {
   async function setup() {
     const ctx = await createAuth(kind);
     await createUsers(ctx.adapter, ['alice']);
@@ -296,20 +294,10 @@ describe('migrations', () => {
     expect(indexes.some((index) => index.unique === 1)).toBe(true);
   });
 
-  it.each(kinds)(
+  it.each(databaseKinds)(
     'gives users that existed before the plugin an authzVersion of 0, not NULL (%s)',
     async (kind) => {
-      const sqlite = kind === 'sqlite' ? new Database(':memory:') : undefined;
-      const pglite = kind === 'postgres' ? new PGlite() : undefined;
-      if (sqlite) closeAfterTest(() => void sqlite.close());
-      if (pglite) closeAfterTest(() => pglite.close());
-      const database =
-        sqlite ??
-        ({
-          dialect: createPgliteDialect(pglite as PGlite),
-          type: 'postgres' as const,
-          transaction: true,
-        } as const);
+      const { database } = await openDatabase(kind);
       const base = {
         secret,
         baseURL: 'http://localhost:3000',
