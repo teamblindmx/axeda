@@ -56,6 +56,12 @@ only a single-value `X-Forwarded-For`; a chain could be forged to dodge rate lim
 **Several instances?** The default rate-limit counter lives in memory, per process, so the real
 limit multiplies by the number of instances. Use `rateLimitStorage: 'database'`.
 
+**Sessions in `secondaryStorage` (Redis)?** Better Auth then keeps a copy of the user row next to
+each session and refreshes it only when Better Auth itself changes the user. Axeda's changes
+(a revoked assignment, a 2FA flag) would not reach that copy, so when `secondaryStorage` is set,
+the plugin endpoints and `sessionPrincipal` re-read the user from the database: one extra query
+per request, in exchange for revocations that take effect at once.
+
 ## Checklist before you go live
 
 - [ ] `BETTER_AUTH_SECRET` is random, stored in a secret manager, not in the repository
@@ -80,7 +86,7 @@ the code. For administrative accounts, disable trusted devices in the `twoFactor
 ## API keys
 
 If you use Better Auth's `apiKey` plugin with sessions for keys, build the caller with
-`principalFromSession` / `sessionPrincipal`, which carry the `banned` and 2FA flags. A banned
+`await principalFromSession(ctx)` / `sessionPrincipal`, which carry the `banned` and 2FA flags. A banned
 user holds no permission even through a key.
 
 ## Known limits

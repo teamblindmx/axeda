@@ -159,7 +159,7 @@ describe('user administration over HTTP', () => {
       model: 'user',
       where: [{ field: 'id', value: alice.id }],
     });
-    const principal = principalFromSession({
+    const principal = await principalFromSession({
       context: { session: { user: { ...row, id: alice.id } } },
     });
     expect(principal.banned).toBe(true);
