@@ -1,5 +1,5 @@
 {
-  "name": "@axeda/express",
+  "name": "@teamblind/axeda-express",
   "version": "0.1.0-alpha.0",
   "description": "Express helpers for Axeda: requirePermission() and resolveScope().",
   "license": "Apache-2.0",
@@ -45,7 +45,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@axeda/core": "^0.1.0-alpha.0"
+    "@teamblind/axeda-core": "^0.1.0-alpha.0"
   },
   "peerDependencies": {
     "@types/express": "^5.0.0",

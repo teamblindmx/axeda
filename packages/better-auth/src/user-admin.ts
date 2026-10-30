@@ -9,7 +9,7 @@ import {
   type PageRequest,
   type UserAdmin,
   type UserFilter,
-} from '@axeda/core';
+} from '@teamblind/axeda-core';
 import { isUniqueViolation } from './errors.js';
 import { byId, decodeCursor, encodeCursor } from './shared.js';
 

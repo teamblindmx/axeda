@@ -3,11 +3,11 @@
 const assert = require('node:assert/strict');
 
 const ENTRIES = [
-  ['@axeda/core', 'createAxeda'],
-  ['@axeda/better-auth', 'axeda'],
-  ['@axeda/better-auth/client', 'axedaClient'],
-  ['@axeda/express', 'createAxedaExpress'],
-  ['@axeda/testing', 'createMemoryPersistence'],
+  ['@teamblind/axeda-core', 'createAxeda'],
+  ['@teamblind/axeda-better-auth', 'axeda'],
+  ['@teamblind/axeda-better-auth/client', 'axedaClient'],
+  ['@teamblind/axeda-express', 'createAxedaExpress'],
+  ['@teamblind/axeda-testing', 'createMemoryPersistence'],
 ];
 
 async function main() {
@@ -30,7 +30,9 @@ async function main() {
     );
     return;
   }
-  for (const [name, exported] of ENTRIES.filter(([entry]) => entry !== '@axeda/testing')) {
+  for (const [name, exported] of ENTRIES.filter(
+    ([entry]) => entry !== '@teamblind/axeda-testing',
+  )) {
     assert.equal(
       typeof require(name)[exported],
       'function',

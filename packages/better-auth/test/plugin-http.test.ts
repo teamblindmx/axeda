@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toApiError } from '../src/http-errors.js';
-import { AxedaError } from '@axeda/core';
+import { AxedaError } from '@teamblind/axeda-core';
 import { createHttpApp, type HttpApp } from './support/http.js';
 import { databaseKinds } from './support/databases.js';
 

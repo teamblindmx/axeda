@@ -1,5 +1,5 @@
 {
-  "name": "@axeda/core",
+  "name": "@teamblind/axeda-core",
   "version": "0.1.0-alpha.0",
   "description": "Axeda core: hierarchical authorization policy, use cases and ports (no Better Auth or framework dependencies).",
   "license": "Apache-2.0",

@@ -28,10 +28,10 @@ function repository(
     NAMES.map((name) => [
       name,
       {
-        name: `@axeda/${name}`,
+        name: `@teamblind/axeda-${name}`,
         version: '0.1.0-alpha.0',
         publishConfig: { access: 'public' },
-        ...(name === 'core' ? {} : { dependencies: { '@axeda/core': '^0.1.0-alpha.0' } }),
+        ...(name === 'core' ? {} : { dependencies: { '@teamblind/axeda-core': '^0.1.0-alpha.0' } }),
       } satisfies Manifest,
     ]),
   ) as unknown as Record<(typeof NAMES)[number], Manifest>;
@@ -56,7 +56,7 @@ describe('the release guard', () => {
   it('lets a consistent alpha through', () => {
     const { status, text } = run(repository());
     expect(status, text).toBe(0);
-    expect(text).toContain('@axeda/core@0.1.0-alpha.0');
+    expect(text).toContain('@teamblind/axeda-core@0.1.0-alpha.0');
   });
 
   it('accepts a later alpha of the same version for the range the packages ask for', () => {
@@ -75,7 +75,7 @@ describe('the release guard', () => {
       }),
     );
     expect(status).toBe(1);
-    expect(text).toContain('@axeda/core is still private');
+    expect(text).toContain('@teamblind/axeda-core is still private');
   });
 
   it('refuses version 0.0.0', () => {
@@ -92,7 +92,7 @@ describe('the release guard', () => {
     const stable = repository((m) => {
       for (const name of NAMES) {
         m[name].version = '0.1.0';
-        if (m[name].dependencies) m[name].dependencies = { '@axeda/core': '^0.1.0' };
+        if (m[name].dependencies) m[name].dependencies = { '@teamblind/axeda-core': '^0.1.0' };
       }
     });
     const alpha = run(stable, 'alpha');
@@ -126,14 +126,14 @@ describe('the release guard', () => {
     expect(text).toContain('different versions');
   });
 
-  it('refuses a dependency on @axeda/core that the published version does not satisfy', () => {
+  it('refuses a dependency on @teamblind/axeda-core that the published version does not satisfy', () => {
     const { status, text } = run(
       repository((m) => {
         for (const name of NAMES) m[name].version = '0.2.0-alpha.0';
       }),
     );
     expect(status).toBe(1);
-    expect(text).toContain('asks for @axeda/core ^0.1.0-alpha.0');
+    expect(text).toContain('asks for @teamblind/axeda-core ^0.1.0-alpha.0');
   });
 
   it('refuses a package that would publish privately', () => {
@@ -143,6 +143,6 @@ describe('the release guard', () => {
       }),
     );
     expect(status).toBe(1);
-    expect(text).toContain('@axeda/testing has no publishConfig.access: public');
+    expect(text).toContain('@teamblind/axeda-testing has no publishConfig.access: public');
   });
 });

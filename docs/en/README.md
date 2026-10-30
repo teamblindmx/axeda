@@ -4,7 +4,7 @@ Hierarchical authorization (**global → company → business**) for Node.js, on
 [Better Auth](https://www.better-auth.com). Better Auth answers _who are you_; Axeda answers
 _what can you do, and where_.
 
-> **Status:** alpha (`0.1.0-alpha.0`). Install with the `alpha` tag (`npm install @axeda/core@alpha @axeda/better-auth@alpha @axeda/express@alpha better-auth express`),
+> **Status:** alpha (`0.1.0-alpha.0`). Install with the `alpha` tag (`npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express`),
 > or run the [example application](quickstart.md) from this repository. The API can still change before 1.0.
 > Documentation in Spanish: [`../es`](../es/README.md).
 
@@ -21,21 +21,21 @@ _what can you do, and where_.
 ## How the pieces fit
 
 ```
- Your app ──► Better Auth ──► @axeda/better-auth plugin ──► @axeda/core
+ Your app ──► Better Auth ──► @teamblind/axeda-better-auth plugin ──► @teamblind/axeda-core
               (identity)       · tables (via Better Auth)     · authorization policy
                                · /axeda/* endpoints           · use cases
                                · hooks                        · ports
                                · typed client                       ▲
                                                                     │
-                               @axeda/express ── requirePermission() ┘   (guards your routes)
+                               @teamblind/axeda-express ── requirePermission() ┘   (guards your routes)
 ```
 
-| Package              | What it is                                                                       |
-| -------------------- | -------------------------------------------------------------------------------- |
-| `@axeda/core`        | The policy and the use cases. No dependency on Better Auth or any HTTP framework |
-| `@axeda/better-auth` | The Better Auth plugin, the typed client, `secureAuthOptions()` and the stores   |
-| `@axeda/express`     | Middleware for your Express routes                                               |
-| `@axeda/testing`     | In-memory stores and the contract suites for the ports                           |
+| Package                        | What it is                                                                       |
+| ------------------------------ | -------------------------------------------------------------------------------- |
+| `@teamblind/axeda-core`        | The policy and the use cases. No dependency on Better Auth or any HTTP framework |
+| `@teamblind/axeda-better-auth` | The Better Auth plugin, the typed client, `secureAuthOptions()` and the stores   |
+| `@teamblind/axeda-express`     | Middleware for your Express routes                                               |
+| `@teamblind/axeda-testing`     | In-memory stores and the contract suites for the ports                           |
 
 ## Compatibility
 

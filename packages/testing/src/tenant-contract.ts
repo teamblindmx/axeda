@@ -1,4 +1,4 @@
-import { GLOBAL_SCOPE, isAxedaError, type AxedaPersistence } from '@axeda/core';
+import { GLOBAL_SCOPE, isAxedaError, type AxedaPersistence } from '@teamblind/axeda-core';
 import { describe, expect, it } from 'vitest';
 
 const expectCode = async (promise: Promise<unknown>, code: string): Promise<void> => {

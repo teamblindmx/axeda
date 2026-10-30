@@ -117,7 +117,7 @@ may change, so branch on `code`.
 Configuration problems (`AXEDA_INVALID_CONFIG`, `AXEDA_TRANSACTIONS_UNSUPPORTED`,
 `AXEDA_DATA_CORRUPT`) never reach the client as such: they appear as `AXEDA_INTERNAL_ERROR`.
 
-`@axeda/express` adds `AXEDA_UNAUTHENTICATED` (401), `AXEDA_FORBIDDEN` (403), `AXEDA_NOT_FOUND`
+`@teamblind/axeda-express` adds `AXEDA_UNAUTHENTICATED` (401), `AXEDA_FORBIDDEN` (403), `AXEDA_NOT_FOUND`
 (404) and `AXEDA_CROSS_SITE` (403); see [Protecting routes](express.md).
 
 ## `secureAuthOptions(input)`

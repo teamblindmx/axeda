@@ -1,5 +1,5 @@
 {
-  "name": "@axeda/better-auth",
+  "name": "@teamblind/axeda-better-auth",
   "version": "0.1.0-alpha.0",
   "description": "Better Auth plugin for Axeda: schema, endpoints, client plugin and store implementations.",
   "license": "Apache-2.0",
@@ -49,7 +49,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@axeda/core": "^0.1.0-alpha.0",
+    "@teamblind/axeda-core": "^0.1.0-alpha.0",
     "zod": "^4.6.7"
   },
   "peerDependencies": {

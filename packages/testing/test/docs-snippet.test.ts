@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createAxeda } from '@axeda/core';
+import { createAxeda } from '@teamblind/axeda-core';
 import { createMemoryPersistence, createMemoryUserDirectory } from '../src/index.js';
 
 // El ejemplo de la guía de pruebas (docs/en y docs/es), tal cual: si deja de funcionar, la guía miente.

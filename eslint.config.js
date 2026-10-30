@@ -7,12 +7,15 @@ const CORE_FORBIDDEN_IMPORTS = [
     message: 'El núcleo usa solo APIs estándar; lo específico de Node va en los adaptadores.',
   },
   {
-    group: ['better-auth', 'better-auth/*', '@axeda/better-auth'],
+    group: ['better-auth', 'better-auth/*', '@teamblind/axeda-better-auth'],
     message: 'El núcleo no depende de Better Auth.',
   },
-  { group: ['express', '@axeda/express'], message: 'El núcleo no depende del framework HTTP.' },
   {
-    group: ['@axeda/testing'],
+    group: ['express', '@teamblind/axeda-express'],
+    message: 'El núcleo no depende del framework HTTP.',
+  },
+  {
+    group: ['@teamblind/axeda-testing'],
     message: 'El código de producción no importa utilidades de prueba.',
   },
 ];

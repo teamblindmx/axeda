@@ -1,4 +1,4 @@
-// @axeda/better-auth — plugin de Better Auth y persistencia de Axeda sobre su adaptador.
+// @teamblind/axeda-better-auth — plugin de Better Auth y persistencia de Axeda sobre su adaptador.
 export {
   axeda,
   type AxedaPlugin,

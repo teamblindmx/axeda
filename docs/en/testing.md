@@ -1,11 +1,11 @@
 # Testing
 
-`@axeda/testing` gives you the same Axeda, without a database: in-memory stores that pass the
+`@teamblind/axeda-testing` gives you the same Axeda, without a database: in-memory stores that pass the
 same contract suite as the real ones.
 
 ```ts
-import { createAxeda } from '@axeda/core';
-import { createMemoryPersistence, createMemoryUserDirectory } from '@axeda/testing';
+import { createAxeda } from '@teamblind/axeda-core';
+import { createMemoryPersistence, createMemoryUserDirectory } from '@teamblind/axeda-testing';
 
 const users = createMemoryUserDirectory([]);
 const axeda = createAxeda(
@@ -38,7 +38,7 @@ template, [`apps/example/test/example.test.ts`](../../apps/example/test/example.
 If you implement the persistence port for another database, run the contract suite against it:
 
 ```ts
-import { runPersistenceContract } from '@axeda/testing';
+import { runPersistenceContract } from '@teamblind/axeda-testing';
 
 // The factory receives the user ids the suite needs; create them in your database.
 runPersistenceContract('my database', async (userIds) => createMyPersistence(userIds));

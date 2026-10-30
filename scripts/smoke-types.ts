@@ -1,16 +1,16 @@
 // Se compila DENTRO del proyecto vacío de `scripts/smoke.mjs`: la API pública, con sus tipos,
 // tal como la ve quien instala los paquetes. No se ejecuta.
-import { createAxeda, type Axeda, type Principal } from '@axeda/core';
+import { createAxeda, type Axeda, type Principal } from '@teamblind/axeda-core';
 import {
   axeda,
   principalFromUser,
   secureAuthOptions,
   sessionPrincipal,
   type AxedaPlugin,
-} from '@axeda/better-auth';
-import { axedaClient } from '@axeda/better-auth/client';
-import { createAxedaExpress, resolveScope, type AxedaExpress } from '@axeda/express';
-import { createMemoryPersistence, createMemoryUserDirectory } from '@axeda/testing';
+} from '@teamblind/axeda-better-auth';
+import { axedaClient } from '@teamblind/axeda-better-auth/client';
+import { createAxedaExpress, resolveScope, type AxedaExpress } from '@teamblind/axeda-express';
+import { createMemoryPersistence, createMemoryUserDirectory } from '@teamblind/axeda-testing';
 
 const plugin: AxedaPlugin = axeda({ permissions: ['invoice:read'] });
 const users = createMemoryUserDirectory([]);

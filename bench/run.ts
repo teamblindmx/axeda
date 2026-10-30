@@ -13,12 +13,12 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
-import { createAxeda, type Axeda, type AxedaPersistence } from '@axeda/core';
+import { createAxeda, type Axeda, type AxedaPersistence } from '@teamblind/axeda-core';
 import {
   axeda,
   createBetterAuthPersistence,
   createBetterAuthUserDirectory,
-} from '@axeda/better-auth';
+} from '@teamblind/axeda-better-auth';
 import { betterAuth } from 'better-auth';
 import { getMigrations } from 'better-auth/db/migration';
 import Database from 'better-sqlite3';

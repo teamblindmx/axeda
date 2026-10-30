@@ -1,5 +1,5 @@
 import { APIError } from 'better-auth/api';
-import { isAxedaError, type AxedaErrorCode } from '@axeda/core';
+import { isAxedaError, type AxedaErrorCode } from '@teamblind/axeda-core';
 
 type Status = ConstructorParameters<typeof APIError>[0];
 

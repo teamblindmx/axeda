@@ -9,7 +9,7 @@ import {
   type AuditTargetType,
   type Role,
   type RoleAssignment,
-} from '@axeda/core';
+} from '@teamblind/axeda-core';
 import { GLOBAL_SCOPE_ID } from './schema.js';
 
 /** Filas tal como las devuelve el adaptador de Better Auth. */

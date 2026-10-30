@@ -7,10 +7,10 @@ const src = (pkg: string) =>
 export default defineConfig({
   resolve: {
     alias: {
-      '@axeda/core': src('core'),
-      '@axeda/better-auth': src('better-auth'),
-      '@axeda/express': src('express'),
-      '@axeda/testing': src('testing'),
+      '@teamblind/axeda-core': src('core'),
+      '@teamblind/axeda-better-auth': src('better-auth'),
+      '@teamblind/axeda-express': src('express'),
+      '@teamblind/axeda-testing': src('testing'),
     },
   },
   test: {

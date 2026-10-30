@@ -1,4 +1,4 @@
-import { createMemoryPersistence, createMemoryUserDirectory } from '@axeda/testing';
+import { createMemoryPersistence, createMemoryUserDirectory } from '@teamblind/axeda-testing';
 import { describe, expect, it, vi } from 'vitest';
 import {
   AXEDA_PERMISSIONS,

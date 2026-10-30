@@ -40,7 +40,7 @@ describe('the SBOM of each published package', () => {
       const sbom = read(name);
       expect(sbom.bomFormat).toBe('CycloneDX');
       expect(sbom.specVersion).toBe('1.5');
-      expect(sbom.metadata.component.name).toBe(`@axeda/${name}`);
+      expect(sbom.metadata.component.name).toBe(`@teamblind/axeda-${name}`);
     }
   });
 
@@ -66,7 +66,9 @@ describe('the SBOM of each published package', () => {
   it('leaves out development tools, the packages themselves and anything without a licence', () => {
     for (const name of ['core', 'better-auth', 'express', 'testing']) {
       for (const component of read(name).components) {
-        expect(component.name).not.toMatch(/^(@axeda\/|vitest|typescript|eslint|prettier|tsx)/);
+        expect(component.name).not.toMatch(
+          /^(@teamblind\/axeda-|vitest|typescript|eslint|prettier|tsx)/,
+        );
         expect(component.licenses.length).toBeGreaterThan(0);
       }
     }

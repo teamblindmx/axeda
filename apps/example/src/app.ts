@@ -4,9 +4,9 @@ import { getMigrations } from 'better-auth/db/migration';
 import { toNodeHandler } from 'better-auth/node';
 import Database from 'better-sqlite3';
 import express, { type ErrorRequestHandler, type Express } from 'express';
-import { axeda, secureAuthOptions, sessionPrincipal } from '@axeda/better-auth';
-import type { Axeda } from '@axeda/core';
-import { createAxedaExpress } from '@axeda/express';
+import { axeda, secureAuthOptions, sessionPrincipal } from '@teamblind/axeda-better-auth';
+import type { Axeda } from '@teamblind/axeda-core';
+import { createAxedaExpress } from '@teamblind/axeda-express';
 import type { ExampleConfig } from './config.js';
 import { invoiceRoutes } from './invoices.js';
 import { createDevMailer, type Mailer } from './mailer.js';
@@ -25,7 +25,7 @@ export interface ExampleApp {
 
 /**
  * La aplicación completa: Better Auth (identidad) + Axeda (autorización) + rutas propias
- * protegidas con `@axeda/express`.
+ * protegidas con `@teamblind/axeda-express`.
  */
 export async function createExample(
   config: ExampleConfig,

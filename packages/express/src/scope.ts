@@ -1,4 +1,4 @@
-import type { AssignmentScope } from '@axeda/core';
+import type { AssignmentScope } from '@teamblind/axeda-core';
 
 /** Lo que se necesita de la petición para leer el alcance (`req.params` y `req.query`). */
 export interface ScopeRequest {

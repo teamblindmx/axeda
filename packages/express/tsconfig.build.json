@@ -5,7 +5,7 @@
     "outDir": "dist",
     "sourceMap": false,
     "declarationMap": false,
-    "paths": { "@axeda/core": ["../core/dist/index.d.ts"] }
+    "paths": { "@teamblind/axeda-core": ["../core/dist/index.d.ts"] }
   },
   "include": ["src/**/*.ts"]
 }
