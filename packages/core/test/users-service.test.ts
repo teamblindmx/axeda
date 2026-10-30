@@ -324,7 +324,8 @@ describe('user administration', () => {
 
   it('is disabled when no user administration is configured', async () => {
     const { createAxeda } = await import('../src/index.js');
-    const { createMemoryPersistence, createMemoryUserDirectory } = await import('@axeda/testing');
+    const { createMemoryPersistence, createMemoryUserDirectory } =
+      await import('@teamblind/axeda-testing');
     const axeda = createAxeda(
       { permissions: ['a:b'] },
       { persistence: createMemoryPersistence(), users: createMemoryUserDirectory() },

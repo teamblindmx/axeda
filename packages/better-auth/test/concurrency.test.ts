@@ -5,7 +5,7 @@ import {
   type Actor,
   type Axeda,
   type InvitationMessage,
-} from '@axeda/core';
+} from '@teamblind/axeda-core';
 import { describe, expect, it } from 'vitest';
 import { createBetterAuthPersistence, createBetterAuthUserDirectory } from '../src/index.js';
 import { databaseKinds } from './support/databases.js';

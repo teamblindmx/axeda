@@ -7,11 +7,11 @@ import { getMigrations } from 'better-auth/db/migration';
 import { toNodeHandler } from 'better-auth/node';
 import Database from 'better-sqlite3';
 import express from 'express';
-import { createAxeda } from '@axeda/core';
-import { axeda, secureAuthOptions, sessionPrincipal } from '@axeda/better-auth';
-import { axedaClient } from '@axeda/better-auth/client';
-import { createAxedaExpress, resolveScope } from '@axeda/express';
-import { createMemoryPersistence, createMemoryUserDirectory } from '@axeda/testing';
+import { createAxeda } from '@teamblind/axeda-core';
+import { axeda, secureAuthOptions, sessionPrincipal } from '@teamblind/axeda-better-auth';
+import { axedaClient } from '@teamblind/axeda-better-auth/client';
+import { createAxedaExpress, resolveScope } from '@teamblind/axeda-express';
+import { createMemoryPersistence, createMemoryUserDirectory } from '@teamblind/axeda-testing';
 
 const PASSWORD = 'correct-horse-battery-12';
 const step = (text) => console.log(`  ✔ ${text}`);

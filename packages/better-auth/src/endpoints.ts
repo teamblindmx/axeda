@@ -8,7 +8,7 @@ import {
   type Axeda,
   type AuditAction,
   type AuditFilter,
-} from '@axeda/core';
+} from '@teamblind/axeda-core';
 import { toAssignmentDto, toAuditEventDto, toRoleDto } from './dto.js';
 import { toApiError } from './http-errors.js';
 import { currentUserRow, principalFromUser, type UserLookup } from './principal.js';

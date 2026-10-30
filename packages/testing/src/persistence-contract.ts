@@ -7,7 +7,7 @@ import {
   type AxedaPersistence,
   type NewAuditEvent,
   type NewRole,
-} from '@axeda/core';
+} from '@teamblind/axeda-core';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { defineTenantContract } from './tenant-contract.js';
 

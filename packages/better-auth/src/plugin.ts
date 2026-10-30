@@ -8,7 +8,7 @@ import {
   type AxedaPersistence,
   type Clock,
   type InvitationMessage,
-} from '@axeda/core';
+} from '@teamblind/axeda-core';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { createEndpoints } from './endpoints.js';
 import { createUserEndpoints } from './endpoints-users.js';

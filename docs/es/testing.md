@@ -1,11 +1,11 @@
 # Pruebas
 
-`@axeda/testing` te da el mismo Axeda, sin base de datos: almacenes en memoria que pasan la misma
+`@teamblind/axeda-testing` te da el mismo Axeda, sin base de datos: almacenes en memoria que pasan la misma
 suite de contrato que los reales.
 
 ```ts
-import { createAxeda } from '@axeda/core';
-import { createMemoryPersistence, createMemoryUserDirectory } from '@axeda/testing';
+import { createAxeda } from '@teamblind/axeda-core';
+import { createMemoryPersistence, createMemoryUserDirectory } from '@teamblind/axeda-testing';
 
 const users = createMemoryUserDirectory([]);
 const axeda = createAxeda(
@@ -40,7 +40,7 @@ Si implementas el puerto de persistencia para otra base de datos, ejecuta la sui
 contra ella:
 
 ```ts
-import { runPersistenceContract } from '@axeda/testing';
+import { runPersistenceContract } from '@teamblind/axeda-testing';
 
 // La fábrica recibe los ids de usuario que necesita la suite; créalos en tu base de datos.
 runPersistenceContract('mi base de datos', async (userIds) => createMyPersistence(userIds));

@@ -130,7 +130,7 @@ jobs:
       - name: Use Better Auth ${{ matrix.version }}
         run: |
           npm install --no-save --ignore-scripts --no-audit --no-fund better-auth@${{ matrix.version }}
-          npm install --no-save --ignore-scripts --no-audit --no-fund better-auth@${{ matrix.version }} @better-auth/core@${{ matrix.version }} -w @axeda/better-auth
+          npm install --no-save --ignore-scripts --no-audit --no-fund better-auth@${{ matrix.version }} @better-auth/core@${{ matrix.version }} -w @teamblind/axeda-better-auth
       - name: Types and every test
         if: ${{ !matrix.experimental }}
         run: |

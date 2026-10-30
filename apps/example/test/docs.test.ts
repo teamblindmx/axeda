@@ -3,8 +3,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { MAPPED_CODES, axeda } from '@axeda/better-auth';
-import { AXEDA_PERMISSIONS, resolveOptions } from '@axeda/core';
+import { MAPPED_CODES, axeda } from '@teamblind/axeda-better-auth';
+import { AXEDA_PERMISSIONS, resolveOptions } from '@teamblind/axeda-core';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const DOCS = resolve(ROOT, 'docs');

@@ -18,7 +18,7 @@ import {
   type TenantFilter,
   type TenantStatus,
   withoutSecret,
-} from '@axeda/core';
+} from '@teamblind/axeda-core';
 import { isForeignKeyViolation, isUniqueViolation } from './errors.js';
 import { scopeColumns, toScope } from './rows.js';
 import { MODELS } from './schema.js';

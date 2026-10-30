@@ -4,7 +4,7 @@ Autorización jerárquica (**global → compañía → negocio**) para Node.js, 
 [Better Auth](https://www.better-auth.com). Better Auth responde _quién eres_; Axeda responde
 _qué puedes hacer y dónde_.
 
-> **Estado:** alfa (`0.1.0-alpha.0`). Instala con la etiqueta `alpha` (`npm install @axeda/core@alpha @axeda/better-auth@alpha @axeda/express@alpha better-auth express`),
+> **Estado:** alfa (`0.1.0-alpha.0`). Instala con la etiqueta `alpha` (`npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express`),
 > o ejecuta la [aplicación de ejemplo](quickstart.md) desde este repositorio. La API aún puede cambiar antes de la 1.0.
 > Documentation in English: [`../en`](../en/README.md).
 
@@ -21,21 +21,21 @@ _qué puedes hacer y dónde_.
 ## Cómo encajan las piezas
 
 ```
- Tu app ──► Better Auth ──► plugin @axeda/better-auth ──► @axeda/core
+ Tu app ──► Better Auth ──► plugin @teamblind/axeda-better-auth ──► @teamblind/axeda-core
             (identidad)      · tablas (vía Better Auth)     · política de autorización
                              · endpoints /axeda/*           · casos de uso
                              · hooks                        · puertos
                              · cliente tipado                     ▲
                                                                   │
-                             @axeda/express ── requirePermission() ┘   (protege tus rutas)
+                             @teamblind/axeda-express ── requirePermission() ┘   (protege tus rutas)
 ```
 
-| Paquete              | Qué es                                                                                 |
-| -------------------- | -------------------------------------------------------------------------------------- |
-| `@axeda/core`        | La política y los casos de uso. Sin dependencia de Better Auth ni de un framework HTTP |
-| `@axeda/better-auth` | El plugin de Better Auth, el cliente tipado, `secureAuthOptions()` y los almacenes     |
-| `@axeda/express`     | Middleware para tus rutas de Express                                                   |
-| `@axeda/testing`     | Almacenes en memoria y las suites de contrato de los puertos                           |
+| Paquete                        | Qué es                                                                                 |
+| ------------------------------ | -------------------------------------------------------------------------------------- |
+| `@teamblind/axeda-core`        | La política y los casos de uso. Sin dependencia de Better Auth ni de un framework HTTP |
+| `@teamblind/axeda-better-auth` | El plugin de Better Auth, el cliente tipado, `secureAuthOptions()` y los almacenes     |
+| `@teamblind/axeda-express`     | Middleware para tus rutas de Express                                                   |
+| `@teamblind/axeda-testing`     | Almacenes en memoria y las suites de contrato de los puertos                           |
 
 ## Compatibilidad
 

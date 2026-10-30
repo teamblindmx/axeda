@@ -1,4 +1,4 @@
-import { AxedaError } from '@axeda/core';
+import { AxedaError } from '@teamblind/axeda-core';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 

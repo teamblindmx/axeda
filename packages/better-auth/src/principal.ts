@@ -1,4 +1,4 @@
-import { AxedaError, isBanned, type Principal } from '@axeda/core';
+import { AxedaError, isBanned, type Principal } from '@teamblind/axeda-core';
 
 type UserRow = { readonly id: string } & Record<string, unknown>;
 

@@ -7,7 +7,7 @@ import type {
   ManagedUser,
   Role,
   RoleAssignment,
-} from '@axeda/core';
+} from '@teamblind/axeda-core';
 
 /**
  * Salida por lista blanca (S17): cada respuesta enumera sus campos. Si el modelo gana un campo

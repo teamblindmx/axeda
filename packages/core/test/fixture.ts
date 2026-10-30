@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { createMemoryPersistence, createMemoryUserDirectory } from '@axeda/testing';
+import { createMemoryPersistence, createMemoryUserDirectory } from '@teamblind/axeda-testing';
 import {
   GLOBAL_SCOPE,
   createAxeda,
