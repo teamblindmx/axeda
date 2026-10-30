@@ -1,7 +1,6 @@
 {
   "name": "@axeda/core",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0-alpha.0",
   "description": "Axeda core: hierarchical authorization policy, use cases and ports (no Better Auth or framework dependencies).",
   "license": "Apache-2.0",
   "author": "TeamBlind",
@@ -35,7 +34,8 @@
     "dist",
     "README.md",
     "LICENSE",
-    "NOTICE"
+    "NOTICE",
+    "CHANGELOG.md"
   ],
   "publishConfig": {
     "access": "public",
