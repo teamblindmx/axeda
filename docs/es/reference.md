@@ -159,3 +159,18 @@ Obtén la instancia con `axedaPlugin.instance()` una vez creado Better Auth.
 Un `Principal` es `{ userId, authzVersion?, twoFactorEnabled?, banned? }`. Constrúyelo siempre con
 `sessionPrincipal(auth)` o `principalFromUser(row)` a partir de la fila de usuario que Better Auth
 acaba de leer; nunca con datos de la petición.
+
+## Rendimiento
+
+Medido con `npm run bench` en un ejecutor de GitHub con Linux, con PostgreSQL 18 en la misma máquina y un grupo de 10 conexiones. Son las cifras de una sola corrida en una máquina compartida: léelas como un orden de magnitud, no como una promesa; ejecuta el benchmark contra tu propia base de datos para obtener las tuyas.
+
+| Qué                                                               | p50 (ms) | p95 (ms) | Consultas |
+| ----------------------------------------------------------------- | -------: | -------: | --------: |
+| `can()`, caché caliente, versión del usuario ya conocida (sesión) |     0.29 |     0.32 |         1 |
+| `can()`, caché caliente, versión leída de la base de datos        |     0.59 |     0.68 |         2 |
+| `can()`, caché fría (la primera vez de esa persona)               |     1.75 |     2.75 |         5 |
+| `can()` justo después de editar una función que todos tienen      |     1.76 |     2.86 |         5 |
+| Conceder una función, una a la vez                                |     5.92 |    25.06 |         — |
+| Conceder una función, 16 a la vez                                 |    93.10 |   241.36 |         — |
+
+Comprobar permisos es la operación frecuente y, con la caché caliente, cuesta una consulta barata. Editar una función no detiene a nadie: la siguiente comprobación de cada persona toma el camino frío (unos 2 ms). La administración es poco frecuente y más pesada a propósito: una concesión es una transacción que además escribe el registro de auditoría, y las concesiones de una misma persona se aplican de una en una (sus propios permisos no pueden cambiar mientras concede), así que una persona llega a unas 130 concesiones por segundo sin importar cuántas peticiones haya en curso.

@@ -158,3 +158,18 @@ Get the instance with `axedaPlugin.instance()` once Better Auth has been created
 A `Principal` is `{ userId, authzVersion?, twoFactorEnabled?, banned? }`. Always build it with
 `sessionPrincipal(auth)` or `principalFromUser(row)` from the user row Better Auth just read —
 never from request data.
+
+## Performance
+
+Measured by `npm run bench` on a GitHub-hosted Linux runner, with PostgreSQL 18 on the same machine and a pool of 10 connections. These are the numbers of one run on a shared machine, so read them as an order of magnitude, not a promise; run the benchmark against your own database for yours.
+
+| What                                                        | p50 (ms) | p95 (ms) | Queries |
+| ----------------------------------------------------------- | -------: | -------: | ------: |
+| `can()`, warm cache, user version already known (a session) |     0.29 |     0.32 |       1 |
+| `can()`, warm cache, user version read from the database    |     0.59 |     0.68 |       2 |
+| `can()`, cold cache (first time for that person)            |     1.75 |     2.75 |       5 |
+| `can()` right after a role everyone holds was edited        |     1.76 |     2.86 |       5 |
+| Granting a role, one at a time                              |     5.92 |    25.06 |       — |
+| Granting a role, 16 at a time                               |    93.10 |   241.36 |       — |
+
+Checking permissions is the frequent operation and costs one cheap query once the cache is warm. Editing a role does not stall anyone: the next check of each person simply takes the cold path (about 2 ms). Administration is rare and heavier on purpose: a grant is one transaction that also writes the audit record, and grants made by the same person are applied one at a time (their own permissions cannot change while they grant), so one person tops out near 130 grants per second however many requests are in flight.
