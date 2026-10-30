@@ -53,17 +53,17 @@
     "zod": "^4.6.7"
   },
   "peerDependencies": {
-    "@better-auth/core": "^1.7.10",
-    "better-auth": "^1.7.10"
+    "@better-auth/core": "^1.7.13",
+    "better-auth": "^1.7.13"
   },
   "devDependencies": {
-    "@better-auth/core": "^1.7.10",
-    "@electric-sql/pglite": "^0.5.10",
+    "@better-auth/core": "^1.7.13",
+    "@electric-sql/pglite": "^0.5.11",
     "@types/better-sqlite3": "^9.6.0",
     "@types/pg": "^8.23.1",
-    "better-auth": "^1.7.10",
+    "better-auth": "^1.7.13",
     "better-sqlite3": "^13.0.3",
-    "kysely": "^0.29.6",
+    "kysely": "^0.29.7",
     "pg": "^8.23.1"
   }
 }
