@@ -3,7 +3,7 @@ import { AXEDA_PERMISSIONS } from '../domain/axeda-permissions.js';
 import { isWildcard, parsePermissionKey, type PermissionKey } from '../domain/permission-key.js';
 import type { Actor, Principal } from '../domain/role.js';
 import { GLOBAL_TARGET, type AssignmentScope, type TargetScope } from '../domain/scope.js';
-import { AxedaError } from '../errors.js';
+import { AxedaError, isAxedaError, type AxedaErrorCode } from '../errors.js';
 import {
   effectivePermissions,
   permissionsHeldAnywhere,
@@ -71,8 +71,10 @@ export interface Axeda {
   readonly options: ResolvedOptions;
   /**
    * Comprueba la persistencia (transacciones reales) y sincroniza las funciones declaradas en el
-   * código. Es idempotente; si falla, el error se memoriza y ninguna operación posterior
-   * funciona con una persistencia sin verificar. Las demás operaciones también lo esperan.
+   * código. Es idempotente, y las demás operaciones lo esperan: ninguna funciona con una
+   * persistencia sin verificar. Un fallo de configuración (sin transacciones reales, funciones mal
+   * declaradas) se memoriza; cualquier otro (la base de datos no respondía) se reintenta en la
+   * siguiente llamada.
    */
   start(): Promise<void>;
   /** Permisos efectivos del usuario en `target` (global por defecto). */
@@ -124,6 +126,12 @@ export interface Axeda {
   bootstrap(input: BootstrapInput): Promise<BootstrapResult>;
 }
 
+/** Fallos de `start()` que repetir no arregla. */
+const PERMANENT_START_FAILURES: ReadonlySet<AxedaErrorCode> = new Set([
+  'AXEDA_TRANSACTIONS_UNSUPPORTED',
+  'AXEDA_INVALID_CONFIG',
+]);
+
 /** Se pide un permiso concreto y conocido: un error tipográfico es un error, no un "no". */
 function requirePermission(catalog: ReadonlySet<PermissionKey>, permission: string): PermissionKey {
   const key = parsePermissionKey(permission);
@@ -164,7 +172,12 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     (started ??= (async () => {
       await assertTransactional(persistence);
       await syncManagedRoles(services);
-    })());
+    })().catch((error: unknown) => {
+      // Reintentar no arregla la configuración. Una caída breve de la base de datos al arrancar, sí:
+      // no debe dejar la instancia inservible hasta reiniciarla.
+      if (!isAxedaError(error) || !PERMANENT_START_FAILURES.has(error.code)) started = undefined;
+      throw error;
+    }));
 
   async function snapshotData(principal: Principal, target?: TargetScope) {
     await start();

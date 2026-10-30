@@ -89,6 +89,38 @@ describe('startup checks', () => {
     await expect(axeda.can(alice, 'invoice:read')).rejects.toBe(outage);
   });
 
+  it('retries the startup after a passing failure instead of staying broken', async () => {
+    const real = createMemoryPersistence();
+    let reachable = false;
+    const flaky: AxedaPersistence = {
+      ...real,
+      transaction: (callback) =>
+        reachable ? real.transaction(callback) : Promise.reject(new Error('connection refused')),
+    };
+    const axeda = createAxeda(OPTIONS, { persistence: flaky, users });
+    await expect(axeda.start()).rejects.toThrow('connection refused');
+
+    reachable = true;
+    await axeda.start();
+    expect(await axeda.can(alice, 'invoice:read')).toBe(false);
+  });
+
+  it('does not mistake another instance changing the policy for missing transactions', async () => {
+    const real = createMemoryPersistence();
+    // Mientras corre la prueba de arranque, otra instancia sincroniza sus funciones y confirma.
+    const busy: AxedaPersistence = {
+      ...real,
+      transaction: async (callback) => {
+        try {
+          return await real.transaction(callback);
+        } finally {
+          await real.authz.bumpPolicyVersion();
+        }
+      },
+    };
+    await createAxeda(OPTIONS, { persistence: busy, users }).start();
+  });
+
   it('uses the system clock when none is injected', async () => {
     const persistence = createMemoryPersistence();
     const axeda = createAxeda(OPTIONS, { persistence, users });
