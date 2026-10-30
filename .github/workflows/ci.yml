@@ -74,7 +74,7 @@ jobs:
         run: npm run bench -- --check --json bench-results.json
       - name: Keep the numbers
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bench-postgres-${{ matrix.postgres }}
           path: bench-results.json
@@ -98,7 +98,7 @@ jobs:
       - name: Inventory of third-party components (CycloneDX)
         run: npm run sbom -- --out sbom
       - name: Keep the inventory
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sbom
           path: sbom/
