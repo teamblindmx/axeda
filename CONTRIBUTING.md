@@ -15,6 +15,9 @@
 | `npm run format` / `format:check` | Formatea o comprueba el formato con Prettier                                                                                                          |
 | `npm run deps:check`              | Reglas de arquitectura con dependency-cruiser (capas y sin ciclos)                                                                                    |
 | `npm test` / `npm run test:watch` | Pruebas con Vitest                                                                                                                                    |
+| `npm run build`                   | Compila los paquetes a `dist/` (lo que se publicaría)                                                                                                 |
+| `npm run pack:check`              | Comprueba qué entraría en cada tarball: nada de fuentes ni pruebas, LICENSE y NOTICE iguales a los de la raíz, tamaños dentro de su presupuesto       |
+| `npm run smoke`                   | Instala los tarballs en un proyecto vacío, ejecuta una historia completa y compila los tipos (necesita red)                                           |
 | `npm run bench`                   | Mide el rendimiento (SQLite en memoria; con `AXEDA_TEST_POSTGRES_URL`, un PostgreSQL real con pool). `-- --check` falla si algo supera su presupuesto |
 | `npm run coverage`                | Informe de cobertura (orientativo, no bloquea)                                                                                                        |
 | `npm run changeset`               | Añade una nota de cambio para la próxima versión                                                                                                      |

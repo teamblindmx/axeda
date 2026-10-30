@@ -36,4 +36,11 @@ _qué puedes hacer y dónde_.
 | `@axeda/express`     | Middleware para tus rutas de Express                                                   |
 | `@axeda/testing`     | Almacenes en memoria y las suites de contrato de los puertos                           |
 
-Bases de datos verificadas: **SQLite** y **PostgreSQL**. MySQL y MongoDB están previstas, aún no se soportan.
+## Compatibilidad
+
+| Componente     | Soportado                                                                      |
+| -------------- | ------------------------------------------------------------------------------ |
+| Node.js        | 22 y 24                                                                        |
+| Better Auth    | `^1.7.10`; el CI corre la 1.7.10 (la mínima) y la 1.7.14, y vigila la beta 1.8 |
+| Express        | 5 (Express 4 no está soportado)                                                |
+| Bases de datos | SQLite y PostgreSQL (16 y 18 en el CI). MySQL y MongoDB: todavía no            |
