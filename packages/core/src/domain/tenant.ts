@@ -20,7 +20,7 @@ interface TenantBase {
   readonly updatedAt: Date;
 }
 
-/** La compañía es el límite de aislamiento entre clientes (ADR-0004). */
+/** La compañía es el límite de aislamiento entre clientes. */
 export interface Company extends TenantBase {
   readonly legalName: string | null;
 }

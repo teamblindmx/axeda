@@ -11,7 +11,7 @@ export const MODELS = {
   invitation: 'axedaInvitation',
 } as const;
 
-/** Fila única de `axedaState` que guarda la versión de política (ADR-0005). */
+/** Fila única de `axedaState` que guarda la versión de política. */
 export const POLICY_STATE_KEY = 'policy';
 
 /**
@@ -29,7 +29,7 @@ export const GLOBAL_SCOPE_ID = '';
 export const axedaSchema = {
   user: {
     fields: {
-      /** Sube con cada cambio que afecta a la autorización de ese usuario (ADR-0005). */
+      /** Sube con cada cambio que afecta a la autorización de ese usuario. */
       authzVersion: { type: 'number', required: false, defaultValue: 0, input: false },
       // Mismos nombres y tipos que el plugin `admin` de Better Auth, para que convivan.
       banned: { type: 'boolean', required: false, defaultValue: false, input: false },

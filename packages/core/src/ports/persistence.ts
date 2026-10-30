@@ -64,7 +64,7 @@ export interface AssignmentStore {
 }
 
 /**
- * Contadores que invalidan la caché de autorización (ADR-0005).
+ * Contadores que invalidan la caché de autorización.
  * Solo se incrementan de forma **atómica**: leer, sumar y escribir pierde actualizaciones.
  */
 export interface AuthzStateStore {

@@ -3,7 +3,7 @@ import type { ScopeType } from './scope.js';
 
 const key = parsePermissionKey;
 
-/** Permisos con los que Axeda protege su propia administración (PLAN §4.1). */
+/** Permisos con los que Axeda protege su propia administración. */
 export const AXEDA_PERMISSIONS = Object.freeze({
   roleManage: key('axeda:role:manage'),
   assignmentManage: key('axeda:assignment:manage'),

@@ -3,7 +3,7 @@ import { isAxedaError } from '../src/index.js';
 import { createFixture } from './fixture.js';
 
 /**
- * Un usuario bloqueado no puede NADA, ni administrar ni consultar (ADR-0015): llega por una vía
+ * Un usuario bloqueado no puede NADA, ni administrar ni consultar: llega por una vía
  * sin sesión (p. ej. una llave de API) con `banned: true` en su `Principal`. Cada consulta
  * se prueba con una persona que sin el bloqueo sí podría hacerla.
  */

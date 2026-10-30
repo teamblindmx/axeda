@@ -4,7 +4,7 @@ import type { AxedaPersistence } from '../ports/persistence.js';
 class ProbeRollback extends Error {}
 
 /**
- * Comprueba que `transaction` deshace de verdad (ADR-0005, ADR-0009).
+ * Comprueba que `transaction` deshace de verdad.
  *
  * Better Auth acepta adaptadores sin transacciones y los sustituye por una función que solo
  * ejecuta el callback, sin deshacer nada. Por eso no nos fiamos de banderas: dentro de una

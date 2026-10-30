@@ -72,7 +72,7 @@ const UNSAFE_AUTH_OPTIONS: ReadonlyArray<{
 }> = [
   {
     // La caché de cookie de sesión haría que `authzVersion` llegue desactualizado y que una
-    // sesión revocada siga siendo válida (ADR-0005, ADR-0009).
+    // sesión revocada siga siendo válida.
     path: ['session', 'cookieCache', 'enabled'],
     why: 'a revoked session or a changed permission would stay valid until the cookie expires.',
   },
