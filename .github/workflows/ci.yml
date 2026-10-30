@@ -80,6 +80,59 @@ jobs:
           path: bench-results.json
           if-no-files-found: ignore
 
+  package:
+    name: Packages (build, contents, install in an empty project)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: What would be published, and nothing else
+        run: npm run pack:check
+      - name: Install the packed packages in an empty project, run and type-check them
+        run: npm run smoke
+
+  better-auth:
+    name: Better Auth ${{ matrix.version }}${{ matrix.experimental && ' (informational)' || '' }}
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The lowest version the peer range allows (what the lockfile pins).
+          - version: 1.7.10
+            experimental: false
+          # The latest stable release when this was written.
+          - version: 1.7.14
+            experimental: false
+          # The next minor, still in beta: a heads-up, never a blocker.
+          - version: 1.8.0-beta.3
+            experimental: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Use Better Auth ${{ matrix.version }}
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund better-auth@${{ matrix.version }}
+          npm install --no-save --ignore-scripts --no-audit --no-fund better-auth@${{ matrix.version }} @better-auth/core@${{ matrix.version }} -w @axeda/better-auth
+      - name: Types and every test
+        if: ${{ !matrix.experimental }}
+        run: |
+          npm run typecheck
+          npx vitest run
+      - name: The plugin's own tests
+        if: ${{ matrix.experimental }}
+        run: npx vitest run packages/better-auth
+
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest

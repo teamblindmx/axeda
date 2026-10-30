@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "sourceMap": false,
+    "declarationMap": false,
+    "paths": { "@axeda/core": ["../core/dist/index.d.ts"] }
+  },
+  "include": ["src/**/*.ts"]
+}
