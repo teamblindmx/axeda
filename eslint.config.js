@@ -50,6 +50,7 @@ export default tseslint.config(
       'apps/*/test/**/*.ts',
       'apps/*/src/**/*.ts',
       'bench/**/*.ts',
+      'scripts/**/*.{mjs,ts}',
       'examples/**/*.ts',
       'vitest.config.ts',
     ],
