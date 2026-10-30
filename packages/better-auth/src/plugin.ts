@@ -9,7 +9,7 @@ import {
   type Clock,
   type InvitationMessage,
 } from '@axeda/core';
-import { APIError } from 'better-auth/api';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { createEndpoints } from './endpoints.js';
 import { createUserEndpoints } from './endpoints-users.js';
 import {
@@ -152,6 +152,19 @@ export function axeda(options: AxedaPluginOptions) {
       ...createPublicEndpoints(instance, () => options.publicIdentity === true),
     },
     rateLimit: RATE_LIMITS,
+    hooks: {
+      after: [
+        {
+          // Todo lo que contesta Axeda (permisos, usuarios, auditoría, invitaciones) es de una
+          // persona concreta: ni el navegador ni una caché intermedia deben guardarlo (ASVS V14.3.2).
+          // También las respuestas de error.
+          matcher: (context) => context.path?.startsWith('/axeda/') === true,
+          handler: createAuthMiddleware(async (ctx) => {
+            ctx.setHeader('Cache-Control', 'no-store');
+          }),
+        },
+      ],
+    },
     init(ctx) {
       assertSafeAuthOptions(ctx.options);
       const stores = createBetterAuthPersistence(ctx.adapter, {
