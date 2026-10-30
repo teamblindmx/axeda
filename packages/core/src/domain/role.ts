@@ -3,14 +3,14 @@ import type { AssignmentScope } from './scope.js';
 
 export type RoleStatus = 'active' | 'inactive';
 
-/** Una "función" en español: conjunto de permisos que se asigna a usuarios. Solo global (ADR-0003). */
+/** Una "función" en español: conjunto de permisos que se asigna a usuarios. Solo global. */
 export interface Role {
   readonly id: string;
   readonly key: string;
   readonly name: string;
   readonly description: string | null;
   readonly permissions: readonly PermissionKey[];
-  /** Exige que el usuario tenga el 2FA activado (se evalúa sobre el usuario, ADR-0009). */
+  /** Exige que el usuario tenga el 2FA activado (se evalúa sobre el usuario). */
   readonly requireMfa: boolean;
   readonly status: RoleStatus;
   /** Declarada en el código: de solo lectura en la API. */

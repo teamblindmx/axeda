@@ -1,7 +1,8 @@
 # Quick start
 
-> Axeda is not on npm yet. Until the first alpha, work from a clone of the repository. The
-> commands below are the ones the example's own test suite runs, so they stay true.
+> Axeda is in alpha. Install it with the `alpha` tag (step 2), or work from a clone of the repository
+> to run the example (step 1). The commands below are the ones the example's own test suite runs, so
+> they stay true.
 
 ## 1. Run the example
 
@@ -59,7 +60,7 @@ The whole story — a cashier limited to one company, invitations, bans, the men
 
 ## 2. Add Axeda to your app
 
-Install (once published): `npm install @axeda/core @axeda/better-auth @axeda/express better-auth express`.
+Install the alpha: `npm install @axeda/core@alpha @axeda/better-auth@alpha @axeda/express@alpha better-auth express`.
 
 **Declare your permissions, and the roles that ship with your app.** Everything else is data.
 

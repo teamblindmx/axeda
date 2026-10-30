@@ -8,7 +8,7 @@ export type AssignmentScope =
 
 /**
  * Lugar sobre el que se decide un permiso. Para un negocio, la compañía debe haberse
- * leído de la base de datos, nunca de lo que envíe el cliente (ADR-0004).
+ * leído de la base de datos, nunca de lo que envíe el cliente.
  */
 export type TargetScope =
   | { readonly type: 'global' }

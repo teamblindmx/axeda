@@ -15,7 +15,7 @@ interface Entry {
 }
 
 /**
- * Caché en memoria de permisos, **validada por versión** (ADR-0005).
+ * Caché en memoria de permisos, **validada por versión**.
  *
  * Una entrada solo se usa si sus dos contadores coinciden con los actuales; si no, es como si
  * no existiera. Por eso no necesita caducar ni invalidarse de forma activa: la seguridad no

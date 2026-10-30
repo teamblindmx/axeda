@@ -45,7 +45,7 @@ function axedaPermissionsOutOfScope(role: Role, scopeType: ScopeType): Permissio
 }
 
 /**
- * ¿Puede quien concede asignar `role` en un alcance de tipo `scopeType` (ADR-0003)?
+ * ¿Puede quien concede asignar `role` en un alcance de tipo `scopeType`?
  *
  * 1. La función debe estar activa.
  * 2. Debe tener `axeda:assignment:manage` en el alcance de destino. Como sus permisos se

@@ -335,7 +335,7 @@ function createAuthzStore(adapter: Adapter, ensurePolicyRow: () => Promise<void>
     },
 
     async bumpUserVersion(userId) {
-      // Atómico: leer, sumar y escribir pierde incrementos concurrentes (ADR-0009).
+      // Atómico: leer, sumar y escribir pierde incrementos concurrentes.
       const row = await adapter.incrementOne<UserVersionRow>({
         model: 'user',
         where: byId(userId),
@@ -374,7 +374,7 @@ function createAuthzStore(adapter: Adapter, ensurePolicyRow: () => Promise<void>
 /**
  * Implementa los puertos de persistencia de Axeda sobre el adaptador de base de datos de
  * Better Auth (`ctx.adapter`). Sirve para cualquier base que Better Auth soporte; las
- * transacciones deben ser reales, algo que Axeda comprueba al arrancar (ADR-0009).
+ * transacciones deben ser reales, algo que Axeda comprueba al arrancar.
  */
 export function createBetterAuthPersistence<Options extends BetterAuthOptions>(
   databaseAdapter: DBAdapter<Options>,

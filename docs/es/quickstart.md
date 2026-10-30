@@ -1,8 +1,8 @@
 # Inicio rápido
 
-> Axeda aún no está en npm. Hasta la primera alpha, trabaja desde un clon del repositorio. Los
-> comandos de abajo son los que ejecuta la propia suite de pruebas del ejemplo, así que siguen
-> siendo ciertos.
+> Axeda está en alfa. Instálalo con la etiqueta `alpha` (paso 2), o trabaja desde un clon del
+> repositorio para ejecutar el ejemplo (paso 1). Los comandos de abajo son los que ejecuta la propia
+> suite de pruebas del ejemplo, así que siguen siendo ciertos.
 
 ## 1. Ejecuta el ejemplo
 
@@ -61,7 +61,7 @@ como prueba: [`apps/example/test/example.test.ts`](../../apps/example/test/examp
 
 ## 2. Añade Axeda a tu aplicación
 
-Instala (cuando se publique): `npm install @axeda/core @axeda/better-auth @axeda/express better-auth express`.
+Instala la alfa: `npm install @axeda/core@alpha @axeda/better-auth@alpha @axeda/express@alpha better-auth express`.
 
 **Declara tus permisos y las funciones que trae tu aplicación.** Todo lo demás son datos.
 
