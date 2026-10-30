@@ -118,6 +118,22 @@ Use `onDeny: 'not-found'` on routes where even the existence of a resource shoul
 If looking up the session or the permissions **fails** (database down), the request is handed to
 your error handler and the route does not run: the middleware never fails open.
 
+## Logging denials
+
+Axeda writes no logs of its own. To keep a record of what the middleware refuses, pass `onDenied`; it runs after the answer is sent and receives the method, the path (never the query string), who was refused, the permission the route required and the exact reason:
+
+```ts
+const x = createAxedaExpress({
+  axeda: axedaPlugin.instance(),
+  principal: sessionPrincipal(auth),
+  trustedOrigins: ['https://app.example.com'],
+  onDenied: (event) => logger.warn(event, 'request denied'),
+});
+// event: { reason, status, detail, permission, method, path, userId, ip, userAgent }
+```
+
+The client cannot tell a missing company from a missing permission, but `detail` can (`missing-permission`, `scope-not-found`, `scope-mismatch`, `malformed-scope`, `no-session`, `cross-site-write`), so you can see an attack that probes identifiers. The hook cannot change the response, and if it throws or rejects the error is ignored. The text values come from the request (clipped to 512 and 255 characters): log them as fields of a structured log, not pasted into a line of text.
+
 ## CSRF
 
 Browsers attach cookies to cross-site requests on their own. For any write (`POST`, `PUT`,
