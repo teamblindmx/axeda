@@ -185,6 +185,40 @@ describe('roles: updating (no self-escalation through role edits)', () => {
     expect(updated.permissions).toEqual(['invoice:read']);
   });
 
+  it('requires covering the permissions to drop the 2FA requirement of a role', async () => {
+    const f = await withManager();
+    const strong = await f.role('strong', ['invoice:read', 'invoice:delete'], {
+      requireMfa: true,
+    });
+    // Quitar el 2FA se los devuelve a quienes no lo tienen: el gestor no cubre invoice:delete.
+    await rejectsWith(
+      f.axeda.roles.update(f.manager, strong.id, strong.version, { requireMfa: false }),
+      'AXEDA_FORBIDDEN',
+    );
+    // Ni aunque lo pida a la vez que cambia otra cosa que sí puede.
+    await rejectsWith(
+      f.axeda.roles.update(f.manager, strong.id, strong.version, {
+        name: 'Strong',
+        requireMfa: false,
+      }),
+      'AXEDA_FORBIDDEN',
+    );
+    // Exigirlo solo quita poder, y quien cubre los permisos sí puede quitarlo.
+    const reader = await f.role('reader', ['invoice:read'], { requireMfa: true });
+    const relaxed = await f.axeda.roles.update(f.manager, reader.id, reader.version, {
+      requireMfa: false,
+    });
+    expect(relaxed.requireMfa).toBe(false);
+    const tightened = await f.axeda.roles.update(f.manager, strong.id, strong.version, {
+      requireMfa: true,
+    });
+    expect(tightened.requireMfa).toBe(true);
+    const dropped = await f.axeda.roles.update(f.admin, strong.id, tightened.version, {
+      requireMfa: false,
+    });
+    expect(dropped.requireMfa).toBe(false);
+  });
+
   it('does not count a permission already covered by a wildcard as an addition', async () => {
     const f = await withManager();
     const wide = await f.role('wide', ['invoice:*']);

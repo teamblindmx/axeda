@@ -1,4 +1,4 @@
-import { createAuthEndpoint, getIP, sessionMiddleware } from 'better-auth/api';
+import { APIError, createAuthEndpoint, getIP, sessionMiddleware } from 'better-auth/api';
 import { z } from 'zod';
 import {
   AXEDA_PERMISSIONS,
@@ -11,7 +11,7 @@ import {
 } from '@axeda/core';
 import { toAssignmentDto, toAuditEventDto, toRoleDto } from './dto.js';
 import { toApiError } from './http-errors.js';
-import { principalFromUser } from './principal.js';
+import { currentUserRow, principalFromUser, type UserLookup } from './principal.js';
 
 /** Lo que cada endpoint exige, para la prueba que recorre todos y para la documentación. */
 export interface EndpointAccess {
@@ -57,7 +57,12 @@ export const pageOf = (query: { cursor?: string | undefined; limit?: number | un
 });
 
 interface SessionContext {
-  readonly context: { readonly session: { readonly user: { readonly id: string } } };
+  readonly context: {
+    readonly session: { readonly user: { readonly id: string } };
+    /** Si hay `secondaryStorage`, el usuario se relee de la base de datos (ver `currentUserRow`). */
+    readonly options?: object | undefined;
+    readonly internalAdapter?: UserLookup | undefined;
+  };
   readonly headers?: Headers | undefined;
   readonly request?: Request | undefined;
 }
@@ -66,8 +71,15 @@ interface SessionContext {
  * Quien actúa, a partir de la sesión: el `Principal` (ver `principalFromUser`) más los datos de la
  * petición para la auditoría.
  */
-export function actorFromSession(ctx: SessionContext): Actor {
-  const user = ctx.context.session.user as { id: string } & Record<string, unknown>;
+export async function actorFromSession(ctx: SessionContext): Promise<Actor> {
+  const user = await currentUserRow(
+    ctx.context.session.user as { id: string } & Record<string, unknown>,
+    ctx.context.options,
+    () => ctx.context.internalAdapter,
+  );
+  if (user === null) {
+    throw new APIError('UNAUTHORIZED', { code: 'AXEDA_UNAUTHENTICATED', message: 'Sign in.' });
+  }
   const request = ctx.request;
   const ip = request === undefined ? undefined : (getIP(request, {}) ?? undefined);
   return {
@@ -86,7 +98,7 @@ export async function run<T>(
   work: (axeda: Axeda, actor: Actor) => Promise<T>,
 ): Promise<T> {
   try {
-    return await work(core(), actorFromSession(ctx));
+    return await work(core(), await actorFromSession(ctx));
   } catch (error) {
     throw toApiError(error);
   }

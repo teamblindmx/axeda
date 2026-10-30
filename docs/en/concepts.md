@@ -65,7 +65,8 @@ This is the rule the whole design leans on, and it is checked on the server in e
   cannot grant in company B or globally.
 - **Revoking** has the same requirement, so a lesser administrator cannot strip a greater one.
 - **Editing a role** cannot add permissions the editor does not hold globally. Without this, a
-  role manager could add `*` to their own role.
+  role manager could add `*` to their own role. Reactivating a role or dropping its `requireMfa`
+  hands its permissions back to its holders, so both need the editor to cover all of them.
 - **Acting on a user** (ban, sign out everywhere) needs `axeda:user:manage` and enough
   administrative power to cover the target's. Support staff cannot ban the global administrator,
   and nobody can ban themselves.

@@ -57,6 +57,12 @@ en un `X-Forwarded-For` de un único valor; una cadena podría falsificarse para
 **¿Varias instancias?** El contador de límites por omisión vive en memoria, por proceso, así que
 el límite real se multiplica por el número de instancias. Usa `rateLimitStorage: 'database'`.
 
+**¿Sesiones en `secondaryStorage` (Redis)?** Entonces Better Auth guarda una copia de la fila del
+usuario junto a cada sesión y solo la refresca cuando él mismo cambia al usuario. Los cambios de
+Axeda (una asignación revocada, la marca de 2FA) no llegarían a esa copia, así que con
+`secondaryStorage` los endpoints del plugin y `sessionPrincipal` releen al usuario de la base de
+datos: una consulta más por petición, a cambio de que una revocación valga al instante.
+
 ## Lista antes de salir a producción
 
 - [ ] `BETTER_AUTH_SECRET` es aleatorio, vive en un gestor de secretos y no en el repositorio
@@ -82,7 +88,7 @@ plugin `twoFactor`.
 ## Llaves de API
 
 Si usas el plugin `apiKey` de Better Auth con sesiones para las llaves, construye a quien llama con
-`principalFromSession` / `sessionPrincipal`, que llevan las marcas `banned` y de 2FA. Un usuario
+`await principalFromSession(ctx)` / `sessionPrincipal`, que llevan las marcas `banned` y de 2FA. Un usuario
 bloqueado no tiene ningún permiso ni siquiera con una llave.
 
 ## Límites conocidos

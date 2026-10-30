@@ -215,7 +215,10 @@ export function createRoleService(services: Services): RoleService {
               );
         const added =
           permissions === undefined ? [] : addedPermissions(role.permissions, permissions);
-        await authorize(stores, actor, added);
+        // Quitar el 2FA devuelve todos los permisos de la función a quienes la tienen sin 2FA:
+        // igual que reactivarla, equivale a concederlos, así que se exige cubrirlos.
+        const dropsMfa = role.requireMfa && parsed.requireMfa === false;
+        await authorize(stores, actor, dropsMfa ? (permissions ?? role.permissions) : added);
 
         const updated = await stores.roles.update(id, expectedVersion, {
           ...(parsed.name === undefined ? {} : { name: parsed.name }),

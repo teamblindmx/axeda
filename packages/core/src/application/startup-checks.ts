@@ -8,17 +8,18 @@ class ProbeRollback extends Error {}
  *
  * Better Auth acepta adaptadores sin transacciones y los sustituye por una función que solo
  * ejecuta el callback, sin deshacer nada. Por eso no nos fiamos de banderas: dentro de una
- * transacción se crea una función de prueba y se sube la versión de política; luego se falla a
- * propósito y se comprueba que no quedó nada.
+ * transacción se crea una función de prueba; luego se falla a propósito y se comprueba que no quedó.
+ *
+ * Solo se mira la fila de prueba, que nadie más conoce. Comparar algo compartido (la versión de
+ * política) daría un falso "no hay transacciones" si otra instancia lo cambia mientras tanto, por
+ * ejemplo al sincronizar sus funciones en un despliegue escalonado.
  */
 export async function isTransactional(persistence: AxedaPersistence): Promise<boolean> {
   const probeKey = `__axeda_tx_probe_${globalThis.crypto.randomUUID()}`;
-  const versionBefore = await persistence.authz.getPolicyVersion();
 
   try {
     await persistence.transaction(async (tx) => {
       await tx.roles.create({ key: probeKey, name: 'probe', permissions: [], status: 'inactive' });
-      await tx.authz.bumpPolicyVersion();
       throw new ProbeRollback();
     });
   } catch (error) {
@@ -26,9 +27,8 @@ export async function isTransactional(persistence: AxedaPersistence): Promise<bo
   }
 
   const leftover = await persistence.roles.getByKey(probeKey);
-  const versionAfter = await persistence.authz.getPolicyVersion();
   if (leftover !== null) await persistence.roles.delete(leftover.id);
-  return leftover === null && versionAfter === versionBefore;
+  return leftover === null;
 }
 
 export async function assertTransactional(persistence: AxedaPersistence): Promise<void> {
