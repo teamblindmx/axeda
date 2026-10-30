@@ -1,0 +1,27 @@
+name: Dependency audit
+
+# Un aviso de seguridad nuevo puede romper el CI de un día para otro sin que nadie toque el código
+# (pasó con body-parser). Esta revisión semanal lo detecta antes de que bloquee un PR.
+on:
+  schedule:
+    - cron: '23 13 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Advisories and signatures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Known vulnerabilities
+        run: npm audit --audit-level=high
+      - name: Registry signatures and provenance of every installed package
+        run: npm audit signatures
