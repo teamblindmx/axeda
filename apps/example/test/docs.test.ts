@@ -12,6 +12,7 @@ const LANGUAGES = ['en', 'es'] as const;
 
 const FILES = [
   'README.md',
+  'asvs.md',
   'concepts.md',
   'express.md',
   'quickstart.md',
@@ -81,6 +82,42 @@ describe('the documentation is complete and in both languages', () => {
         }
       }
     }
+  });
+});
+
+describe('the ASVS register cites evidence that exists', () => {
+  const testFiles = (): Set<string> => {
+    const found = new Set<string>();
+    for (const base of ['packages', 'apps']) {
+      for (const entry of readdirSync(resolve(ROOT, base), { withFileTypes: true })) {
+        const dir = resolve(ROOT, base, entry.name, 'test');
+        if (entry.isDirectory() && existsSync(dir)) {
+          for (const file of readdirSync(dir)) found.add(file);
+        }
+      }
+    }
+    return found;
+  };
+
+  it.each(LANGUAGES)('%s: every test file it names is in the repository', (language) => {
+    const cited = new Set(
+      [...read(language, 'asvs.md').matchAll(/`([\w.-]+\.test\.ts)`/g)].map((match) => match[1]),
+    );
+    expect(cited.size).toBeGreaterThan(10);
+    const available = testFiles();
+    for (const name of cited) expect(available.has(name ?? ''), `${language}: ${name}`).toBe(true);
+  });
+
+  it.each(LANGUAGES)('%s: the summary counts match the rows', (language) => {
+    const text = read(language, 'asvs.md');
+    const [, summary = ''] = text.split(/^## (?:Summary|Resumen)$/m);
+    const table = summary.split(/^## /m)[0] ?? '';
+    const total = [...table.matchAll(/\|\s*([A-Za-z ]+?)\s*\|\s*(\d+)\s*\|/g)]
+      .map((match) => Number(match[2]))
+      .reduce((a, b) => a + b, 0);
+    const rows = [...text.matchAll(/^\| (V\d+[^|]*)\|/gm)].length;
+    expect(total).toBe(rows);
+    expect(rows).toBeGreaterThan(80);
   });
 });
 

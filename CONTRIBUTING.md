@@ -18,6 +18,7 @@
 | `npm run build`                   | Compila los paquetes a `dist/` (lo que se publicaría)                                                                                                 |
 | `npm run pack:check`              | Comprueba qué entraría en cada tarball: nada de fuentes ni pruebas, LICENSE y NOTICE iguales a los de la raíz, tamaños dentro de su presupuesto       |
 | `npm run smoke`                   | Instala los tarballs en un proyecto vacío, ejecuta una historia completa y compila los tipos (necesita red)                                           |
+| `npm run sbom`                    | Inventario de componentes de terceros (CycloneDX) de lo que cada paquete necesita para ejecutarse                                                     |
 | `npm run bench`                   | Mide el rendimiento (SQLite en memoria; con `AXEDA_TEST_POSTGRES_URL`, un PostgreSQL real con pool). `-- --check` falla si algo supera su presupuesto |
 | `npm run coverage`                | Informe de cobertura (orientativo, no bloquea)                                                                                                        |
 | `npm run changeset`               | Añade una nota de cambio para la próxima versión                                                                                                      |
@@ -67,6 +68,19 @@ Tipos: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `style`, `build`, `ci`
 - Semver con [Changesets](https://github.com/changesets/changesets). Hasta la 1.0 las versiones son `0.x`.
 - Todo PR que cambie el comportamiento de un paquete incluye un changeset (`npm run changeset`).
 - Los paquetes están marcados `"private": true` hasta la primera versión publicable; nadie publica desde su equipo. La publicación se hará desde el CI con _provenance_.
+
+## Publicar una versión
+
+Hoy los cuatro paquetes están `private` y en `0.0.0`: nada se puede publicar por accidente. El flujo [Release (manual)](.github/workflows/release.yml) existe y por omisión **no publica** (hace todo el recorrido con `--dry-run`). Para la primera alpha, quien mantiene el proyecto debe:
+
+1. **Decidir el nombre.** Comprobar la marca y que la organización `@axeda` esté libre en npm (ver la documentación de la fase 7); si se cambia el nombre, cambiarlo en los cuatro paquetes, la documentación y las pruebas.
+2. **Preparar GitHub:** un entorno `npm-release` con aprobación manual (Settings → Environments) y el secreto `NPM_TOKEN` (un token granular que solo publique en esa organización).
+3. **Preparar las versiones:** `npx changeset pre enter alpha`, luego `npx changeset version` (deja `0.1.0-alpha.0`), y quitar `"private": true` de los cuatro `package.json`. `node scripts/release-guard.mjs --tag alpha` dice qué falta.
+4. **Ensayar:** lanzar el flujo con `dry-run` (el valor por omisión) y revisar la salida.
+5. **Publicar:** lanzar el flujo con `dry-run` desactivado y aprobar el entorno. Los paquetes se publican con procedencia verificable (`--provenance`) y el inventario de componentes queda como artefacto.
+6. **Después:** cambiar el inicio rápido de la documentación de «clona el repositorio» a `npm install`.
+
+Una vez que los paquetes existan en npm, conviene pasar a _trusted publishing_ (publicar sin token, por OIDC) desde la configuración de cada paquete en npm.
 
 ## Reglas de arquitectura
 

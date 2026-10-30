@@ -17,7 +17,7 @@ import {
   onlyDefined,
   parseInput,
 } from './tenant-input.js';
-import { actorPermissions, invalidInput, type Services } from './services.js';
+import { actorPermissions, actorPolicyData, invalidInput, type Services } from './services.js';
 
 /** Qué compañías y negocios puede ver quien pregunta (no confundir con lo que puede hacer en ellos). */
 interface Membership {
@@ -146,7 +146,7 @@ export function createTenantServices(services: Services): {
 
   async function membershipOf(actor: Actor): Promise<Membership> {
     const snapshot = await loadSnapshot(persistence, actor.userId);
-    const data = { ...snapshot, now: services.clock.now(), mfaEnabled: actor.twoFactorEnabled };
+    const data = actorPolicyData(services, actor, snapshot);
     const global = effectivePermissions({
       ...data,
       target: GLOBAL_TARGET,

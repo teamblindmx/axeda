@@ -12,6 +12,7 @@ import { loadSnapshot } from './authz-reader.js';
 import {
   SUPER_ADMIN_ROLE_KEY,
   actorPermissions,
+  actorPolicyData,
   asInput,
   invalidInput,
   type Services,
@@ -97,11 +98,7 @@ export function createRoleService(services: Services): RoleService {
   async function assertCanRead(actor: Actor): Promise<void> {
     await services.ready();
     const snapshot = await loadSnapshot(persistence, actor.userId);
-    const held = permissionsHeldAnywhere({
-      ...snapshot,
-      now: services.clock.now(),
-      mfaEnabled: actor.twoFactorEnabled,
-    });
+    const held = permissionsHeldAnywhere(actorPolicyData(services, actor, snapshot));
     if (
       !held.allows(AXEDA_PERMISSIONS.roleManage) &&
       !held.allows(AXEDA_PERMISSIONS.assignmentManage)
