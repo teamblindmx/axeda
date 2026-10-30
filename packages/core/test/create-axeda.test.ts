@@ -68,6 +68,27 @@ describe('startup checks', () => {
     await expect(axeda.effectivePermissions(alice)).rejects.toBeInstanceOf(Error);
   });
 
+  it('does not retry a configuration failure: repeating it would not fix it', async () => {
+    const real = createMemoryPersistence();
+    let probes = 0;
+    const fake: AxedaPersistence = {
+      ...real,
+      transaction: (callback) => {
+        probes += 1;
+        return callback(real);
+      },
+    };
+    const axeda = createAxeda(OPTIONS, { persistence: fake, users });
+    await expect(axeda.start()).rejects.toMatchObject({ code: 'AXEDA_TRANSACTIONS_UNSUPPORTED' });
+    const probesAfterFirst = probes;
+
+    await expect(axeda.start()).rejects.toMatchObject({ code: 'AXEDA_TRANSACTIONS_UNSUPPORTED' });
+    await expect(axeda.can(alice, 'invoice:read')).rejects.toMatchObject({
+      code: 'AXEDA_TRANSACTIONS_UNSUPPORTED',
+    });
+    expect(probes).toBe(probesAfterFirst);
+  });
+
   it('cleans up the probe it leaves behind on a broken persistence', async () => {
     const real = createMemoryPersistence();
     const fake: AxedaPersistence = { ...real, transaction: (callback) => callback(real) };

@@ -85,4 +85,28 @@ describe('sessions kept in secondaryStorage', () => {
 
     expect(await core.can(await principal(), 'invoice:read')).toBe(false);
   });
+
+  /**
+   * Una cuenta borrada de la base de datos sigue teniendo su sesión en el almacén secundario hasta
+   * que caduque. Sin la relectura, esa copia vieja bastaría para actuar.
+   */
+  async function deletedUser() {
+    const { app } = await world();
+    const ghost = await app.signUp('ghost');
+    const context = await app.auth.$context;
+    await context.adapter.delete({ model: 'user', where: [{ field: 'id', value: ghost.id }] });
+    return { app, ghost };
+  }
+
+  it('a user deleted from the database no longer gets through the plugin endpoints', async () => {
+    const { app, ghost } = await deletedUser();
+    const reply = await app.get('/axeda/me', ghost.cookie);
+    expect([reply.status, reply.json.code]).toEqual([401, 'AXEDA_UNAUTHENTICATED']);
+  });
+
+  it('a user deleted from the database is nobody on the routes of the application', async () => {
+    const { app, ghost } = await deletedUser();
+    const headers = new Headers({ cookie: ghost.cookie });
+    expect(await sessionPrincipal(app.auth)({ headers })).toBeNull();
+  });
 });
