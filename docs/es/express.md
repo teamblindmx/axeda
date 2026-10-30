@@ -118,6 +118,22 @@ Las denegaciones llevan `Cache-Control: no-store`. El cuerpo es idéntico exista
 Si consultar la sesión o los permisos **falla** (base de datos caída), la petición pasa a tu
 manejador de errores y la ruta no se ejecuta: el middleware nunca abre la puerta ante un fallo.
 
+## Registrar las denegaciones
+
+Axeda no escribe registros propios. Para conservar lo que el middleware rechaza, pasa `onDenied`; corre después de enviar la respuesta y recibe el método, la ruta (nunca la cadena de consulta), a quién se rechazó, el permiso que exigía la ruta y el motivo exacto:
+
+```ts
+const x = createAxedaExpress({
+  axeda: axedaPlugin.instance(),
+  principal: sessionPrincipal(auth),
+  trustedOrigins: ['https://app.example.com'],
+  onDenied: (event) => logger.warn(event, 'request denied'),
+});
+// event: { reason, status, detail, permission, method, path, userId, ip, userAgent }
+```
+
+El cliente no distingue una compañía inexistente de un permiso que falta, pero `detail` sí (`missing-permission`, `scope-not-found`, `scope-mismatch`, `malformed-scope`, `no-session`, `cross-site-write`), así que puedes ver un ataque que sondea identificadores. El gancho no puede cambiar la respuesta, y si lanza un error o rechaza la promesa, se ignora. Los textos salen de la petición (recortados a 512 y 255 caracteres): regístralos como campos de un registro estructurado, no pegados en una línea de texto.
+
 ## CSRF
 
 Los navegadores adjuntan las cookies a peticiones entre sitios por su cuenta. En toda escritura

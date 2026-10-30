@@ -9,6 +9,7 @@ import { sessionPrincipal, axeda } from '@axeda/better-auth';
 import type { Actor, Axeda, AssignmentScope } from '@axeda/core';
 import {
   createAxedaExpress,
+  type DeniedEvent,
   resolveScope,
   type AxedaExpress,
   type PrincipalResolver,
@@ -45,10 +46,18 @@ export interface TestApp {
   readonly root: Actor;
   /** Veces que se preguntó por la sesión. */
   readonly sessionLookups: { count: number };
+  /** Errores que llegaron al manejador de errores de la aplicación. */
+  readonly errors: unknown[];
   signUp(name: string): Promise<{ id: string; cookie: string }>;
   call(
     path: string,
-    init?: { method?: string; cookie?: string; origin?: string | null; body?: unknown },
+    init?: {
+      method?: string;
+      cookie?: string;
+      origin?: string | null;
+      body?: unknown;
+      headers?: Record<string, string>;
+    },
   ): Promise<Reply>;
   /** Crea una función (como administrador) y la asigna. */
   give(userId: string, permissions: string[], scope: AssignmentScope): Promise<string>;
@@ -60,6 +69,8 @@ export interface AppOptions {
   /** Cambia cómo se resuelve quién llama (por defecto, la sesión de Better Auth). */
   readonly principal?: (real: PrincipalResolver) => PrincipalResolver;
   readonly csrf?: false;
+  /** El gancho de denegaciones que se le pasa al middleware. */
+  readonly onDenied?: (event: DeniedEvent) => void | Promise<void>;
 }
 
 /** Express 5 + Better Auth + el plugin de Axeda, de verdad, en un puerto libre. */
@@ -95,6 +106,7 @@ export async function startApp(options: AppOptions = {}): Promise<TestApp> {
   const x = createAxedaExpress({
     axeda: core,
     principal,
+    ...(options.onDenied === undefined ? {} : { onDenied: options.onDenied }),
     ...(options.csrf === false ? { csrf: false as const } : { trustedOrigins: [origin, APP] }),
   });
 
@@ -157,8 +169,10 @@ export async function startApp(options: AppOptions = {}): Promise<TestApp> {
   app.get('/mine', x.requireAuth(), async (request, response) => {
     response.json(await x.scopeFilter(request, 'invoice:read'));
   });
-  const onError: ErrorRequestHandler = (_error, _request, response, _next) => {
-    response.status(500).json({ code: 'INTERNAL' });
+  const errors: unknown[] = [];
+  const onError: ErrorRequestHandler = (error, _request, response, _next) => {
+    errors.push(error);
+    if (!response.headersSent) response.status(500).json({ code: 'INTERNAL' });
   };
   app.use(onError);
 
@@ -187,6 +201,7 @@ export async function startApp(options: AppOptions = {}): Promise<TestApp> {
     x,
     root,
     sessionLookups,
+    errors,
     async signUp(name) {
       const response = await auth.api.signUpEmail({
         body: { email: `${name}@test.dev`, password: PASSWORD, name },
@@ -204,6 +219,7 @@ export async function startApp(options: AppOptions = {}): Promise<TestApp> {
       if (init.cookie !== undefined) headers['cookie'] = init.cookie;
       if (init.origin !== null && init.origin !== undefined) headers['origin'] = init.origin;
       if (init.body !== undefined) headers['content-type'] = 'application/json';
+      Object.assign(headers, init.headers);
       const response = await fetch(`${origin}${path}`, {
         method: init.method ?? 'GET',
         headers,

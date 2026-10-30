@@ -3,6 +3,9 @@ export {
   createAxedaExpress,
   type AxedaExpress,
   type AxedaExpressOptions,
+  type DeniedDetail,
+  type DeniedEvent,
+  type DeniedReason,
   type PrincipalResolver,
   type RequirePermissionOptions,
 } from './middleware.js';
