@@ -24,25 +24,25 @@
   },
   "postgres-server": {
     "can() warm cache": {
-      "p95Ms": 10
-    },
-    "can() cold cache": {
-      "p95Ms": 60
-    },
-    "can() after a role edit (all users miss)": {
-      "p95Ms": 60
-    },
-    "assignments.assign, 1 at a time": {
-      "p95Ms": 250
-    },
-    "assignments.assign, 4 at a time": {
-      "p95Ms": 500
-    },
-    "assignments.assign, 16 at a time": {
-      "p95Ms": 1500
+      "p95Ms": 3
     },
     "can() warm cache, version from the session": {
-      "p95Ms": 10
+      "p95Ms": 2
+    },
+    "can() cold cache": {
+      "p95Ms": 15
+    },
+    "can() after a role edit (all users miss)": {
+      "p95Ms": 15
+    },
+    "assignments.assign, 1 at a time": {
+      "p95Ms": 120
+    },
+    "assignments.assign, 4 at a time": {
+      "p95Ms": 400
+    },
+    "assignments.assign, 16 at a time": {
+      "p95Ms": 1000
     }
   }
 }
