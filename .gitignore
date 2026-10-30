@@ -1,0 +1,33 @@
+# Dependencias (en cualquier carpeta del monorepo)
+node_modules/
+
+# Salidas de compilación y pruebas
+dist/
+coverage/
+*.tsbuildinfo
+.cache/
+
+# Variables de entorno y secretos (nunca se suben)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Bases de datos locales (SQLite de pruebas y prototipos)
+*.sqlite
+*.sqlite3
+*.db
+
+# Paquetes generados con npm pack
+*.tgz
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

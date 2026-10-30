@@ -1,0 +1,76 @@
+name: Release (manual)
+
+# Publica los cuatro paquetes en npm con procedencia verificable. Solo se lanza a mano y por
+# omisión NO publica: hace todo el recorrido con `--dry-run`. Antes de la primera publicación real
+# hace falta (lo decide la persona dueña): el nombre y la organización de npm, el secreto NPM_TOKEN
+# y un entorno `npm-release` con aprobación manual. Ver «Publicar una versión» en CONTRIBUTING.md.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'dist-tag de npm (alpha, beta, latest)'
+        required: true
+        default: alpha
+      dry-run:
+        description: 'Solo mostrar qué se publicaría'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish (${{ inputs.dry-run && 'dry run' || 'for real' }})
+    runs-on: ubuntu-24.04
+    # Aprobación manual configurada en Settings → Environments.
+    environment: npm-release
+    env:
+      # Los valores de entrada pasan por variables de entorno, nunca dentro del texto del comando.
+      TAG: ${{ inputs.tag }}
+      DRY_RUN: ${{ inputs.dry-run && '--dry-run' || '' }}
+    permissions:
+      contents: read
+      # Necesario para firmar la procedencia (provenance) de lo publicado.
+      id-token: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - name: Types, lint, format, architecture and every test
+        run: npm run check
+      - run: npm run build
+      - name: What would be published, and nothing else
+        run: npm run pack:check
+      - name: Install the packed packages in an empty project, run and type-check them
+        run: npm run smoke
+      - name: Inventory of third-party components
+        run: npm run sbom -- --out sbom
+      - name: Are the packages ready to publish?
+        run: node scripts/release-guard.mjs --tag "$TAG"
+      # El orden importa: los demás paquetes dependen de @axeda/core.
+      - name: Publish @axeda/core
+        run: npm publish --workspace @axeda/core --provenance --access public --tag "$TAG" $DRY_RUN
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish @axeda/better-auth
+        run: npm publish --workspace @axeda/better-auth --provenance --access public --tag "$TAG" $DRY_RUN
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish @axeda/express
+        run: npm publish --workspace @axeda/express --provenance --access public --tag "$TAG" $DRY_RUN
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish @axeda/testing
+        run: npm publish --workspace @axeda/testing --provenance --access public --tag "$TAG" $DRY_RUN
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Keep the inventory with the release
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: sbom-${{ inputs.tag }}
+          path: sbom/

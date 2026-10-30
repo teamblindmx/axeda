@@ -1,24 +1,65 @@
 {
-  "name": "axs",
-  "version": "1.0.0",
-  "description": "Librería de control de accesos por rol, rutas de funcionalidad por endpoints.",
+  "name": "axeda",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Axeda: hierarchical role-based access control (global → company → business) on top of Better Auth.",
   "keywords": [
-    "access",
-    "control",
-    "rol",
-    "endpoints",
-    "routes",
-    "request",
-    "database",
-    "db",
-    "permission",
-    "privileges"
+    "access-control",
+    "authorization",
+    "rbac",
+    "roles",
+    "permissions",
+    "multi-tenant",
+    "better-auth"
   ],
   "license": "Apache-2.0",
   "author": "TeamBlind",
+  "contributors": [
+    "DannieDev"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/teamblindmx/axeda.git"
+  },
   "type": "module",
-  "main": "index.js",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
+    "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
+    "deps:check": "depcruise packages apps --config .dependency-cruiser.cjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run deps:check && npm run test",
+    "changeset": "changeset",
+    "demo": "tsx --tsconfig tsconfig.json examples/demo.ts",
+    "bench": "tsx --tsconfig tsconfig.json bench/run.ts",
+    "build": "node scripts/build.mjs",
+    "pack:check": "node scripts/pack-check.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "sbom": "node scripts/sbom.mjs"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^3.0.3",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.20.5",
+    "@vitest/coverage-v8": "^5.0.5",
+    "dependency-cruiser": "^18.6.0",
+    "eslint": "^10.12.0",
+    "express": "^5.3.0",
+    "fast-check": "^4.10.2",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^5.0.5"
   }
 }

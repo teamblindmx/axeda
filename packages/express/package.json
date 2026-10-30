@@ -1,0 +1,59 @@
+{
+  "name": "@axeda/express",
+  "version": "0.1.0-alpha.0",
+  "description": "Express helpers for Axeda: requirePermission() and resolveScope().",
+  "license": "Apache-2.0",
+  "author": "TeamBlind",
+  "homepage": "https://github.com/teamblindmx/axeda#readme",
+  "bugs": {
+    "url": "https://github.com/teamblindmx/axeda/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/teamblindmx/axeda.git",
+    "directory": "packages/express"
+  },
+  "keywords": [
+    "authorization",
+    "rbac",
+    "multi-tenant",
+    "better-auth",
+    "access-control"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@axeda/core": "^0.1.0-alpha.0"
+  },
+  "peerDependencies": {
+    "@types/express": "^5.0.0",
+    "express": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/express": {
+      "optional": true
+    }
+  }
+}

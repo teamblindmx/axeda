@@ -1,0 +1,48 @@
+# Axeda documentation
+
+Hierarchical authorization (**global → company → business**) for Node.js, on top of
+[Better Auth](https://www.better-auth.com). Better Auth answers _who are you_; Axeda answers
+_what can you do, and where_.
+
+> **Status:** alpha (`0.1.0-alpha.0`). Install with the `alpha` tag (`npm install @axeda/core@alpha @axeda/better-auth@alpha @axeda/express@alpha better-auth express`),
+> or run the [example application](quickstart.md) from this repository. The API can still change before 1.0.
+> Documentation in Spanish: [`../es`](../es/README.md).
+
+| Guide                           | Read it to…                                                                                    |
+| ------------------------------- | ---------------------------------------------------------------------------------------------- |
+| [Quick start](quickstart.md)    | Run the example, then add Axeda to your own app                                                |
+| [Concepts](concepts.md)         | Understand scopes, permissions, roles, assignments, companies, invitations and menus           |
+| [Protecting routes](express.md) | Use `requirePermission()` and `resolveScope()` in Express                                      |
+| [Security](security.md)         | Configure Better Auth safely, know what Axeda guarantees and what is still yours               |
+| [Reference](reference.md)       | Look up endpoints, error codes, options and the TypeScript API                                 |
+| [ASVS register](asvs.md)        | See what Axeda guarantees against the OWASP standard, what is delegated and what is still open |
+| [Testing](testing.md)           | Test your app with the in-memory stores                                                        |
+
+## How the pieces fit
+
+```
+ Your app ──► Better Auth ──► @axeda/better-auth plugin ──► @axeda/core
+              (identity)       · tables (via Better Auth)     · authorization policy
+                               · /axeda/* endpoints           · use cases
+                               · hooks                        · ports
+                               · typed client                       ▲
+                                                                    │
+                               @axeda/express ── requirePermission() ┘   (guards your routes)
+```
+
+| Package              | What it is                                                                       |
+| -------------------- | -------------------------------------------------------------------------------- |
+| `@axeda/core`        | The policy and the use cases. No dependency on Better Auth or any HTTP framework |
+| `@axeda/better-auth` | The Better Auth plugin, the typed client, `secureAuthOptions()` and the stores   |
+| `@axeda/express`     | Middleware for your Express routes                                               |
+| `@axeda/testing`     | In-memory stores and the contract suites for the ports                           |
+
+## Compatibility
+
+| Component   | Supported                                                                             |
+| ----------- | ------------------------------------------------------------------------------------- |
+| Node.js     | 22 and 24                                                                             |
+| Better Auth | `^1.7.10`; the CI runs 1.7.10 (the minimum) and 1.7.14, and watches 1.8 beta          |
+| Modules     | ES modules only. From CommonJS use `import()`, or `require()` on Node 22.12 and later |
+| Express     | 5 (Express 4 is not supported)                                                        |
+| Databases   | SQLite and PostgreSQL (16 and 18 in the CI). MySQL and MongoDB: not yet               |

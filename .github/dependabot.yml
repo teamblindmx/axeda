@@ -1,0 +1,29 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    # Cada paquete del monorepo declara sus propias dependencias (la única de ejecución es zod).
+    directories:
+      - /
+      - /packages/*
+      - /apps/*
+    target-branch: develop
+    schedule:
+      interval: weekly
+    # Una versión recién publicada espera unos días antes de proponerse: reduce el riesgo de
+    # instalar un paquete comprometido que se retira poco después. Los avisos de seguridad no esperan.
+    cooldown:
+      default-days: 5
+    groups:
+      dev-tooling:
+        dependency-type: development
+    commit-message:
+      prefix: build
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 5
+    commit-message:
+      prefix: ci

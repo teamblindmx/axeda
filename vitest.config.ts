@@ -1,0 +1,27 @@
+import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'node:url';
+
+const src = (pkg: string) =>
+  fileURLToPath(new URL(`./packages/${pkg}/src/index.ts`, import.meta.url));
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      '@axeda/core': src('core'),
+      '@axeda/better-auth': src('better-auth'),
+      '@axeda/express': src('express'),
+      '@axeda/testing': src('testing'),
+    },
+  },
+  test: {
+    // Registrar usuarios en Better Auth cifra la contraseña (scrypt): es lento a propósito.
+    testTimeout: 60_000,
+    hookTimeout: 60_000,
+    include: ['packages/*/test/**/*.test.ts', 'apps/*/test/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      include: ['packages/*/src/**'],
+      reporter: ['text', 'html'],
+    },
+  },
+});
