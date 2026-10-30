@@ -41,7 +41,10 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run deps:check && npm run test",
     "changeset": "changeset",
     "demo": "tsx --tsconfig tsconfig.json examples/demo.ts",
-    "bench": "tsx --tsconfig tsconfig.json bench/run.ts"
+    "bench": "tsx --tsconfig tsconfig.json bench/run.ts",
+    "build": "node scripts/build.mjs",
+    "pack:check": "node scripts/pack-check.mjs",
+    "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
