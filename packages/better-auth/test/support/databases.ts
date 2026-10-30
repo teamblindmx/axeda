@@ -28,6 +28,26 @@ export interface OpenedDatabase {
   readonly sqlite: Database.Database | undefined;
 }
 
+/**
+ * Borra la base de datos DESPUÉS de que el servidor confirme que no quedan conexiones a ella.
+ * `pool.end()` resuelve antes de que el servidor cierre de verdad los sockets; si se borra con
+ * `FORCE` en ese hueco, el servidor mata conexiones que aún se estaban cerrando y el cliente
+ * recibe un error (57P01) sin nadie que lo escuche. Esperar evita el aviso; `FORCE` queda solo
+ * como último recurso si algo se queda colgado.
+ */
+async function dropWhenQuiet(admin: pg.Pool, name: string): Promise<void> {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    const { rows } = await admin.query<{ n: number }>(
+      'SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname = $1',
+      [name],
+    );
+    if (rows[0]?.n === 0) break;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  await admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
+}
+
 /** Una base de datos PostgreSQL nueva en el servidor, que se borra al terminar la prueba. */
 async function openServerDatabase(url: string): Promise<pg.Pool> {
   const admin = new pg.Pool({ connectionString: url, max: 1 });
@@ -37,9 +57,11 @@ async function openServerDatabase(url: string): Promise<pg.Pool> {
   const target = new URL(url);
   target.pathname = `/${name}`;
   const pool = new pg.Pool({ connectionString: target.toString(), max: SERVER_POOL_SIZE });
+  // Un error de una conexión ociosa (p. ej. el servidor reiniciándose) no debe tumbar el proceso.
+  pool.on('error', () => {});
   closeAfterTest(async () => {
     await pool.end();
-    await admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
+    await dropWhenQuiet(admin, name);
     await admin.end();
   });
   return pool;

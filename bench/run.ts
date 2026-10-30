@@ -132,6 +132,20 @@ function counting<T extends object>(target: T, counter: { n: number }): T {
   });
 }
 
+/** Borra la base de datos cuando el servidor confirma que no quedan conexiones (ver las pruebas). */
+async function dropWhenQuiet(admin: pg.Pool, name: string): Promise<void> {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    const { rows } = await admin.query<{ n: number }>(
+      'SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname = $1',
+      [name],
+    );
+    if (rows[0]?.n === 0) break;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  await admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
+}
+
 type AuthOptions = Parameters<typeof betterAuth>[0];
 
 async function openDatabase(): Promise<{
@@ -148,11 +162,12 @@ async function openDatabase(): Promise<{
   const target = new URL(SERVER_URL);
   target.pathname = `/${name}`;
   const pool = new pg.Pool({ connectionString: target.toString(), max: POOL_SIZE });
+  pool.on('error', () => {});
   return {
     database: pool,
     close: async () => {
       await pool.end();
-      await admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
+      await dropWhenQuiet(admin, name);
       await admin.end();
     },
   };
