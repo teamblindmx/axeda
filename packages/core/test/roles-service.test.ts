@@ -176,10 +176,30 @@ describe('roles: updating (no self-escalation through role edits)', () => {
     expect(await axeda.can(manager, 'invoice:delete')).toBe(false);
   });
 
-  it('allows removing permissions even from a role more powerful than the manager', async () => {
+  it('does not let a manager remove permissions they do not hold from a stronger role', async () => {
     const f = await withManager();
     const strong = await f.role('strong', ['invoice:read', 'invoice:delete']);
-    const updated = await f.axeda.roles.update(f.manager, strong.id, strong.version, {
+    const holder = f.user('holder');
+    await f.give('holder', 'strong');
+    // Quitarle invoice:delete a la función es revocárselo a todos sus titulares.
+    await rejectsWith(
+      f.axeda.roles.update(f.manager, strong.id, strong.version, {
+        permissions: ['invoice:read'],
+      }),
+      'AXEDA_FORBIDDEN',
+    );
+    expect(await f.axeda.can(holder, 'invoice:delete')).toBe(true);
+    // Un administrador que sí lo cubre puede quitarlo.
+    const updated = await f.axeda.roles.update(f.admin, strong.id, strong.version, {
+      permissions: ['invoice:read'],
+    });
+    expect(updated.permissions).toEqual(['invoice:read']);
+  });
+
+  it('lets a manager remove permissions they hold', async () => {
+    const f = await withManager();
+    const both = await f.role('both', ['invoice:read', 'axeda:role:manage']);
+    const updated = await f.axeda.roles.update(f.manager, both.id, both.version, {
       permissions: ['invoice:read'],
     });
     expect(updated.permissions).toEqual(['invoice:read']);
@@ -276,13 +296,38 @@ describe('roles: status and deletion', () => {
     await f.give('manager', 'role-admin');
     const strong = await f.role('strong', ['invoice:delete']);
     const off = await f.axeda.roles.setStatus(f.admin, strong.id, strong.version, 'inactive');
-    // El gestor puede dejarla inactiva (quita poder) pero no reactivarla (lo devuelve).
+    // El gestor no puede reactivarla: se los devolvería a todos sus titulares.
     await rejectsWith(
       f.axeda.roles.setStatus(manager, off.id, off.version, 'active'),
       'AXEDA_FORBIDDEN',
     );
     const back = await f.axeda.roles.setStatus(f.admin, off.id, off.version, 'active');
     expect(back.status).toBe('active');
+  });
+
+  it('requires covering the permissions to deactivate or delete a role', async () => {
+    const f = await createFixture();
+    await f.role('role-admin', ['axeda:role:manage', 'invoice:read']);
+    const manager = f.user('manager');
+    await f.give('manager', 'role-admin');
+    const strong = await f.role('strong', ['invoice:read', 'invoice:delete']);
+    const holder = f.user('holder');
+    await f.give('holder', 'strong');
+
+    // Desactivarla o borrarla le quita invoice:delete a sus titulares: el gestor no lo cubre.
+    await rejectsWith(
+      f.axeda.roles.setStatus(manager, strong.id, strong.version, 'inactive'),
+      'AXEDA_FORBIDDEN',
+    );
+    await rejectsWith(f.axeda.roles.delete(manager, strong.id), 'AXEDA_FORBIDDEN');
+    expect(await f.axeda.can(holder, 'invoice:delete')).toBe(true);
+
+    // Una función que sí cubre la puede desactivar y borrar.
+    const weak = await f.role('weak', ['invoice:read']);
+    const off = await f.axeda.roles.setStatus(manager, weak.id, weak.version, 'inactive');
+    expect(off.status).toBe('inactive');
+    await f.axeda.roles.delete(manager, weak.id);
+    await rejectsWith(f.axeda.roles.get(f.admin, weak.id), 'AXEDA_ROLE_NOT_FOUND');
   });
 
   it('rejects an invalid status', async () => {
