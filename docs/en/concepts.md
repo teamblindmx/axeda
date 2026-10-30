@@ -67,6 +67,8 @@ This is the rule the whole design leans on, and it is checked on the server in e
 - **Editing a role** cannot add permissions the editor does not hold globally. Without this, a
   role manager could add `*` to their own role. Reactivating a role or dropping its `requireMfa`
   hands its permissions back to its holders, so both need the editor to cover all of them.
+  Removing permissions from a role, deactivating it or deleting it takes them away from every
+  holder at once, so, as with revoking, the editor must cover what is taken away.
 - **Acting on a user** (ban, sign out everywhere) needs `axeda:user:manage` and enough
   administrative power to cover the target's. Support staff cannot ban the global administrator,
   and nobody can ban themselves.

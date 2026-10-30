@@ -86,6 +86,28 @@ describe('creating invitations', () => {
     expect(invitation.email).toBe('guest@test.dev');
   });
 
+  it('treats emails that differ only in case or spaces as the same pending invitation', async () => {
+    const w = await world();
+    const first = await w.invite({ email: 'Ana@Empresa.com' });
+    const second = await w.invite({ email: ' ana@EMPRESA.COM ' });
+    expect(second.invitation.email).toBe('ana@empresa.com');
+    expect(second.invitation.id).not.toBe(first.invitation.id);
+
+    // la primera se sustituyó: solo queda una pendiente y su token ya no sirve
+    const pending = await w.axeda.invitations.list(
+      w.boss,
+      acme,
+      { pendingOnly: true },
+      { limit: 10 },
+    );
+    expect(pending.items.map((item) => item.id)).toEqual([second.invitation.id]);
+    w.users.add({ id: 'ana', email: 'ana@empresa.com' });
+    await rejectsWith(
+      w.axeda.invitations.accept({ userId: 'ana' }, first.token),
+      'AXEDA_INVITATION_INVALID',
+    );
+  });
+
   it('is idempotent per email and scope: sending again replaces the previous invitation', async () => {
     const w = await world();
     const first = await w.invite();
@@ -281,6 +303,28 @@ describe('accepting invitations', () => {
       targetId: invitation.id,
       outcome: 'success',
     });
+  });
+
+  it('matches the email regardless of case, on either side', async () => {
+    const w = await world();
+
+    // invitación con mayúsculas, cuenta en minúsculas
+    const upper = await w.invite({ email: 'Ana@Empresa.COM' });
+    w.users.add({ id: 'ana', email: 'ana@empresa.com' });
+    expect(await w.axeda.invitations.accept({ userId: 'ana' }, upper.token)).toHaveLength(1);
+
+    // invitación en minúsculas, cuenta registrada con mayúsculas
+    const lower = await w.invite({ email: 'bea@empresa.com' });
+    w.users.add({ id: 'bea', email: 'Bea@Empresa.COM' });
+    expect(await w.axeda.invitations.accept({ userId: 'bea' }, lower.token)).toHaveLength(1);
+
+    // otro correo sigue sin valer, con el mismo error de siempre
+    const other = await w.invite({ email: 'Cris@Empresa.com' });
+    w.users.add({ id: 'dan', email: 'dan@empresa.com' });
+    await rejectsWith(
+      w.axeda.invitations.accept({ userId: 'dan' }, other.token),
+      'AXEDA_INVITATION_INVALID',
+    );
   });
 
   it('works once: a second use of the same token fails', async () => {

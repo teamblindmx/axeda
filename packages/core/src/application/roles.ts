@@ -65,6 +65,24 @@ const addedPermissions = (
   next: readonly PermissionKey[],
 ): PermissionKey[] => next.filter((candidate) => !previous.some((held) => covers(held, candidate)));
 
+/**
+ * Lo que quien edita debe cubrir para cambiar `role` así. Editar una función cambia lo que pueden
+ * hacer todos sus titulares a la vez, así que cuenta como conceder o revocar:
+ * - lo que se añade (sin esto, un gestor podría añadir `*` a su propia función);
+ * - lo que se quita, igual que al revocar (un gestor menor no desarma a uno mayor);
+ * - todo, si se le quita el 2FA: se lo devuelve a quienes la tienen sin 2FA, como reactivarla.
+ */
+function permissionsToCover(
+  role: Role,
+  permissions: readonly PermissionKey[] | undefined,
+  requireMfa: boolean | undefined,
+): PermissionKey[] {
+  const next = permissions ?? role.permissions;
+  const removed = addedPermissions(next, role.permissions);
+  const dropsMfa = role.requireMfa && requireMfa === false;
+  return [...(dropsMfa ? next : addedPermissions(role.permissions, next)), ...removed];
+}
+
 export interface RoleService {
   list(actor: Actor, page: PageRequest): Promise<Page<Role>>;
   get(actor: Actor, id: string): Promise<Role>;
@@ -215,10 +233,7 @@ export function createRoleService(services: Services): RoleService {
               );
         const added =
           permissions === undefined ? [] : addedPermissions(role.permissions, permissions);
-        // Quitar el 2FA devuelve todos los permisos de la función a quienes la tienen sin 2FA:
-        // igual que reactivarla, equivale a concederlos, así que se exige cubrirlos.
-        const dropsMfa = role.requireMfa && parsed.requireMfa === false;
-        await authorize(stores, actor, dropsMfa ? (permissions ?? role.permissions) : added);
+        await authorize(stores, actor, permissionsToCover(role, permissions, parsed.requireMfa));
 
         const updated = await stores.roles.update(id, expectedVersion, {
           ...(parsed.name === undefined ? {} : { name: parsed.name }),
@@ -247,9 +262,10 @@ export function createRoleService(services: Services): RoleService {
         await stores.authz.bumpPolicyVersion();
         await authorize(stores, actor, []);
         const role = await loadMutable(stores, id);
-        // Reactivar una función devuelve todos sus permisos a quienes la tienen asignada:
-        // equivale a concederlos, así que se exige cubrirlos.
-        await authorize(stores, actor, status === 'active' ? role.permissions : []);
+        // Reactivarla devuelve todos sus permisos a quienes la tienen asignada (equivale a
+        // concederlos); desactivarla se los quita a todos (equivale a revocarlos). En los dos
+        // casos se exige cubrirlos.
+        await authorize(stores, actor, role.permissions);
         const updated = await stores.roles.update(id, expectedVersion, { status });
         await writeAudit(
           stores,
@@ -266,6 +282,8 @@ export function createRoleService(services: Services): RoleService {
         await stores.authz.bumpPolicyVersion();
         await authorize(stores, actor, []);
         const role = await loadMutable(stores, id);
+        // Borrarla revoca sus permisos a todos sus titulares: se exige cubrirlos, como al revocar.
+        await authorize(stores, actor, role.permissions);
         await stores.roles.delete(id);
         await writeAudit(
           stores,
