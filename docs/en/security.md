@@ -18,6 +18,7 @@ confirm a test fails.
 | **No password handling.** Axeda never sees, sets or stores a password                                                                         |
 | **Responses by allow-list.** Every endpoint returns a declared shape; a column you add to `user` never leaks                                  |
 | **Atomic where it matters.** Version checks, counters and one-shot closes use atomic database operations                                      |
+| **Nothing is cached.** Every `/axeda/*` response, errors included, carries `Cache-Control: no-store`                                          |
 | **Audit.** Administrative actions and denials are appended to a log                                                                           |
 | **Fail closed.** A failure while checking a permission refuses the request; internal errors reach the client as a generic `500`               |
 
@@ -89,6 +90,7 @@ Stated plainly, so you can decide:
 - **Databases.** Verified: SQLite and PostgreSQL (PostgreSQL through an in-process engine; tests
   against a real server with a connection pool are scheduled before the first release). MySQL and
   MongoDB are not supported yet.
+- **One authority.** Axeda is the only source of permissions. Better Auth's own `admin` and `organization` plugins have roles of their own; Axeda ignores them, so do not check them in your routes or you will have two systems that can disagree.
 - **Menus** are read-only and come from code; editing them through the API is planned.
 - **Messages** from the API are in English; the codes (`AXEDA_*`) are stable and meant for you to
   translate.

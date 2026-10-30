@@ -8,14 +8,15 @@ _what can you do, and where_.
 > [example application](quickstart.md) from this repository.
 > Documentation in Spanish: [`../es`](../es/README.md).
 
-| Guide                           | Read it to…                                                                          |
-| ------------------------------- | ------------------------------------------------------------------------------------ |
-| [Quick start](quickstart.md)    | Run the example, then add Axeda to your own app                                      |
-| [Concepts](concepts.md)         | Understand scopes, permissions, roles, assignments, companies, invitations and menus |
-| [Protecting routes](express.md) | Use `requirePermission()` and `resolveScope()` in Express                            |
-| [Security](security.md)         | Configure Better Auth safely, know what Axeda guarantees and what is still yours     |
-| [Reference](reference.md)       | Look up endpoints, error codes, options and the TypeScript API                       |
-| [Testing](testing.md)           | Test your app with the in-memory stores                                              |
+| Guide                           | Read it to…                                                                                    |
+| ------------------------------- | ---------------------------------------------------------------------------------------------- |
+| [Quick start](quickstart.md)    | Run the example, then add Axeda to your own app                                                |
+| [Concepts](concepts.md)         | Understand scopes, permissions, roles, assignments, companies, invitations and menus           |
+| [Protecting routes](express.md) | Use `requirePermission()` and `resolveScope()` in Express                                      |
+| [Security](security.md)         | Configure Better Auth safely, know what Axeda guarantees and what is still yours               |
+| [Reference](reference.md)       | Look up endpoints, error codes, options and the TypeScript API                                 |
+| [ASVS register](asvs.md)        | See what Axeda guarantees against the OWASP standard, what is delegated and what is still open |
+| [Testing](testing.md)           | Test your app with the in-memory stores                                                        |
 
 ## How the pieces fit
 

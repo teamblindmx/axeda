@@ -19,6 +19,7 @@ confirmar que una prueba falla.
 | **Sin manejo de contraseñas.** Axeda nunca ve, fija ni guarda una contraseña                                                                              |
 | **Respuestas por lista blanca.** Cada endpoint devuelve una forma declarada; una columna que añadas a `user` no se filtra                                 |
 | **Atómico donde importa.** Versiones, contadores y cierres de un solo uso usan operaciones atómicas de la base                                            |
+| **Nada se guarda en cachés.** Toda respuesta de `/axeda/*`, errores incluidos, lleva `Cache-Control: no-store`                                            |
 | **Auditoría.** Las acciones administrativas y las denegaciones se añaden a un registro                                                                    |
 | **Falla cerrando.** Un fallo al comprobar un permiso rechaza la petición; los errores internos llegan al cliente como un `500` genérico                   |
 
@@ -91,6 +92,7 @@ Dichos con claridad, para que puedas decidir:
 - **Bases de datos.** Verificadas: SQLite y PostgreSQL (PostgreSQL mediante un motor dentro del
   proceso; las pruebas contra un servidor real con grupo de conexiones están programadas antes de
   la primera versión). MySQL y MongoDB aún no se soportan.
+- **Una sola autoridad.** Axeda es la única fuente de permisos. Los plugins `admin` y `organization` de Better Auth tienen roles propios; Axeda los ignora, así que no los consultes en tus rutas o tendrás dos sistemas que pueden discrepar.
 - **Los menús** son de solo lectura y vienen del código; editarlos por la API está previsto.
 - **Los mensajes** de la API están en inglés; los códigos (`AXEDA_*`) son estables y están pensados
   para que los traduzcas.

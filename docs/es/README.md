@@ -15,6 +15,7 @@ _qué puedes hacer y dónde_.
 | [Proteger rutas](express.md)   | Usar `requirePermission()` y `resolveScope()` en Express                                |
 | [Seguridad](security.md)       | Configurar Better Auth con seguridad, saber qué garantiza Axeda y qué sigue siendo tuyo |
 | [Referencia](reference.md)     | Consultar endpoints, códigos de error, opciones y la API de TypeScript                  |
+| [Registro ASVS](asvs.md)       | Ver qué garantiza Axeda frente al estándar de OWASP, qué se delega y qué sigue abierto  |
 | [Pruebas](testing.md)          | Probar tu aplicación con los almacenes en memoria                                       |
 
 ## Cómo encajan las piezas
