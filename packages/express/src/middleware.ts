@@ -9,7 +9,7 @@ import {
   type Principal,
   type ScopeFilter,
   type TargetScope,
-} from '@axeda/core';
+} from '@teamblind/axeda-core';
 import { isCrossSiteWrite, trustedOriginSet } from './csrf.js';
 import { globalScope, type RequestedScope, type ScopeResolver } from './scope.js';
 
@@ -58,7 +58,7 @@ export interface DeniedEvent {
 
 interface BaseOptions {
   readonly axeda: Axeda;
-  /** Con Better Auth: `sessionPrincipal(auth)` de `@axeda/better-auth`. */
+  /** Con Better Auth: `sessionPrincipal(auth)` de `@teamblind/axeda-better-auth`. */
   readonly principal: PrincipalResolver;
   /**
    * Se llama cada vez que el middleware deniega una petición, para que la aplicación la registre

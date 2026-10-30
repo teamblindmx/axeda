@@ -17,7 +17,7 @@ The example needs three settings. There are no defaults for the secret or the UR
 export NODE_ENV=development
 export BASE_URL=http://localhost:3000
 export BETTER_AUTH_SECRET="$(node -e "console.log(require('node:crypto').randomBytes(48).toString('base64'))")"
-npm start -w @axeda/example
+npm start -w @teamblind/axeda-example
 ```
 
 On PowerShell use `$env:NODE_ENV='development'` and so on. Keep the same variables in the
@@ -35,7 +35,7 @@ The example prints the verification email in its console (`[dev mailer] … link
 link, then, from the repository root:
 
 ```bash
-npm run bootstrap -w @axeda/example -- admin@example.com
+npm run bootstrap -w @teamblind/axeda-example -- admin@example.com
 ```
 
 `bootstrap` is a **server operation**, not an API call: nobody can request it over HTTP. It
@@ -60,12 +60,12 @@ The whole story — a cashier limited to one company, invitations, bans, the men
 
 ## 2. Add Axeda to your app
 
-Install the alpha: `npm install @axeda/core@alpha @axeda/better-auth@alpha @axeda/express@alpha better-auth express`.
+Install the alpha: `npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express`.
 
 **Declare your permissions, and the roles that ship with your app.** Everything else is data.
 
 ```ts
-import { axeda, secureAuthOptions, sessionPrincipal } from '@axeda/better-auth';
+import { axeda, secureAuthOptions, sessionPrincipal } from '@teamblind/axeda-better-auth';
 
 const axedaPlugin = axeda({
   permissions: ['invoice:read', 'invoice:create', 'invoice:delete', 'report:read'],
@@ -113,7 +113,7 @@ for what `secureAuthOptions()` fixes and why.
 ```ts
 import express from 'express';
 import { toNodeHandler } from 'better-auth/node';
-import { createAxedaExpress, resolveScope } from '@axeda/express';
+import { createAxedaExpress, resolveScope } from '@teamblind/axeda-express';
 
 const x = createAxedaExpress({
   axeda: axedaPlugin.instance(),
@@ -138,7 +138,7 @@ More patterns (businesses, lists, single resources) are in [Protecting routes](e
 
 ```ts
 import { createAuthClient } from 'better-auth/client';
-import { axedaClient } from '@axeda/better-auth/client';
+import { axedaClient } from '@teamblind/axeda-better-auth/client';
 
 const client = createAuthClient({ baseURL: 'https://api.example.com', plugins: [axedaClient()] });
 const { data } = await client.axeda.menu({

@@ -6,7 +6,7 @@ Axeda decides **what each user can do and where**: global → company → busine
 > **Status:** alpha (`0.1.0-alpha.0`). Feature-complete for a first look (authorization, companies and businesses, invitations, users and menus, Express middleware, a runnable example), but the API can still change before 1.0.
 >
 > ```bash
-> npm install @axeda/core@alpha @axeda/better-auth@alpha @axeda/express@alpha better-auth express
+> npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express
 > ```
 >
 > See the [documentation](docs/en/README.md) and the [quick start](docs/en/quickstart.md).
@@ -15,12 +15,12 @@ Axeda decides **what each user can do and where**: global → company → busine
 
 ## Packages
 
-| Package              | Purpose                                                                             |
-| -------------------- | ----------------------------------------------------------------------------------- |
-| `@axeda/core`        | Authorization policy, use cases and ports. No Better Auth or framework dependencies |
-| `@axeda/better-auth` | Better Auth plugin: schema, endpoints, typed client, store implementations          |
-| `@axeda/express`     | `requirePermission()` and `resolveScope()` for Express 5 routes                     |
-| `@axeda/testing`     | In-memory stores and port contract suites                                           |
+| Package                        | Purpose                                                                             |
+| ------------------------------ | ----------------------------------------------------------------------------------- |
+| `@teamblind/axeda-core`        | Authorization policy, use cases and ports. No Better Auth or framework dependencies |
+| `@teamblind/axeda-better-auth` | Better Auth plugin: schema, endpoints, typed client, store implementations          |
+| `@teamblind/axeda-express`     | `requirePermission()` and `resolveScope()` for Express 5 routes                     |
+| `@teamblind/axeda-testing`     | In-memory stores and port contract suites                                           |
 
 ## Documentation
 

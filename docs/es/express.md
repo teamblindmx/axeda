@@ -1,11 +1,11 @@
 # Proteger rutas con Express
 
-`@axeda/express` protege las rutas de **tu** aplicación con los mismos permisos que administra
+`@teamblind/axeda-express` protege las rutas de **tu** aplicación con los mismos permisos que administra
 Axeda. Está pensado para Express 5 (Express 4 no está soportado).
 
 ```ts
-import { createAxedaExpress, resolveScope } from '@axeda/express';
-import { sessionPrincipal } from '@axeda/better-auth';
+import { createAxedaExpress, resolveScope } from '@teamblind/axeda-express';
+import { sessionPrincipal } from '@teamblind/axeda-better-auth';
 
 const x = createAxedaExpress({
   axeda: axedaPlugin.instance(),

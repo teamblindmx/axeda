@@ -19,7 +19,7 @@ import {
   type StoredInvitation,
   type TenantFilter,
   withoutSecret,
-} from '@axeda/core';
+} from '@teamblind/axeda-core';
 
 /** El estado que comparten los almacenes en memoria. */
 export interface TenantState {

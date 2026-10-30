@@ -14,7 +14,7 @@ import {
   type CoreProvider,
 } from './endpoints.js';
 import { toApiError } from './http-errors.js';
-import { AxedaError } from '@axeda/core';
+import { AxedaError } from '@teamblind/axeda-core';
 
 const deleted = z.enum(['exclude', 'include', 'only']);
 const version = z.number().int().min(1);

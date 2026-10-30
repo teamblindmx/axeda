@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
-import { resolveScope, type AxedaExpress } from '@axeda/express';
+import { resolveScope, type AxedaExpress } from '@teamblind/axeda-express';
 
 export interface Invoice {
   readonly id: string;

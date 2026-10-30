@@ -1,5 +1,5 @@
 import type { BetterAuthOptions } from '@better-auth/core';
-import { GLOBAL_SCOPE, createAxeda, isAxedaError, parsePermissionKey } from '@axeda/core';
+import { GLOBAL_SCOPE, createAxeda, isAxedaError, parsePermissionKey } from '@teamblind/axeda-core';
 import { betterAuth } from 'better-auth';
 import { getMigrations } from 'better-auth/db/migration';
 import Database from 'better-sqlite3';

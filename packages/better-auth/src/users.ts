@@ -1,6 +1,6 @@
 import type { BetterAuthOptions } from '@better-auth/core';
 import type { DBAdapter } from '@better-auth/core/db/adapter';
-import { isBanned, type DirectoryUser, type UserDirectory } from '@axeda/core';
+import { isBanned, type DirectoryUser, type UserDirectory } from '@teamblind/axeda-core';
 
 interface UserRow {
   id: string;

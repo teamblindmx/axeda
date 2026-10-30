@@ -75,14 +75,14 @@ Las versiones se calculan con Changesets y los paquetes se publican con el flujo
 
 **Una sola vez, quien mantiene el proyecto:**
 
-1. Crear la organización `@axeda` en npm y un token granular que solo publique en ella (con la verificación en dos pasos omitida, porque el CI no puede introducir un código).
+1. Crear la organización `@teamblind` en npm y un token granular que solo publique en ella (con la verificación en dos pasos omitida, porque el CI no puede introducir un código).
 2. En GitHub, un entorno `npm-release` con aprobación manual (Settings → Environments) y el secreto `NPM_TOKEN` dentro de ese entorno.
 
 **Cada versión:**
 
 1. Con los cambios fusionados en `main`, lanzar el flujo con `dry-run` activado (el valor por omisión) y revisar la salida.
 2. Lanzarlo con `dry-run` desactivado y aprobar el entorno. Los paquetes salen con procedencia verificable y el inventario de componentes queda como artefacto.
-3. Comprobar desde fuera: `npm install @axeda/core@alpha` en un proyecto vacío.
+3. Comprobar desde fuera: `npm install @teamblind/axeda-core@alpha` en un proyecto vacío.
 
 **Preparar la siguiente versión:** mientras esté el modo previo (`.changeset/pre.json`), cada PR añade su changeset (`npm run changeset`) y `npx changeset version` sube a `0.1.0-alpha.1`, `-alpha.2`… Para salir de la alfa: `npx changeset pre exit`, luego `npx changeset version` y publicar con la etiqueta `latest`.
 
@@ -90,7 +90,7 @@ Los paquetes se instalan con `@alpha` mientras la etiqueta `latest` no exista. U
 
 ## Reglas de arquitectura
 
-- `@axeda/core` no importa Better Auth, Express, módulos `node:*` ni `process` (lo vigilan ESLint y dependency-cruiser).
+- `@teamblind/axeda-core` no importa Better Auth, Express, módulos `node:*` ni `process` (lo vigilan ESLint y dependency-cruiser).
 - Los adaptadores (`better-auth`, `express`) dependen solo del núcleo, no entre sí.
 - El código de producción no importa utilidades de prueba.
 

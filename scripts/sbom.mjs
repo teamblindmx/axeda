@@ -39,7 +39,7 @@ function productionClosure(dir) {
   };
   const own = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
   for (const dependency of Object.keys(own.dependencies ?? {})) {
-    if (!dependency.startsWith('@axeda/')) visit(dependency, dir);
+    if (!dependency.startsWith('@teamblind/axeda-')) visit(dependency, dir);
   }
   return [...found.values()];
 }

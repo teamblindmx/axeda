@@ -5,8 +5,8 @@ import { getMigrations } from 'better-auth/db/migration';
 import { toNodeHandler } from 'better-auth/node';
 import Database from 'better-sqlite3';
 import express, { type ErrorRequestHandler } from 'express';
-import { sessionPrincipal, axeda } from '@axeda/better-auth';
-import type { Actor, Axeda, AssignmentScope } from '@axeda/core';
+import { sessionPrincipal, axeda } from '@teamblind/axeda-better-auth';
+import type { Actor, Axeda, AssignmentScope } from '@teamblind/axeda-core';
 import {
   createAxedaExpress,
   type DeniedEvent,

@@ -10,7 +10,7 @@ import {
   type UserAdmin,
   type UserDirectory,
   type UserFilter,
-} from '@axeda/core';
+} from '@teamblind/axeda-core';
 import { decodeCursor, encodeCursor } from './memory-tenants.js';
 
 interface StoredUser extends ManagedUser {

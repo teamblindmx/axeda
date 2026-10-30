@@ -1,4 +1,4 @@
-// @axeda/express — protege las rutas de tu aplicación con los permisos de Axeda.
+// @teamblind/axeda-express — protege las rutas de tu aplicación con los permisos de Axeda.
 export {
   createAxedaExpress,
   type AxedaExpress,

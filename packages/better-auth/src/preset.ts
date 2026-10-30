@@ -1,5 +1,5 @@
 import type { BetterAuthOptions } from '@better-auth/core';
-import { AxedaError } from '@axeda/core';
+import { AxedaError } from '@teamblind/axeda-core';
 
 export interface SecureAuthInput {
   /** URL pública del servidor de autenticación. En producción, `https`. */

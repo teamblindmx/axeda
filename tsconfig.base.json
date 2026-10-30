@@ -21,10 +21,10 @@
     "declaration": true,
     "sourceMap": true,
     "paths": {
-      "@axeda/core": ["./packages/core/src/index.ts"],
-      "@axeda/better-auth": ["./packages/better-auth/src/index.ts"],
-      "@axeda/express": ["./packages/express/src/index.ts"],
-      "@axeda/testing": ["./packages/testing/src/index.ts"]
+      "@teamblind/axeda-core": ["./packages/core/src/index.ts"],
+      "@teamblind/axeda-better-auth": ["./packages/better-auth/src/index.ts"],
+      "@teamblind/axeda-express": ["./packages/express/src/index.ts"],
+      "@teamblind/axeda-testing": ["./packages/testing/src/index.ts"]
     }
   }
 }

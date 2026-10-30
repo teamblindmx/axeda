@@ -11,7 +11,7 @@ import { betterAuth } from 'better-auth';
 import { getMigrations } from 'better-auth/db/migration';
 import { toNodeHandler } from 'better-auth/node';
 import Database from 'better-sqlite3';
-import { axeda } from '@axeda/better-auth';
+import { axeda } from '@teamblind/axeda-better-auth';
 
 const SERVE = process.argv.includes('--serve');
 const PASSWORD = 'una-contrasena-larga-y-segura-123';

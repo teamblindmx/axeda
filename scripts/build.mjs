@@ -1,6 +1,6 @@
 /**
  * Compila los cuatro paquetes a `dist/` (JavaScript ESM + declaraciones), en orden de dependencias:
- * `core` primero, porque los demás resuelven `@axeda/core` contra su `dist`, no contra el código fuente.
+ * `core` primero, porque los demás resuelven `@teamblind/axeda-core` contra su `dist`, no contra el código fuente.
  */
 import { rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -17,8 +17,8 @@ for (const name of ORDER) {
     stdio: 'inherit',
   });
   if (result.status !== 0) {
-    console.error(`Build failed: @axeda/${name}`);
+    console.error(`Build failed: @teamblind/axeda-${name}`);
     process.exit(result.status ?? 1);
   }
-  console.log(`built @axeda/${name}`);
+  console.log(`built @teamblind/axeda-${name}`);
 }

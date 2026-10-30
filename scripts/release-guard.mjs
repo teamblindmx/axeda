@@ -9,7 +9,7 @@
  *     del nombre y de la organización de npm);
  *   - que la versión no es `0.0.0` y que cuadra con la etiqueta (`alpha` exige `-alpha.N`);
  *   - que todos llevan la misma versión (se publican juntos);
- *   - que `@axeda/core` que piden los demás incluye la versión que se va a publicar;
+ *   - que `@teamblind/axeda-core` que piden los demás incluye la versión que se va a publicar;
  *   - que traen `publishConfig.access: public`.
  */
 import { readFileSync } from 'node:fs';
@@ -94,15 +94,15 @@ if (versions.size > 1)
 
 const core = manifests.find(({ name }) => name === 'core')?.json;
 for (const { json } of manifests) {
-  const range = json.dependencies?.['@axeda/core'];
+  const range = json.dependencies?.['@teamblind/axeda-core'];
   if (
-    json.name !== '@axeda/core' &&
+    json.name !== '@teamblind/axeda-core' &&
     core &&
     range !== undefined &&
     !satisfies(core.version, range)
   ) {
     problems.push(
-      `${json.name} asks for @axeda/core ${range}, which ${core.version} does not satisfy`,
+      `${json.name} asks for @teamblind/axeda-core ${range}, which ${core.version} does not satisfy`,
     );
   }
 }

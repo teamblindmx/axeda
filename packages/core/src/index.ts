@@ -1,4 +1,4 @@
-// @axeda/core — dominio, política de autorización, casos de uso y puertos.
+// @teamblind/axeda-core — dominio, política de autorización, casos de uso y puertos.
 export {
   createAxeda,
   type Axeda,

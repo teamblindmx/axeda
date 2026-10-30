@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { isAxedaError, type Principal } from '@axeda/core';
+import { isAxedaError, type Principal } from '@teamblind/axeda-core';
 import { createAxedaExpress, globalScope, resolveScope, type AxedaExpress } from '../src/index.js';
 import { APP, EVIL, closeAll, startApp } from './support/app.js';
 

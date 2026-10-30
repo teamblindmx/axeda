@@ -141,13 +141,13 @@ for (const name of PACKAGES) {
   const { problems, stats } = checkPackage(name);
   if (stats) {
     console.log(
-      `@axeda/${name}`.padEnd(22),
+      `@teamblind/axeda-${name}`.padEnd(22),
       String(stats.files).padStart(6),
       stats.packedKB.toFixed(1).padStart(11),
       stats.unpackedKB.toFixed(1).padStart(13),
     );
   }
-  for (const problem of problems) console.error(`  ✘ @axeda/${name}: ${problem}`);
+  for (const problem of problems) console.error(`  ✘ @teamblind/axeda-${name}: ${problem}`);
   if (problems.length > 0) failed = true;
 }
 if (failed) process.exit(1);

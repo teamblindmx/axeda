@@ -17,7 +17,7 @@ El ejemplo necesita tres ajustes. A propósito no hay valores por omisión para 
 export NODE_ENV=development
 export BASE_URL=http://localhost:3000
 export BETTER_AUTH_SECRET="$(node -e "console.log(require('node:crypto').randomBytes(48).toString('base64'))")"
-npm start -w @axeda/example
+npm start -w @teamblind/axeda-example
 ```
 
 En PowerShell usa `$env:NODE_ENV='development'` y así con los demás. Conserva las mismas
@@ -36,7 +36,7 @@ El ejemplo imprime el correo de verificación en su consola (`[dev mailer] … l
 enlace y, desde la raíz del repositorio:
 
 ```bash
-npm run bootstrap -w @axeda/example -- admin@example.com
+npm run bootstrap -w @teamblind/axeda-example -- admin@example.com
 ```
 
 `bootstrap` es una **operación del servidor**, no una llamada a la API: nadie puede pedirla por
@@ -61,12 +61,12 @@ como prueba: [`apps/example/test/example.test.ts`](../../apps/example/test/examp
 
 ## 2. Añade Axeda a tu aplicación
 
-Instala la alfa: `npm install @axeda/core@alpha @axeda/better-auth@alpha @axeda/express@alpha better-auth express`.
+Instala la alfa: `npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express`.
 
 **Declara tus permisos y las funciones que trae tu aplicación.** Todo lo demás son datos.
 
 ```ts
-import { axeda, secureAuthOptions, sessionPrincipal } from '@axeda/better-auth';
+import { axeda, secureAuthOptions, sessionPrincipal } from '@teamblind/axeda-better-auth';
 
 const axedaPlugin = axeda({
   permissions: ['invoice:read', 'invoice:create', 'invoice:delete', 'report:read'],
@@ -114,7 +114,7 @@ await axedaPlugin.start(); // comprueba que la base tiene transacciones reales y
 ```ts
 import express from 'express';
 import { toNodeHandler } from 'better-auth/node';
-import { createAxedaExpress, resolveScope } from '@axeda/express';
+import { createAxedaExpress, resolveScope } from '@teamblind/axeda-express';
 
 const x = createAxedaExpress({
   axeda: axedaPlugin.instance(),
@@ -139,7 +139,7 @@ Hay más patrones (negocios, listados, un recurso concreto) en [Proteger rutas](
 
 ```ts
 import { createAuthClient } from 'better-auth/client';
-import { axedaClient } from '@axeda/better-auth/client';
+import { axedaClient } from '@teamblind/axeda-better-auth/client';
 
 const client = createAuthClient({ baseURL: 'https://api.example.com', plugins: [axedaClient()] });
 const { data } = await client.axeda.menu({

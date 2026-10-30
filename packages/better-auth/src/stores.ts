@@ -19,7 +19,7 @@ import {
   type RoleAssignment,
   type RoleChanges,
   type RoleStore,
-} from '@axeda/core';
+} from '@teamblind/axeda-core';
 import { isForeignKeyViolation, isUniqueViolation } from './errors.js';
 import {
   scopeColumns,
