@@ -4,8 +4,8 @@ Hierarchical authorization (**global → company → business**) for Node.js, on
 [Better Auth](https://www.better-auth.com). Better Auth answers _who are you_; Axeda answers
 _what can you do, and where_.
 
-> **Status:** pre-release. Nothing is published on npm yet; until the first alpha, run the
-> [example application](quickstart.md) from this repository.
+> **Status:** alpha (`0.1.0-alpha.0`). Install with the `alpha` tag (`npm install @axeda/core@alpha @axeda/better-auth@alpha @axeda/express@alpha better-auth express`),
+> or run the [example application](quickstart.md) from this repository. The API can still change before 1.0.
 > Documentation in Spanish: [`../es`](../es/README.md).
 
 | Guide                           | Read it to…                                                                                    |

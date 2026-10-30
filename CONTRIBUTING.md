@@ -67,20 +67,26 @@ Tipos: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `style`, `build`, `ci`
 
 - Semver con [Changesets](https://github.com/changesets/changesets). Hasta la 1.0 las versiones son `0.x`.
 - Todo PR que cambie el comportamiento de un paquete incluye un changeset (`npm run changeset`).
-- Los paquetes están marcados `"private": true` hasta la primera versión publicable; nadie publica desde su equipo. La publicación se hará desde el CI con _provenance_.
+- Nadie publica desde su equipo: la publicación se hace desde el CI con _provenance_ (ver «Publicar una versión»).
 
 ## Publicar una versión
 
-Hoy los cuatro paquetes están `private` y en `0.0.0`: nada se puede publicar por accidente. El flujo [Release (manual)](.github/workflows/release.yml) existe y por omisión **no publica** (hace todo el recorrido con `--dry-run`). Para la primera alpha, quien mantiene el proyecto debe:
+Las versiones se calculan con Changesets y los paquetes se publican con el flujo [Release (manual)](.github/workflows/release.yml), nunca desde un equipo. El flujo **no publica por omisión**: hace todo el recorrido con `--dry-run`. Antes de publicar, `scripts/release-guard.mjs` comprueba que los cuatro paquetes tengan la misma versión, que coincida con la etiqueta (`alpha` exige `-alpha.N`) y que no sean `private`.
 
-1. **Decidir el nombre.** Comprobar la marca y que la organización `@axeda` esté libre en npm (ver la documentación de la fase 7); si se cambia el nombre, cambiarlo en los cuatro paquetes, la documentación y las pruebas.
-2. **Preparar GitHub:** un entorno `npm-release` con aprobación manual (Settings → Environments) y el secreto `NPM_TOKEN` (un token granular que solo publique en esa organización).
-3. **Preparar las versiones:** `npx changeset pre enter alpha`, luego `npx changeset version` (deja `0.1.0-alpha.0`), y quitar `"private": true` de los cuatro `package.json`. `node scripts/release-guard.mjs --tag alpha` dice qué falta.
-4. **Ensayar:** lanzar el flujo con `dry-run` (el valor por omisión) y revisar la salida.
-5. **Publicar:** lanzar el flujo con `dry-run` desactivado y aprobar el entorno. Los paquetes se publican con procedencia verificable (`--provenance`) y el inventario de componentes queda como artefacto.
-6. **Después:** cambiar el inicio rápido de la documentación de «clona el repositorio» a `npm install`.
+**Una sola vez, quien mantiene el proyecto:**
 
-Una vez que los paquetes existan en npm, conviene pasar a _trusted publishing_ (publicar sin token, por OIDC) desde la configuración de cada paquete en npm.
+1. Crear la organización `@axeda` en npm y un token granular que solo publique en ella (con la verificación en dos pasos omitida, porque el CI no puede introducir un código).
+2. En GitHub, un entorno `npm-release` con aprobación manual (Settings → Environments) y el secreto `NPM_TOKEN` dentro de ese entorno.
+
+**Cada versión:**
+
+1. Con los cambios fusionados en `main`, lanzar el flujo con `dry-run` activado (el valor por omisión) y revisar la salida.
+2. Lanzarlo con `dry-run` desactivado y aprobar el entorno. Los paquetes salen con procedencia verificable y el inventario de componentes queda como artefacto.
+3. Comprobar desde fuera: `npm install @axeda/core@alpha` en un proyecto vacío.
+
+**Preparar la siguiente versión:** mientras esté el modo previo (`.changeset/pre.json`), cada PR añade su changeset (`npm run changeset`) y `npx changeset version` sube a `0.1.0-alpha.1`, `-alpha.2`… Para salir de la alfa: `npx changeset pre exit`, luego `npx changeset version` y publicar con la etiqueta `latest`.
+
+Los paquetes se instalan con `@alpha` mientras la etiqueta `latest` no exista. Una vez publicados, conviene pasar a _trusted publishing_ (publicar sin token, por OIDC) desde la configuración de cada paquete en npm.
 
 ## Reglas de arquitectura
 

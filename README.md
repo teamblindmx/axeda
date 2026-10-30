@@ -3,9 +3,15 @@
 **Hierarchical authorization for Node.js on top of [Better Auth](https://www.better-auth.com).**
 Axeda decides **what each user can do and where**: global → company → business, with permissions declared in code, scoped role assignments, companies and businesses, and menus derived from permissions.
 
-> **Status:** pre-release. Nothing is published on npm yet, but the library is feature-complete for the first alpha: authorization, companies and businesses, invitations, users and menus, Express middleware and a runnable example. See the [documentation](docs/en/README.md) and the [quick start](docs/en/quickstart.md).
+> **Status:** alpha (`0.1.0-alpha.0`). Feature-complete for a first look (authorization, companies and businesses, invitations, users and menus, Express middleware, a runnable example), but the API can still change before 1.0.
+>
+> ```bash
+> npm install @axeda/core@alpha @axeda/better-auth@alpha @axeda/express@alpha better-auth express
+> ```
+>
+> See the [documentation](docs/en/README.md) and the [quick start](docs/en/quickstart.md).
 
-**Autorización jerárquica para Node.js sobre Better Auth.** Axeda decide **qué puede hacer cada usuario y dónde** (global → compañía → negocio). **Estado:** previo a la primera versión; aún no hay nada publicado en npm. Mira la [documentación](docs/es/README.md) y el [inicio rápido](docs/es/quickstart.md).
+**Autorización jerárquica para Node.js sobre Better Auth.** Axeda decide **qué puede hacer cada usuario y dónde** (global → compañía → negocio). **Estado:** alfa (`0.1.0-alpha.0`); la API aún puede cambiar antes de la 1.0. Instala con la etiqueta `alpha` (comando arriba). Mira la [documentación](docs/es/README.md) y el [inicio rápido](docs/es/quickstart.md).
 
 ## Packages
 

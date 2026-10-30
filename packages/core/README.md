@@ -2,7 +2,7 @@
 
 The authorization policy and use cases of Axeda: effective permissions with downward inheritance, anti-escalation rules, companies, businesses, invitations, users, menus and audit. It depends on neither Better Auth nor any HTTP framework; it talks to storage through ports.
 
-> **Status:** pre-release. Not published on npm yet. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
+> **Status:** alpha (`0.1.0-alpha.0`); the API can still change before 1.0. Install with `npm install @axeda/core@alpha`. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
 
 ```ts
 import { createAxeda } from '@axeda/core';

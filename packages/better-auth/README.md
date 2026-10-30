@@ -2,7 +2,7 @@
 
 The Better Auth plugin for Axeda: schema, `/axeda/*` endpoints, the typed client, `secureAuthOptions()` and the stores that persist everything through Better Auth's database adapter (SQLite and PostgreSQL verified).
 
-> **Status:** pre-release. Not published on npm yet. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
+> **Status:** alpha (`0.1.0-alpha.0`); the API can still change before 1.0. Install with `npm install @axeda/better-auth@alpha`. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
 
 ```ts
 import { axeda, secureAuthOptions, sessionPrincipal } from '@axeda/better-auth';
