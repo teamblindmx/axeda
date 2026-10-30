@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { AXEDA_PERMISSIONS } from '../domain/axeda-permissions.js';
 import type { Actor, Role, RoleAssignment } from '../domain/role.js';
-import { scopeContains, type AssignmentScope, type TargetScope } from '../domain/scope.js';
+import {
+  GLOBAL_TARGET,
+  scopeContains,
+  type AssignmentScope,
+  type TargetScope,
+} from '../domain/scope.js';
 import { AxedaError } from '../errors.js';
 import { scopesGranting } from '../policy/effective-permissions.js';
 import { authorizeGrant } from '../policy/grant.js';
@@ -11,6 +16,7 @@ import { auditDenials, markDenied, writeAudit, type AuditDraft } from './audit.j
 import { loadSnapshot } from './authz-reader.js';
 import {
   actorPermissions,
+  actorPolicyData,
   invalidInput,
   lockUsers,
   resolveForActor as resolveForActorShared,
@@ -111,10 +117,21 @@ export function createAssignmentService(services: Services): AssignmentService {
     }
   }
 
-  async function canManage(actor: Actor, scope: AssignmentScope): Promise<boolean> {
-    const target = await resolveTarget(services, scope, { requireUsable: false });
-    const held = await actorPermissions(persistence, services, actor, target);
-    return held.allows(AXEDA_PERMISSIONS.assignmentManage);
+  /**
+   * ¿Puede `actor` administrar las asignaciones de `scope`? Un alcance que no existe no se
+   * distingue de uno ajeno: nadie tiene un permiso propio de una compañía o un negocio que no
+   * existen, así que solo quien lo tiene en GLOBAL aprende que falta (los demás ven lo mismo
+   * que ante un alcance que existe y no es suyo).
+   */
+  async function manageAccess(
+    actor: Actor,
+    scope: AssignmentScope,
+  ): Promise<'allowed' | 'forbidden' | 'missing'> {
+    const target = await resolveTarget(services, scope, { requireUsable: false }).catch(() => null);
+    const where = target ?? GLOBAL_TARGET;
+    const held = await actorPermissions(persistence, services, actor, where);
+    if (!held.allows(AXEDA_PERMISSIONS.assignmentManage)) return 'forbidden';
+    return target === null ? 'missing' : 'allowed';
   }
 
   async function assertCanAssign(
@@ -137,7 +154,7 @@ export function createAssignmentService(services: Services): AssignmentService {
 
       const snapshot = await loadSnapshot(persistence, actor.userId);
       const managed = scopesGranting(
-        { ...snapshot, now: services.clock.now(), mfaEnabled: actor.twoFactorEnabled },
+        actorPolicyData(services, actor, snapshot),
         AXEDA_PERMISSIONS.assignmentManage,
       );
       // Una asignación de negocio se ve a través de un alcance de compañía si es de esa compañía.
@@ -158,8 +175,12 @@ export function createAssignmentService(services: Services): AssignmentService {
 
     async listForScope(actor, scope, page) {
       await services.ready();
-      if (!(await canManage(actor, scope))) {
+      const access = await manageAccess(actor, scope);
+      if (access === 'forbidden') {
         throw new AxedaError('AXEDA_FORBIDDEN', 'You are not allowed to list this scope.');
+      }
+      if (access === 'missing') {
+        throw invalidInput(`The ${scope.type} does not exist.`);
       }
       return persistence.assignments.listForScope(scope, page);
     },

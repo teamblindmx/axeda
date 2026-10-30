@@ -4,10 +4,15 @@ import type { Principal } from '../domain/role.js';
 import type { AssignmentScope, TargetScope } from '../domain/scope.js';
 import { isUsable } from '../domain/tenant.js';
 import { AxedaError } from '../errors.js';
-import { effectivePermissions, type PermissionSet } from '../policy/effective-permissions.js';
+import {
+  effectivePermissions,
+  type PermissionSet,
+  type PolicyData,
+} from '../policy/effective-permissions.js';
 import type { UserAdmin, UserDirectory } from '../ports/identity.js';
 import type { AxedaPersistence, AxedaStores } from '../ports/persistence.js';
 import type { Clock } from '../ports/platform.js';
+import type { AuthzSnapshot } from './authz-cache.js';
 import { assertPrincipal, loadSnapshot } from './authz-reader.js';
 
 /** Clave reservada de la función total que crea `bootstrap`. */
@@ -99,6 +104,25 @@ const refuse = (kind: string, id: string): AxedaError =>
  * compañías o negocios inactivos o borrados no cuentan, pero el estado del **destino** no anula
  * los permisos: un administrador global debe poder restaurar o limpiar una compañía borrada.
  */
+/**
+ * Los datos con los que se decide qué PUEDE hacer quien actúa: lo que la base de datos dice de sus
+ * asignaciones, más lo que dice su sesión (2FA y bloqueo). Todo caso de uso que consulte los
+ * permisos de quien actúa pasa por aquí: armar estos datos a mano ya hizo olvidar el bloqueo en
+ * tres consultas (un bloqueado podía leer funciones, compañías y asignaciones ajenas).
+ */
+export function actorPolicyData(
+  services: Services,
+  actor: Principal,
+  snapshot: AuthzSnapshot,
+): PolicyData {
+  return {
+    ...snapshot,
+    now: services.clock.now(),
+    mfaEnabled: actor.twoFactorEnabled,
+    banned: actor.banned,
+  };
+}
+
 export async function actorPermissions(
   stores: AxedaStores,
   services: Services,
@@ -108,11 +132,8 @@ export async function actorPermissions(
   assertPrincipal(actor);
   const snapshot = await loadSnapshot(stores, actor.userId);
   return effectivePermissions({
-    ...snapshot,
+    ...actorPolicyData(services, actor, snapshot),
     target,
-    now: services.clock.now(),
-    mfaEnabled: actor.twoFactorEnabled,
-    banned: actor.banned,
     ignoreTargetStatus: true,
   });
 }
