@@ -45,12 +45,17 @@ export default tseslint.config(
     },
   },
   {
+    // Estos archivos son CommonJS a propósito: prueban a quien usa `require()`.
+    files: ['scripts/**/*.cjs'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
     files: [
       'packages/*/test/**/*.ts',
       'apps/*/test/**/*.ts',
       'apps/*/src/**/*.ts',
       'bench/**/*.ts',
-      'scripts/**/*.{mjs,ts}',
+      'scripts/**/*.{mjs,cjs,ts}',
       'examples/**/*.ts',
       'vitest.config.ts',
     ],

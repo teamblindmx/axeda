@@ -72,6 +72,15 @@ try {
   writeFileSync(join(project, 'smoke.mjs'), readFileSync(`${root}scripts/smoke-run.mjs`, 'utf8'));
   run('node smoke.mjs', project);
 
+  // 3b. Desde CommonJS (los paquetes son solo ESM): con import() y, si el Node lo admite, con require().
+  mkdirSync(join(project, 'commonjs'));
+  writeFileSync(join(project, 'commonjs', 'package.json'), JSON.stringify({ type: 'commonjs' }));
+  writeFileSync(
+    join(project, 'commonjs', 'smoke-cjs.cjs'),
+    readFileSync(`${root}scripts/smoke-cjs.cjs`, 'utf8'),
+  );
+  run('node smoke-cjs.cjs', join(project, 'commonjs'));
+
   // 4. En tipos, con las dos resoluciones de módulos que usa la gente.
   writeFileSync(join(project, 'check.ts'), readFileSync(`${root}scripts/smoke-types.ts`, 'utf8'));
   for (const [module, resolution] of [

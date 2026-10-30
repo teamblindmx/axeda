@@ -39,9 +39,10 @@ _what can you do, and where_.
 
 ## Compatibility
 
-| Component   | Supported                                                                    |
-| ----------- | ---------------------------------------------------------------------------- |
-| Node.js     | 22 and 24                                                                    |
-| Better Auth | `^1.7.10`; the CI runs 1.7.10 (the minimum) and 1.7.14, and watches 1.8 beta |
-| Express     | 5 (Express 4 is not supported)                                               |
-| Databases   | SQLite and PostgreSQL (16 and 18 in the CI). MySQL and MongoDB: not yet      |
+| Component   | Supported                                                                             |
+| ----------- | ------------------------------------------------------------------------------------- |
+| Node.js     | 22 and 24                                                                             |
+| Better Auth | `^1.7.10`; the CI runs 1.7.10 (the minimum) and 1.7.14, and watches 1.8 beta          |
+| Modules     | ES modules only. From CommonJS use `import()`, or `require()` on Node 22.12 and later |
+| Express     | 5 (Express 4 is not supported)                                                        |
+| Databases   | SQLite and PostgreSQL (16 and 18 in the CI). MySQL and MongoDB: not yet               |
