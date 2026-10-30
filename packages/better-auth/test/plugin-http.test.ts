@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { toApiError } from '../src/http-errors.js';
 import { AxedaError } from '@axeda/core';
 import { createHttpApp, type HttpApp } from './support/http.js';
+import { databaseKinds } from './support/databases.js';
 
 /** Un entorno con un administrador global, un usuario sin permisos y uno de otra compañía. */
 async function world(options: Parameters<typeof createHttpApp>[0] = {}) {
@@ -502,9 +503,11 @@ describe('user deletion', () => {
   );
 });
 
-describe('on PostgreSQL', () => {
+const postgresKinds = databaseKinds.filter((kind) => kind !== 'sqlite');
+
+describe.each(postgresKinds)('on PostgreSQL (%s)', (kind) => {
   it('runs the same flow', async () => {
-    const { app, admin, alice } = await world({ kind: 'postgres' });
+    const { app, admin, alice } = await world({ kind });
     const role = await createRole(app, admin.cookie, 'cashier', ['invoice:read']);
     await app.post(
       '/axeda/assignment/create',

@@ -49,6 +49,7 @@ export default tseslint.config(
       'packages/*/test/**/*.ts',
       'apps/*/test/**/*.ts',
       'apps/*/src/**/*.ts',
+      'bench/**/*.ts',
       'examples/**/*.ts',
       'vitest.config.ts',
     ],

@@ -1,12 +1,9 @@
-import { PGlite } from '@electric-sql/pglite';
 import type { BetterAuthOptions } from '@better-auth/core';
 import { betterAuth } from 'better-auth';
 import { getMigrations } from 'better-auth/db/migration';
-import Database from 'better-sqlite3';
+import type Database from 'better-sqlite3';
 import { axeda, type AxedaPlugin, type AxedaPluginOptions } from '../../src/index.js';
-import type { DatabaseKind } from './harness.js';
-import { closeAfterTest } from './cleanup.js';
-import { createPgliteDialect } from './pglite-dialect.js';
+import { openDatabase, type DatabaseKind } from './databases.js';
 
 export const BASE_URL = 'http://localhost:3000';
 export const PASSWORD = 'correct-horse-battery-12';
@@ -59,29 +56,11 @@ export interface HttpAppOptions {
   readonly betterAuth?: Partial<BetterAuthOptions>;
 }
 
-/** Abre una base de datos nueva y la cierra al terminar la prueba. */
-function openDatabase(kind: DatabaseKind, foreignKeys: boolean) {
-  const sqlite = kind === 'sqlite' ? new Database(':memory:') : undefined;
-  const pglite = kind === 'postgres' ? new PGlite() : undefined;
-  if (sqlite) closeAfterTest(() => void sqlite.close());
-  if (pglite) closeAfterTest(() => pglite.close());
-  if (sqlite !== undefined && !foreignKeys) sqlite.pragma('foreign_keys = OFF');
-  const database =
-    sqlite ??
-    ({
-      dialect: createPgliteDialect(pglite as PGlite),
-      type: 'postgres' as const,
-      transaction: true,
-    } as const);
-  return { database, sqlite };
-}
-
 /** Un Better Auth real, migrado, con el plugin de Axeda y una API HTTP para llamarlo. */
 export async function createHttpApp(options: HttpAppOptions = {}): Promise<HttpApp> {
-  const { database, sqlite } = openDatabase(
-    options.kind ?? 'sqlite',
-    options.foreignKeys !== false,
-  );
+  const { database, sqlite } = await openDatabase(options.kind ?? 'sqlite', {
+    foreignKeys: options.foreignKeys !== false,
+  });
 
   const sent: SentInvitation[] = [];
   const plugin = axeda({

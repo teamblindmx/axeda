@@ -30,8 +30,10 @@
     "@better-auth/core": "^1.7.10",
     "@electric-sql/pglite": "^0.5.10",
     "@types/better-sqlite3": "^9.6.0",
+    "@types/pg": "^8.23.1",
     "better-auth": "^1.7.10",
     "better-sqlite3": "^13.0.3",
-    "kysely": "^0.29.6"
+    "kysely": "^0.29.6",
+    "pg": "^8.23.1"
   }
 }
