@@ -11,17 +11,18 @@ export type RoleChangeDecision =
     };
 
 /**
- * ¿Puede quien edita funciones **añadir** `added` a una función?
+ * ¿Puede quien edita funciones cambiar `added` en una función (añadirlos o quitarlos)?
  *
  * Editar una función cambia lo que pueden hacer todos sus titulares, incluido quien edita. Sin
- * esta regla, un gestor de funciones podría añadir `*` a su propia función y escalar. Por eso
- * lo que se añade debe estar cubierto por los permisos **globales** de quien edita (una función
- * es global y puede asignarse en cualquier alcance). Quitar permisos solo exige gestionar funciones.
+ * esta regla, un gestor de funciones podría añadir `*` a su propia función y escalar, o quitarle
+ * el poder a administradores mayores que él. Por eso lo que cambia debe estar cubierto por los
+ * permisos **globales** de quien edita (una función es global y puede asignarse en cualquier
+ * alcance), igual que al asignar o revocar.
  */
 export function authorizeRoleChange(input: {
   /** Permisos efectivos de quien edita en el alcance global. */
   readonly actor: PermissionSet;
-  /** Permisos que la función no tenía y pasa a tener (todos, si se crea). */
+  /** Permisos que la función gana o pierde (todos, si se crea, se borra, se activa o desactiva). */
   readonly added: readonly PermissionKey[];
 }): RoleChangeDecision {
   const { actor, added } = input;

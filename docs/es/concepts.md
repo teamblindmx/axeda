@@ -68,7 +68,8 @@ Es la regla en la que descansa todo el diseño, y se comprueba en el servidor en
 - **Editar una función** no puede añadir permisos que quien edita no tiene en global. Sin esto,
   quien gestiona funciones podría añadir `*` a la suya. Reactivar una función o quitarle
   `requireMfa` devuelve sus permisos a quienes la tienen, así que ambas cosas exigen que quien
-  edita los cubra todos.
+  edita los cubra todos. Quitarle permisos, desactivarla o borrarla se los quita a todos sus
+  titulares a la vez, así que, igual que al revocar, quien edita debe cubrir lo que se quita.
 - **Actuar sobre un usuario** (bloquear, cerrar sus sesiones) exige `axeda:user:manage` y poder
   administrativo suficiente para cubrir el del objetivo. El soporte no puede bloquear a la
   administración global, y nadie puede bloquearse a sí mismo.
