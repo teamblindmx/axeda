@@ -12,7 +12,7 @@
  * que realmente se verificó. Necesita red (instala desde el registro de npm).
  */
 import { execSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,9 +21,18 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const PACKAGES = ['core', 'better-auth', 'express', 'testing'];
 const run = (command, cwd) => execSync(command, { cwd, stdio: 'inherit' });
 
-/** La versión exacta que el repositorio tiene instalada de un paquete. */
-const installed = (name) =>
-  JSON.parse(readFileSync(`${root}node_modules/${name}/package.json`, 'utf8')).version;
+/**
+ * La versión exacta que el repositorio tiene instalada de un paquete. Algunos (como
+ * `@better-auth/core`) no quedan en la raíz sino dentro del paquete que los usa.
+ */
+const installed = (name) => {
+  const where = ['', 'packages/better-auth/'].map(
+    (dir) => `${root}${dir}node_modules/${name}/package.json`,
+  );
+  const found = where.find((file) => existsSync(file));
+  if (found === undefined) throw new Error(`${name} is not installed (run npm install)`);
+  return JSON.parse(readFileSync(found, 'utf8')).version;
+};
 
 const work = mkdtempSync(join(process.env.SMOKE_DIR ?? tmpdir(), 'axeda-smoke-'));
 const keep = process.argv.includes('--keep');
@@ -47,12 +56,29 @@ try {
   // 2. Un proyecto vacío que instala solo los tarballs y lo que sus guías piden.
   const project = join(work, 'project');
   mkdirSync(project);
+  // Los tarballs van como dependencias `file:` y `@teamblind/axeda-core` también como `overrides`:
+  // los otros tres dependen de él, y así npm nunca lo busca en el registro (antes de la primera
+  // publicación no existe, e instalar los tarballs sueltos rompía el árbol de npm con «edgesOut»).
+  const local = Object.fromEntries(
+    PACKAGES.map((name, index) => [`@teamblind/axeda-${name}`, `file:${packed[index]}`]),
+  );
   writeFileSync(
     join(project, 'package.json'),
-    JSON.stringify({ name: 'axeda-smoke', private: true, type: 'module' }, null, 2),
+    JSON.stringify(
+      {
+        name: 'axeda-smoke',
+        private: true,
+        type: 'module',
+        dependencies: local,
+        overrides: { '@teamblind/axeda-core': local['@teamblind/axeda-core'] },
+      },
+      null,
+      2,
+    ),
   );
   const external = [
     'better-auth',
+    '@better-auth/core',
     'better-sqlite3',
     'express',
     '@types/express',
@@ -62,7 +88,7 @@ try {
   ].map((name) => `${name}@${installed(name)}`);
   // Sin scripts: better-sqlite3 trae su binario compilado, y así se prueba lo mismo en todos los sistemas.
   run(
-    `npm install --ignore-scripts --no-audit --no-fund ${[...packed, ...external]
+    `npm install --ignore-scripts --no-audit --no-fund ${external
       .map((item) => `"${item}"`)
       .join(' ')}`,
     project,
