@@ -12,7 +12,15 @@
  * que realmente se verificó. Necesita red (instala desde el registro de npm).
  */
 import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,11 +74,23 @@ try {
     'typescript',
     'vitest',
   ];
-  // Sin un lockfile, npm elige la última versión de lo que se pida con un rango. Los adaptadores de
-  // better-auth aceptan `@better-auth/core@^x`, y una versión más nueva del núcleo exige otro
-  // `better-call` que el que fija este better-auth: npm 10 no lo resuelve y se cae con «Cannot read
-  // properties of null (reading 'edgesOut')». Se fija la misma versión de @better-auth/core en todo
-  // el árbol, la que el repositorio verificó.
+  const versions = external.map((name) => [name, installed(name)]);
+  // Sin un lockfile, npm elige la última versión de todo lo que llegue con un rango, así que lo que
+  // se publique mañana puede romper la instalación aunque aquí no cambie nada (pasó con Better Auth:
+  // un @better-auth/core nuevo exigía otro better-call y npm 10 se caía con «edgesOut»). Para probar
+  // la combinación que el repositorio verificó, se resuelve todo como estaba el día en que salió la
+  // más reciente de las versiones fijadas (`--before`), y @better-auth/core se fija en todo el árbol.
+  const published = versions.map(([name, version]) => {
+    const times = JSON.parse(
+      execSync(`npm view "${name}" time --json`, {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'inherit'],
+      }),
+    );
+    return new Date(times[version]).getTime();
+  });
+  const before = new Date(Math.max(...published) + 24 * 60 * 60 * 1000).toISOString();
+  console.log(`resolving dependencies as of ${before}`);
   writeFileSync(
     join(project, 'package.json'),
     JSON.stringify(
@@ -85,15 +105,25 @@ try {
     ),
   );
   // Sin scripts: better-sqlite3 trae su binario compilado, y así se prueba lo mismo en todos los sistemas.
-  run(
-    `npm install --ignore-scripts --no-audit --no-fund ${[
-      ...packed,
-      ...external.map((name) => `${name}@${installed(name)}`),
-    ]
-      .map((item) => `"${item}"`)
-      .join(' ')}`,
-    project,
-  );
+  const logs = join(work, 'npm-logs');
+  try {
+    run(
+      `npm install --ignore-scripts --no-audit --no-fund --before="${before}" --logs-dir="${logs}" ${[
+        ...packed,
+        ...versions.map(([name, version]) => `${name}@${version}`),
+      ]
+        .map((item) => `"${item}"`)
+        .join(' ')}`,
+      project,
+    );
+  } catch (error) {
+    // El CI no guarda el registro de npm: se imprime el final, que es donde está la causa.
+    for (const file of existsSync(logs) ? readdirSync(logs) : []) {
+      const lines = readFileSync(join(logs, file), 'utf8').trimEnd().split('\n');
+      console.error(`\n--- ${file} (last 80 lines) ---\n${lines.slice(-80).join('\n')}`);
+    }
+    throw error;
+  }
 
   // 3. En ejecución.
   writeFileSync(join(project, 'smoke.mjs'), readFileSync(`${root}scripts/smoke-run.mjs`, 'utf8'));
