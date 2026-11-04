@@ -12,7 +12,15 @@
  * que realmente se verificó. Necesita red (instala desde el registro de npm).
  */
 import { execSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,9 +29,18 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const PACKAGES = ['core', 'better-auth', 'express', 'testing'];
 const run = (command, cwd) => execSync(command, { cwd, stdio: 'inherit' });
 
-/** La versión exacta que el repositorio tiene instalada de un paquete. */
-const installed = (name) =>
-  JSON.parse(readFileSync(`${root}node_modules/${name}/package.json`, 'utf8')).version;
+/**
+ * La versión exacta que el repositorio tiene instalada de un paquete. Algunos (como
+ * `@better-auth/core`) no quedan en la raíz sino dentro del paquete que los usa.
+ */
+const installed = (name) => {
+  const where = ['', 'packages/better-auth/'].map(
+    (dir) => `${root}${dir}node_modules/${name}/package.json`,
+  );
+  const found = where.find((file) => existsSync(file));
+  if (found === undefined) throw new Error(`${name} is not installed (run npm install)`);
+  return JSON.parse(readFileSync(found, 'utf8')).version;
+};
 
 const work = mkdtempSync(join(process.env.SMOKE_DIR ?? tmpdir(), 'axeda-smoke-'));
 const keep = process.argv.includes('--keep');
@@ -47,26 +64,66 @@ try {
   // 2. Un proyecto vacío que instala solo los tarballs y lo que sus guías piden.
   const project = join(work, 'project');
   mkdirSync(project);
-  writeFileSync(
-    join(project, 'package.json'),
-    JSON.stringify({ name: 'axeda-smoke', private: true, type: 'module' }, null, 2),
-  );
   const external = [
     'better-auth',
+    '@better-auth/core',
     'better-sqlite3',
     'express',
     '@types/express',
     '@types/node',
     'typescript',
     'vitest',
-  ].map((name) => `${name}@${installed(name)}`);
-  // Sin scripts: better-sqlite3 trae su binario compilado, y así se prueba lo mismo en todos los sistemas.
-  run(
-    `npm install --ignore-scripts --no-audit --no-fund ${[...packed, ...external]
-      .map((item) => `"${item}"`)
-      .join(' ')}`,
-    project,
+  ];
+  const versions = external.map((name) => [name, installed(name)]);
+  // Sin un lockfile, npm elige la última versión de todo lo que llegue con un rango, así que lo que
+  // se publique mañana puede romper la instalación aunque aquí no cambie nada (pasó con Better Auth:
+  // un @better-auth/core nuevo exigía otro better-call y npm 10 se caía con «edgesOut»). Para probar
+  // la combinación que el repositorio verificó, se resuelve todo como estaba el día en que salió la
+  // más reciente de las versiones fijadas (`--before`), y @better-auth/core se fija en todo el árbol.
+  const published = versions.map(([name, version]) => {
+    const times = JSON.parse(
+      execSync(`npm view "${name}" time --json`, {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'inherit'],
+      }),
+    );
+    return new Date(times[version]).getTime();
+  });
+  const before = new Date(Math.max(...published) + 24 * 60 * 60 * 1000).toISOString();
+  console.log(`resolving dependencies as of ${before}`);
+  writeFileSync(
+    join(project, 'package.json'),
+    JSON.stringify(
+      {
+        name: 'axeda-smoke',
+        private: true,
+        type: 'module',
+        overrides: { '@better-auth/core': installed('@better-auth/core') },
+      },
+      null,
+      2,
+    ),
   );
+  // Sin scripts: better-sqlite3 trae su binario compilado, y así se prueba lo mismo en todos los sistemas.
+  const logs = join(work, 'npm-logs');
+  try {
+    run(
+      `npm install --ignore-scripts --no-audit --no-fund --before="${before}" --logs-dir="${logs}" ${[
+        ...packed,
+        ...versions.map(([name, version]) => `${name}@${version}`),
+      ]
+        .map((item) => `"${item}"`)
+        .join(' ')}`,
+      project,
+    );
+  } catch (error) {
+    // El CI no guarda el registro de npm: se imprime el final, que es donde está la causa.
+    for (const file of existsSync(logs) ? readdirSync(logs) : []) {
+      const lines = readFileSync(join(logs, file), 'utf8').trimEnd().split('\n');
+      console.error(`\n--- ${file} (last 80 lines) ---\n${lines.slice(-80).join('\n')}`);
+    }
+    throw error;
+  }
 
   // 3. En ejecución.
   writeFileSync(join(project, 'smoke.mjs'), readFileSync(`${root}scripts/smoke-run.mjs`, 'utf8'));
