@@ -56,25 +56,9 @@ try {
   // 2. Un proyecto vacío que instala solo los tarballs y lo que sus guías piden.
   const project = join(work, 'project');
   mkdirSync(project);
-  // Los tarballs van como dependencias `file:` y `@teamblind/axeda-core` también como `overrides`:
-  // los otros tres dependen de él, y así npm nunca lo busca en el registro (antes de la primera
-  // publicación no existe, e instalar los tarballs sueltos rompía el árbol de npm con «edgesOut»).
-  const local = Object.fromEntries(
-    PACKAGES.map((name, index) => [`@teamblind/axeda-${name}`, `file:${packed[index]}`]),
-  );
   writeFileSync(
     join(project, 'package.json'),
-    JSON.stringify(
-      {
-        name: 'axeda-smoke',
-        private: true,
-        type: 'module',
-        dependencies: local,
-        overrides: { '@teamblind/axeda-core': local['@teamblind/axeda-core'] },
-      },
-      null,
-      2,
-    ),
+    JSON.stringify({ name: 'axeda-smoke', private: true, type: 'module' }, null, 2),
   );
   const external = [
     'better-auth',
@@ -86,13 +70,21 @@ try {
     'typescript',
     'vitest',
   ].map((name) => `${name}@${installed(name)}`);
+  // En tres pasos, y no todo en un solo `npm install`: con los tarballs y Better Auth juntos, npm
+  // (10.x) se cae resolviendo el grupo de dependencias «peer» de @better-auth/core («Cannot read
+  // properties of null (reading 'edgesOut')»). Primero lo de terceros; después el núcleo, así los
+  // otros tres encuentran @teamblind/axeda-core ya instalado y npm no lo busca en el registro
+  // (antes de la primera publicación no existe); al final el resto.
   // Sin scripts: better-sqlite3 trae su binario compilado, y así se prueba lo mismo en todos los sistemas.
-  run(
-    `npm install --ignore-scripts --no-audit --no-fund ${external
-      .map((item) => `"${item}"`)
-      .join(' ')}`,
-    project,
-  );
+  const install = (items) =>
+    run(
+      `npm install --ignore-scripts --no-audit --no-fund ${items.map((item) => `"${item}"`).join(' ')}`,
+      project,
+    );
+  const [corePacked, ...restPacked] = packed;
+  install(external);
+  install([corePacked]);
+  install(restPacked);
 
   // 3. En ejecución.
   writeFileSync(join(project, 'smoke.mjs'), readFileSync(`${root}scripts/smoke-run.mjs`, 'utf8'));
