@@ -56,10 +56,6 @@ try {
   // 2. Un proyecto vacío que instala solo los tarballs y lo que sus guías piden.
   const project = join(work, 'project');
   mkdirSync(project);
-  writeFileSync(
-    join(project, 'package.json'),
-    JSON.stringify({ name: 'axeda-smoke', private: true, type: 'module' }, null, 2),
-  );
   const external = [
     'better-auth',
     '@better-auth/core',
@@ -69,22 +65,35 @@ try {
     '@types/node',
     'typescript',
     'vitest',
-  ].map((name) => `${name}@${installed(name)}`);
-  // En tres pasos, y no todo en un solo `npm install`: con los tarballs y Better Auth juntos, npm
-  // (10.x) se cae resolviendo el grupo de dependencias «peer» de @better-auth/core («Cannot read
-  // properties of null (reading 'edgesOut')»). Primero lo de terceros; después el núcleo, así los
-  // otros tres encuentran @teamblind/axeda-core ya instalado y npm no lo busca en el registro
-  // (antes de la primera publicación no existe); al final el resto.
+  ];
+  // Sin un lockfile, npm elige la última versión de lo que se pida con un rango. Los adaptadores de
+  // better-auth aceptan `@better-auth/core@^x`, y una versión más nueva del núcleo exige otro
+  // `better-call` que el que fija este better-auth: npm 10 no lo resuelve y se cae con «Cannot read
+  // properties of null (reading 'edgesOut')». Se fija la misma versión de @better-auth/core en todo
+  // el árbol, la que el repositorio verificó.
+  writeFileSync(
+    join(project, 'package.json'),
+    JSON.stringify(
+      {
+        name: 'axeda-smoke',
+        private: true,
+        type: 'module',
+        overrides: { '@better-auth/core': installed('@better-auth/core') },
+      },
+      null,
+      2,
+    ),
+  );
   // Sin scripts: better-sqlite3 trae su binario compilado, y así se prueba lo mismo en todos los sistemas.
-  const install = (items) =>
-    run(
-      `npm install --ignore-scripts --no-audit --no-fund ${items.map((item) => `"${item}"`).join(' ')}`,
-      project,
-    );
-  const [corePacked, ...restPacked] = packed;
-  install(external);
-  install([corePacked]);
-  install(restPacked);
+  run(
+    `npm install --ignore-scripts --no-audit --no-fund ${[
+      ...packed,
+      ...external.map((name) => `${name}@${installed(name)}`),
+    ]
+      .map((item) => `"${item}"`)
+      .join(' ')}`,
+    project,
+  );
 
   // 3. En ejecución.
   writeFileSync(join(project, 'smoke.mjs'), readFileSync(`${root}scripts/smoke-run.mjs`, 'utf8'));
