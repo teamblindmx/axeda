@@ -19,8 +19,8 @@ ASVS verifies **applications**; Axeda is a library inside one. So every requirem
 
 | Status         | Rows |
 | -------------- | ---: |
-| Met            |   53 |
-| Partial        |   17 |
+| Met            |   54 |
+| Partial        |   16 |
 | Delegated      |   12 |
 | Yours          |   14 |
 | Not applicable |   11 |
@@ -87,11 +87,11 @@ ASVS verifies **applications**; Axeda is a library inside one. So every requirem
 
 | ASVS              | Level | Status    | How                                                                                                                                                                                                                              |
 | ----------------- | :---: | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| V7.1.1            |   2   | Met       | Lifetimes are documented: 7 days, refreshed daily, 15 minutes "fresh" ([Security](security.md)).                                                                                                                                 |
+| V7.1.1            |   2   | Met       | Lifetimes are documented: 7 days idle, refreshed daily, 30 days at most, 15 minutes "fresh" ([Security](security.md)).                                                                                                           |
 | V7.1.2            |   2   | Yours     | Better Auth allows any number of concurrent sessions; limit them if you need to.                                                                                                                                                 |
 | V7.2.1            |   1   | Met       | Every check asks Better Auth on the server. Axeda refuses to start with the session cookie cache on, so a revoked session cannot linger (`plugin-http.test.ts`).                                                                 |
 | V7.2.2 to V7.2.4  |   1   | Delegated | Better Auth generates random reference tokens with a CSPRNG and issues a new one at every sign-in.                                                                                                                               |
-| V7.3.1 and V7.3.2 |   2   | Partial   | Sessions expire after 7 days and are renewed on use. There is no separate absolute maximum, so a session in daily use never expires on its own.                                                                                  |
+| V7.3.1 and V7.3.2 |   2   | Met       | Sessions expire after 7 days without use and, however much they are used, after at most 30 days (`maxSessionAge`); `session-lifetime.test.ts` runs a month of daily use against it.                                              |
 | V7.4.1            |   1   | Met       | A terminated session is refused on the next request (no cache; see V7.2.1).                                                                                                                                                      |
 | V7.4.2            |   1   | Met       | A ban closes every open session and blocks new ones (`users-http.test.ts`); deleting a user removes its sessions in Better Auth.                                                                                                 |
 | V7.4.3            |   2   | Delegated | The preset closes every session when a password is reset; changing a password can also revoke the other sessions (Better Auth).                                                                                                  |
@@ -209,7 +209,6 @@ Everything marked Gap or Partial above, in one place, so none of it is a surpris
 
 - Axeda's administrative endpoints do not require a recently authenticated session, and device posture is not assessed (V8.4.2, a level 3 requirement).
 - Better Auth records no authentication log, and Axeda audits authorization only (V16.3.1).
-- There is no absolute maximum session lifetime; a session in daily use never expires on its own (V7.3).
 - The audit log has no automatic retention and relies on database permissions to stay unmodified (V14.1.2, V16.4.2).
 - Common-password checks are not in the preset (V6.2.4).
 - There is no machine-readable API description yet (V2.1.1).
