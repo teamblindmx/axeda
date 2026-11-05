@@ -99,6 +99,9 @@ export const axedaSchema = {
     },
     indexes: [
       { fields: ['actorId'] },
+      // Sin él, filtrar por acción recorre toda la tabla y crece con ella (50-70 ms con 200 000 eventos
+      // en PostgreSQL 16 y 18, 30 ms en PGlite); con él son décimas de milisegundo.
+      { fields: ['action'] },
       { fields: ['targetType', 'targetId'] },
       { fields: ['scopeType', 'scopeId'] },
     ],
