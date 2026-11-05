@@ -20,7 +20,7 @@ updates:
       # El rango de Better Auth que aceptan los paquetes es una decisión, no una actualización:
       # se prueba a mano en la matriz del CI (la mínima, la última y la beta siguiente).
       - dependency-name: better-auth
-      - dependency-name: '@better-auth/core'
+      - dependency-name: '@better-auth/*'
       # Las mayores esperan a lo que soportan typescript-eslint (hoy TypeScript < 6.1) y la
       # versión mínima de Node que declaran los paquetes.
       - dependency-name: typescript

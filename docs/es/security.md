@@ -58,10 +58,11 @@ en un `X-Forwarded-For` de un único valor; una cadena podría falsificarse para
 el límite real se multiplica por el número de instancias. Usa `rateLimitStorage: 'database'`.
 
 **¿Sesiones en `secondaryStorage` (Redis)?** Entonces Better Auth guarda una copia de la fila del
-usuario junto a cada sesión y solo la refresca cuando él mismo cambia al usuario. Los cambios de
-Axeda (una asignación revocada, la marca de 2FA) no llegarían a esa copia, así que con
-`secondaryStorage` los endpoints del plugin y `sessionPrincipal` releen al usuario de la base de
-datos: una consulta más por petición, a cambio de que una revocación valga al instante.
+usuario junto a cada sesión y la refresca cuando él mismo cambia al usuario (activar o desactivar el
+2FA, por ejemplo, llega a todas las sesiones). Los cambios propios de Axeda (revocar una asignación
+sube el `authzVersion` del usuario) no llegarían a esa copia, así que con `secondaryStorage` los
+endpoints del plugin y `sessionPrincipal` releen al usuario de la base de datos: una consulta más
+por petición, a cambio de que una revocación valga al instante.
 
 ## Lista antes de salir a producción
 
@@ -82,14 +83,22 @@ datos: una consulta más por petición, a cambio de que una revocación valga al
 Marca las funciones delicadas con `requireMfa: true`. Esa función no concede nada a un usuario sin
 2FA. Sé preciso con lo que significa: la sesión de Better Auth **no** registra si esa sesión pasó
 un segundo factor, solo si el usuario **tiene** el 2FA activado. Y «confiar en este dispositivo»
-se salta el código. En las cuentas administrativas, desactiva los dispositivos de confianza en el
-plugin `twoFactor`.
+se salta el código. En las cuentas administrativas, desactiva los dispositivos de confianza con
+`trustDeviceMaxAge: 0` en las opciones del plugin `twoFactor`; el segundo factor se pide entonces en
+cada inicio de sesión, aunque el cliente pida confiar en el dispositivo.
 
 ## Llaves de API
 
 Si usas el plugin `apiKey` de Better Auth con sesiones para las llaves, construye a quien llama con
 `await principalFromSession(ctx)` / `sessionPrincipal`, que llevan las marcas `banned` y de 2FA. Un usuario
-bloqueado no tiene ningún permiso ni siquiera con una llave.
+bloqueado no tiene ningún permiso ni siquiera con una llave, y revocar una asignación surte efecto
+en la llave al instante.
+
+Una llave representa a su dueño: tiene todo lo que él tiene, tanto en los endpoints `/axeda/*` como
+en tus rutas, y Axeda ignora el campo `permissions` de la propia llave. A nadie se le pide un código
+cuando se usa una llave, así que si su dueño tiene el 2FA activado, la llave lleva los permisos de
+las funciones que exigen 2FA. Para un acceso más acotado, crea un usuario de servicio con una
+función mínima y dale la llave a él.
 
 ## Límites conocidos
 

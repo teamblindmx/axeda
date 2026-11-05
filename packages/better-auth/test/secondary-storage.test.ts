@@ -1,27 +1,7 @@
-import type { SecondaryStorage } from '@better-auth/core/db';
 import { describe, expect, it } from 'vitest';
 import { sessionPrincipal } from '../src/index.js';
 import { createHttpApp } from './support/http.js';
-
-/** Un `secondaryStorage` en memoria, como lo usaría Redis. */
-function memoryStorage(): SecondaryStorage {
-  const values = new Map<string, string>();
-  return {
-    get: (key) => values.get(key) ?? null,
-    getAndDelete: (key) => {
-      const value = values.get(key) ?? null;
-      values.delete(key);
-      return value;
-    },
-    increment: (key) => {
-      const next = Number(values.get(key) ?? 0) + 1;
-      values.set(key, String(next));
-      return next;
-    },
-    set: (key, value) => void values.set(key, value),
-    delete: (key) => void values.delete(key),
-  };
-}
+import { memoryStorage } from './support/memory-storage.js';
 
 const ok = <T>(response: { status: number; json: T }): T => {
   expect(response.status, JSON.stringify(response.json)).toBe(200);

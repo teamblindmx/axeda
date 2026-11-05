@@ -57,10 +57,11 @@ only a single-value `X-Forwarded-For`; a chain could be forged to dodge rate lim
 limit multiplies by the number of instances. Use `rateLimitStorage: 'database'`.
 
 **Sessions in `secondaryStorage` (Redis)?** Better Auth then keeps a copy of the user row next to
-each session and refreshes it only when Better Auth itself changes the user. Axeda's changes
-(a revoked assignment, a 2FA flag) would not reach that copy, so when `secondaryStorage` is set,
-the plugin endpoints and `sessionPrincipal` re-read the user from the database: one extra query
-per request, in exchange for revocations that take effect at once.
+each session and refreshes it when Better Auth itself changes the user (turning 2FA on or off, for example, reaches
+every session). Axeda's own changes (a revoked assignment raises the user's `authzVersion`) would
+not reach that copy, so when `secondaryStorage` is set, the plugin endpoints and
+`sessionPrincipal` re-read the user from the database: one extra query per request, in exchange
+for revocations that take effect at once.
 
 ## Checklist before you go live
 
@@ -81,13 +82,21 @@ per request, in exchange for revocations that take effect at once.
 Mark sensitive roles `requireMfa: true`. Such a role grants nothing to a user without 2FA. Be
 precise about what that means: Better Auth's session does **not** record whether this session
 passed a second factor, only whether the user **has** 2FA enabled. And “trust this device” skips
-the code. For administrative accounts, disable trusted devices in the `twoFactor` plugin.
+the code. For administrative accounts, turn trusted devices off with `trustDeviceMaxAge: 0` in the
+`twoFactor` plugin options; the second factor is then asked at every sign-in, even if the client
+asks to trust the device.
 
 ## API keys
 
 If you use Better Auth's `apiKey` plugin with sessions for keys, build the caller with
 `await principalFromSession(ctx)` / `sessionPrincipal`, which carry the `banned` and 2FA flags. A banned
-user holds no permission even through a key.
+user holds no permission even through a key, and revoking an assignment takes effect on the key at
+once.
+
+A key stands for its owner: it holds everything the owner holds, on the `/axeda/*` endpoints and on
+your routes alike, and Axeda ignores the key's own `permissions` field. Nobody is asked for a code
+when a key is used, so if its owner has 2FA on, the key carries the permissions of roles that
+require 2FA. For narrower access, create a service user with a minimal role and give the key to it.
 
 ## Known limits
 
