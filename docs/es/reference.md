@@ -221,6 +221,11 @@ arrancar y, si no, se niega.
 - Las columnas de texto usan la collation por omisión del servidor, que no distingue `A` de `a`.
   No cambia nada para Axeda: las claves de rol, los slugs y las claves de permiso son en minúsculas
   por validación.
+- **Actualizar una base existente.** El registro de auditoría tiene un índice en `action` desde la
+  versión posterior a 0.1.0-alpha.0. Better Auth crea como `text` las columnas de texto sin
+  índice, y en MySQL no indexa una columna `text` que ya existe: la migración se detiene con «can
+  exceed MySQL's 3072-byte index-key limit». Antes de ejecutarla, acota la columna una vez:
+  `ALTER TABLE axedaAudit MODIFY action varchar(255) NOT NULL;`. Una base nueva no se ve afectada.
 
 ## Rendimiento
 

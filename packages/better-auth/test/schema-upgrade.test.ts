@@ -39,6 +39,16 @@ describe.each(databaseKinds.filter((kind) => kind !== 'mongo-server'))(
       const old = await betterAuth(before).$context;
       await old.adapter.create({ model: 'axedaRole', data: role('old') });
 
+      if (kind === 'mysql-server') {
+        // En MySQL Better Auth crea como `text` las columnas sin índice y no indexa una columna
+        // `text` existente ("can exceed MySQL's 3072-byte index-key limit"). `action` no tenía
+        // índice en 0.1.0-alpha.0: quien actualice una base MySQL ya creada acota antes la columna,
+        // como dice la referencia.
+        await (database as unknown as { query(sql: string): Promise<unknown> }).query(
+          'ALTER TABLE axedaAudit MODIFY action varchar(255) NOT NULL',
+        );
+      }
+
       const after = { ...base, plugins: [axeda({ permissions: [] })] };
       await migrate(kind, after);
       await migrate(kind, after);

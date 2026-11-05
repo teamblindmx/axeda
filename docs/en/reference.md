@@ -215,6 +215,11 @@ Auth supports **that have real transactions**; it checks this at start and refus
   your schema. The CI covers Linux; the second option was checked against a Windows server.
 - Text columns use the server's default collation, which does not tell `A` from `a`. It changes
   nothing for Axeda: role keys, slugs and permission keys are lowercase by validation.
+- **Upgrading an existing database.** The audit log has an index on `action` since the version
+  after 0.1.0-alpha.0. Better Auth creates string columns without an index as `text`, and on MySQL
+  it will not index an existing `text` column: the migration stops with “can exceed MySQL's
+  3072-byte index-key limit”. Before running it, bound the column once:
+  `ALTER TABLE axedaAudit MODIFY action varchar(255) NOT NULL;`. A new database is not affected.
 
 ## Performance
 
