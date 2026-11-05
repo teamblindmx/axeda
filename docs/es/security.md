@@ -114,7 +114,7 @@ función mínima y dale la llave a él.
 
 Dichos con claridad, para que puedas decidir:
 
-- **Bases de datos.** Verificadas: SQLite, PostgreSQL (16 y 18), MySQL (8.4 y 9) y MongoDB (7.0 y 8.0), las
+- **Bases de datos.** Verificadas: SQLite, PostgreSQL (16 y 18), MySQL (8.4 y 9) y MongoDB (7.0; 8.0 a mano), las
   tres últimas contra servidores reales. MySQL pide configurar dos cosas y MongoDB necesita un
   conjunto de réplicas y no tiene claves foráneas ([Referencia](reference.md#bases-de-datos)).
 - **Una sola autoridad.** Axeda es la única fuente de permisos. Los plugins `admin` y `organization` de Better Auth tienen roles propios; Axeda los ignora, así que no los consultes en tus rutas o tendrás dos sistemas que pueden discrepar.

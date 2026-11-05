@@ -45,4 +45,4 @@ _what can you do, and where_.
 | Better Auth | `^1.7.10`; the CI runs 1.7.10 (the minimum) and 1.7.17, and watches 1.8 beta          |
 | Modules     | ES modules only. From CommonJS use `import()`, or `require()` on Node 22.12 and later |
 | Express     | 5 (Express 4 is not supported)                                                        |
-| Databases   | SQLite, PostgreSQL (16 and 18), MySQL (8.4 and 9) and MongoDB (7.0 and 8.0) in the CI |
+| Databases   | SQLite, PostgreSQL (16 and 18), MySQL (8.4 and 9) and MongoDB (7.0) in the CI         |

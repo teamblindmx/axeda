@@ -167,12 +167,12 @@ Axeda guarda sus datos a través del adaptador de base de datos de Better Auth, 
 las bases de datos que Better Auth soporta **y que tienen transacciones reales**; lo comprueba al
 arrancar y, si no, se niega.
 
-| Base de datos | Lo que le das a Better Auth                                        | Comprobado en el CI                                |
-| ------------- | ------------------------------------------------------------------ | -------------------------------------------------- |
-| SQLite        | `new Database(archivo)` de `better-sqlite3`                        | En memoria                                         |
-| PostgreSQL    | `new pg.Pool({ connectionString })`                                | 16 y 18, servidores reales, grupo de 10            |
-| MySQL         | `createPool({ uri, timezone: 'Z' })` de `mysql2/promise`           | 8.4 y 9, servidores reales, grupo de 10            |
-| MongoDB       | `mongodbAdapter(db, { client })` de `better-auth/adapters/mongodb` | 7.0 y 8.0, conjuntos de réplicas de un nodo reales |
+| Base de datos | Lo que le das a Better Auth                                        | Comprobado en el CI                                                  |
+| ------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| SQLite        | `new Database(archivo)` de `better-sqlite3`                        | En memoria                                                           |
+| PostgreSQL    | `new pg.Pool({ connectionString })`                                | 16 y 18, servidores reales, grupo de 10                              |
+| MySQL         | `createPool({ uri, timezone: 'Z' })` de `mysql2/promise`           | 8.4 y 9, servidores reales, grupo de 10                              |
+| MongoDB       | `mongodbAdapter(db, { client })` de `better-auth/adapters/mongodb` | 7.0, un conjunto de réplicas de un nodo real (8.0 comprobado a mano) |
 
 **MongoDB.**
 

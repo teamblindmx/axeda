@@ -33,7 +33,7 @@ AXEDA_TEST_MYSQL_URL=mysql://root:clave@127.0.0.1:3306 npm test
 AXEDA_TEST_MONGO_URL="mongodb://127.0.0.1:27017/?replicaSet=rs0" npm test
 ```
 
-Cada prueba crea y borra su propia base de datos en ese servidor, así que usa uno de desarrollo. El CI lo hace con PostgreSQL 16 y 18, MySQL 8.4 y 9 y MongoDB 7.0 y 8.0 (en Linux).
+Cada prueba crea y borra su propia base de datos en ese servidor, así que usa uno de desarrollo. El CI lo hace con PostgreSQL 16 y 18, MySQL 8.4 y 9 y MongoDB 7.0 (en Linux). MongoDB 8.0 también corre, pero solo como aviso: no arranca en los ejecutores con Linux 6.19 o más nuevo (SERVER-121912).
 
 MongoDB necesita un conjunto de réplicas (las transacciones lo exigen); uno de un solo nodo basta: `mongod --replSet rs0` y, una vez, `rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "127.0.0.1:27017" }] })`. Sin migraciones: el adaptador de Better Auth crea las colecciones y los índices al usarlos.
 

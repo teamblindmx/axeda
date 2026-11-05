@@ -115,13 +115,20 @@ jobs:
         run: npx vitest run packages/better-auth
 
   mongodb:
-    name: MongoDB ${{ matrix.mongo }} (real replica set)
+    name: MongoDB ${{ matrix.mongo }} (real replica set)${{ matrix.experimental && ' (informational)' || '' }}
     runs-on: ubuntu-24.04
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
-        # Las dos versiones con soporte que tiene el controlador que Better Auth admite.
-        mongo: ['7.0', '8.0']
+        include:
+          - mongo: '7.0'
+            experimental: false
+          # MongoDB 8.0 no arranca en los ejecutores con Linux 6.19 o más nuevo (SERVER-121912, sin
+          # corrección publicada): es un aviso de cuándo vuelve a funcionar, no un bloqueo. Se probó a
+          # mano (8.0.34 en Windows): el contrato de persistencia y la suite completa pasan.
+          - mongo: '8.0'
+            experimental: true
     env:
       # Las transacciones exigen un conjunto de réplicas: se levanta uno de un solo nodo. Se usa
       # 127.0.0.1 y no localhost por lo mismo que en MySQL (IPv6).

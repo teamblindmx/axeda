@@ -165,12 +165,12 @@ never from request data.
 Axeda stores its data through Better Auth's database adapter, so it runs on the databases Better
 Auth supports **that have real transactions**; it checks this at start and refuses otherwise.
 
-| Database   | What you give Better Auth                                            | Checked in the CI                          |
-| ---------- | -------------------------------------------------------------------- | ------------------------------------------ |
-| SQLite     | `new Database(file)` from `better-sqlite3`                           | In memory                                  |
-| PostgreSQL | `new pg.Pool({ connectionString })`                                  | 16 and 18, real servers, pool of 10        |
-| MySQL      | `createPool({ uri, timezone: 'Z' })` from `mysql2/promise`           | 8.4 and 9, real servers, pool of 10        |
-| MongoDB    | `mongodbAdapter(db, { client })` from `better-auth/adapters/mongodb` | 7.0 and 8.0, real single-node replica sets |
+| Database   | What you give Better Auth                                            | Checked in the CI                                         |
+| ---------- | -------------------------------------------------------------------- | --------------------------------------------------------- |
+| SQLite     | `new Database(file)` from `better-sqlite3`                           | In memory                                                 |
+| PostgreSQL | `new pg.Pool({ connectionString })`                                  | 16 and 18, real servers, pool of 10                       |
+| MySQL      | `createPool({ uri, timezone: 'Z' })` from `mysql2/promise`           | 8.4 and 9, real servers, pool of 10                       |
+| MongoDB    | `mongodbAdapter(db, { client })` from `better-auth/adapters/mongodb` | 7.0, a real single-node replica set (8.0 checked by hand) |
 
 **MongoDB.**
 
