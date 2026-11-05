@@ -101,7 +101,7 @@
       "maxQueries": 1
     },
     "audit.list, by a rare action": {
-      "p95Ms": 100,
+      "p95Ms": 15,
       "maxQueries": 1
     },
     "assignments.listForScope, 1,600 in the scope": {
