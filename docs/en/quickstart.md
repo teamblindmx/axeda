@@ -152,7 +152,7 @@ const { data } = await client.axeda.menu({
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `AXEDA_INVALID_CONFIG … session.cookieCache`                        | Axeda does not run with Better Auth's cookie cache: a revoked permission would stay valid until the cookie expires. Disable it |
 | `AXEDA_INVALID_CONFIG … disableCSRFCheck` (or `disableOriginCheck`) | Those options remove the defence of every `/axeda/*` endpoint. Remove them                                                     |
-| `AXEDA_TRANSACTIONS_UNSUPPORTED`                                    | The database adapter has no real transactions. Use SQLite or PostgreSQL                                                        |
+| `AXEDA_TRANSACTIONS_UNSUPPORTED`                                    | The database adapter has no real transactions. Use SQLite, PostgreSQL or MySQL                                                 |
 | Sign-in answers `403` right after sign-up                           | The preset requires a verified email. Open the link your `sendVerificationEmail` delivered                                     |
 | `429` while testing                                                 | The preset rate-limits sign-in (5/min) and sign-up (5/5 min) per address                                                       |
 | Better Auth logs `Field roleIds … Expected string[] but got TEXT`   | Cosmetic on SQLite: Better Auth compares `string[]` fields with a JSON column and SQLite has none. Nothing is wrong            |

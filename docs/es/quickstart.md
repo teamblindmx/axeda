@@ -153,7 +153,7 @@ const { data } = await client.axeda.menu({
 | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `AXEDA_INVALID_CONFIG … session.cookieCache`                          | Axeda no corre con la caché de cookie de Better Auth: un permiso revocado seguiría vigente hasta que la cookie caduque. Desactívala |
 | `AXEDA_INVALID_CONFIG … disableCSRFCheck` (o `disableOriginCheck`)    | Esas opciones quitan la defensa de todos los endpoints `/axeda/*`. Quítalas                                                         |
-| `AXEDA_TRANSACTIONS_UNSUPPORTED`                                      | El adaptador de base de datos no tiene transacciones reales. Usa SQLite o PostgreSQL                                                |
+| `AXEDA_TRANSACTIONS_UNSUPPORTED`                                      | El adaptador de base de datos no tiene transacciones reales. Usa SQLite, PostgreSQL o MySQL                                         |
 | El inicio de sesión responde `403` justo tras registrarse             | El preset exige correo verificado. Abre el enlace que entregó tu `sendVerificationEmail`                                            |
 | `429` mientras pruebas                                                | El preset limita por dirección el inicio de sesión (5/min) y el registro (5/5 min)                                                  |
 | Better Auth registra `Field roleIds … Expected string[] but got TEXT` | Cosmético en SQLite: Better Auth compara los campos `string[]` con una columna JSON y SQLite no la tiene. No pasa nada              |

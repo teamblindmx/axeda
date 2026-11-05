@@ -160,6 +160,35 @@ A `Principal` is `{ userId, authzVersion?, twoFactorEnabled?, banned? }`. Always
 `sessionPrincipal(auth)` or `principalFromUser(row)` from the user row Better Auth just read —
 never from request data.
 
+## Databases
+
+Axeda stores its data through Better Auth's database adapter, so it runs on the databases Better
+Auth supports **that have real transactions**; it checks this at start and refuses otherwise.
+
+| Database   | What you give Better Auth                                  | Checked in the CI                   |
+| ---------- | ---------------------------------------------------------- | ----------------------------------- |
+| SQLite     | `new Database(file)` from `better-sqlite3`                 | In memory                           |
+| PostgreSQL | `new pg.Pool({ connectionString })`                        | 16 and 18, real servers, pool of 10 |
+| MySQL      | `createPool({ uri, timezone: 'Z' })` from `mysql2/promise` | 8.4 and 9, real servers, pool of 10 |
+
+MongoDB is not supported yet.
+
+**MySQL.**
+
+- Give Better Auth the pool from `mysql2/promise`, not the one from `mysql2`, and set
+  `timezone: 'Z'`. Without it the driver converts dates to the local time of your process, and a
+  server in another zone (or a daylight-saving change) shifts them.
+- **Table names.** Better Auth validates the schema at start and in authentication requests, and it
+  compares table names with their case. A server that stores them in lowercase
+  (`lower_case_table_names` 1 or 2: Windows, macOS and some managed services) makes it report
+  Axeda's tables (`axedaRole`, `axedaAssignment`…) as missing, and authentication requests fail with
+  “Database schema mismatch”. Either run the server with `lower_case_table_names=0` (the default
+  on Linux; it can only be chosen when the server is first initialised), or turn that check off
+  with `advanced: { database: { validateSchema: false } }`, which also stops checking the rest of
+  your schema. The CI covers Linux; the second option was checked against a Windows server.
+- Text columns use the server's default collation, which does not tell `A` from `a`. It changes
+  nothing for Axeda: role keys, slugs and permission keys are lowercase by validation.
+
 ## Performance
 
 Measured by `npm run bench` on a GitHub-hosted Linux runner, with PostgreSQL 18 on the same machine and a pool of 10 connections. These are the numbers of one run on a shared machine, so read them as an order of magnitude, not a promise; run the benchmark against your own database for yours.
