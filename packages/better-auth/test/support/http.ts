@@ -1,9 +1,8 @@
 import type { BetterAuthOptions, BetterAuthPlugin } from '@better-auth/core';
 import { betterAuth } from 'better-auth';
-import { getMigrations } from 'better-auth/db/migration';
 import type Database from 'better-sqlite3';
 import { axeda, type AxedaPlugin, type AxedaPluginOptions } from '../../src/index.js';
-import { openDatabase, type DatabaseKind } from './databases.js';
+import { migrate, openDatabase, type DatabaseKind } from './databases.js';
 
 export const BASE_URL = 'http://localhost:3000';
 export const PASSWORD = 'correct-horse-battery-12';
@@ -104,7 +103,7 @@ export async function createHttpApp(options: HttpAppOptions = {}): Promise<HttpA
     ...databaseOptions,
     ...options.betterAuth,
   };
-  await (await getMigrations(config)).runMigrations();
+  await migrate(options.kind ?? 'sqlite', config);
   const auth = betterAuth(config);
   await auth.$context;
   await plugin.start();

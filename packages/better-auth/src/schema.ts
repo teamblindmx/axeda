@@ -25,6 +25,10 @@ export const GLOBAL_SCOPE_ID = '';
  * Esquema que el plugin añade a Better Auth. Las migraciones las genera Better Auth a partir
  * de esto (`getMigrations` o su CLI). Reglas: columnas nuevas siempre opcionales o con valor
  * por defecto; un cambio destructivo exige una migración manual.
+ *
+ * Las restricciones únicas van como `indexes` con `unique: true` y no como `unique` de un campo: el
+ * adaptador de MongoDB de Better Auth solo crea los índices de tabla, y sin ellos dos escrituras
+ * simultáneas con la misma clave caben las dos. En SQL son equivalentes.
  */
 export const axedaSchema = {
   user: {
@@ -39,7 +43,7 @@ export const axedaSchema = {
   },
   [MODELS.role]: {
     fields: {
-      key: { type: 'string', required: true, unique: true, input: false },
+      key: { type: 'string', required: true, input: false },
       name: { type: 'string', required: true, input: false },
       description: { type: 'string', required: false, input: false },
       permissions: { type: 'string[]', required: true, input: false },
@@ -50,6 +54,7 @@ export const axedaSchema = {
       createdAt: { type: 'date', required: true, input: false },
       updatedAt: { type: 'date', required: true, input: false },
     },
+    indexes: [{ fields: ['key'], unique: true }],
   },
   [MODELS.assignment]: {
     fields: {
@@ -78,9 +83,10 @@ export const axedaSchema = {
   },
   [MODELS.state]: {
     fields: {
-      key: { type: 'string', required: true, unique: true, input: false },
+      key: { type: 'string', required: true, input: false },
       version: { type: 'number', required: true, defaultValue: 0, input: false },
     },
+    indexes: [{ fields: ['key'], unique: true }],
   },
   [MODELS.audit]: {
     fields: {
@@ -108,7 +114,7 @@ export const axedaSchema = {
   },
   [MODELS.company]: {
     fields: {
-      slug: { type: 'string', required: true, unique: true, input: false },
+      slug: { type: 'string', required: true, input: false },
       name: { type: 'string', required: true, input: false },
       legalName: { type: 'string', required: false, input: false },
       logoUrl: { type: 'string', required: false, input: false },
@@ -120,7 +126,7 @@ export const axedaSchema = {
       createdAt: { type: 'date', required: true, input: false },
       updatedAt: { type: 'date', required: true, input: false },
     },
-    indexes: [{ fields: ['deletedAt'] }],
+    indexes: [{ fields: ['slug'], unique: true }, { fields: ['deletedAt'] }],
   },
   [MODELS.business]: {
     fields: {
@@ -160,11 +166,15 @@ export const axedaSchema = {
        * cerrarla pasa a `closed:<id>`. Así dos invitaciones iguales a la vez no caben, sin
        * depender de índices parciales que no todas las bases tienen.
        */
-      pendingKey: { type: 'string', required: true, unique: true, input: false },
+      pendingKey: { type: 'string', required: true, input: false },
       /** 0 mientras está pendiente. Se sube con `incrementOne`: solo un cierre lo consigue. */
       consumed: { type: 'number', required: true, defaultValue: 0, input: false },
       createdAt: { type: 'date', required: true, input: false },
     },
-    indexes: [{ fields: ['scopeType', 'scopeId'] }, { fields: ['email'] }],
+    indexes: [
+      { fields: ['pendingKey'], unique: true },
+      { fields: ['scopeType', 'scopeId'] },
+      { fields: ['email'] },
+    ],
   },
 } satisfies BetterAuthPluginDBSchema;
