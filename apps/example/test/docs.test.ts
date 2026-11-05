@@ -14,6 +14,7 @@ const FILES = [
   'README.md',
   'asvs.md',
   'concepts.md',
+  'configuration.md',
   'express.md',
   'quickstart.md',
   'reference.md',

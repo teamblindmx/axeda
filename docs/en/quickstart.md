@@ -105,7 +105,8 @@ await auth.$context;
 await axedaPlugin.start(); // checks the database really has transactions, syncs your roles
 ```
 
-`start()` refuses to continue on a database without real transactions. See [Security](security.md)
+`start()` refuses to continue on a database without real transactions. Every option is explained in
+[Configuration](configuration.md); see [Security](security.md)
 for what `secureAuthOptions()` fixes and why.
 
 **Mount it, then guard your routes.**
@@ -152,7 +153,7 @@ const { data } = await client.axeda.menu({
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `AXEDA_INVALID_CONFIG … session.cookieCache`                        | Axeda does not run with Better Auth's cookie cache: a revoked permission would stay valid until the cookie expires. Disable it |
 | `AXEDA_INVALID_CONFIG … disableCSRFCheck` (or `disableOriginCheck`) | Those options remove the defence of every `/axeda/*` endpoint. Remove them                                                     |
-| `AXEDA_TRANSACTIONS_UNSUPPORTED`                                    | The database adapter has no real transactions. Use SQLite, PostgreSQL or MySQL                                                 |
+| `AXEDA_TRANSACTIONS_UNSUPPORTED`                                    | The database adapter has no real transactions. Use SQLite, PostgreSQL, MySQL, or MongoDB on a replica set                      |
 | Sign-in answers `403` right after sign-up                           | The preset requires a verified email. Open the link your `sendVerificationEmail` delivered                                     |
 | `429` while testing                                                 | The preset rate-limits sign-in (5/min) and sign-up (5/5 min) per address                                                       |
 | Better Auth logs `Field roleIds … Expected string[] but got TEXT`   | Cosmetic on SQLite: Better Auth compares `string[]` fields with a JSON column and SQLite has none. Nothing is wrong            |

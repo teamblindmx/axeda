@@ -2,6 +2,8 @@
 
 ## Plugin options (`axeda({ … })`)
 
+Accepted values, ranges and what happens when one is wrong: [Configuration](configuration.md#2-the-plugin-axeda).
+
 | Option                         | Type                                                                         | Default | Meaning                                                                    |
 | ------------------------------ | ---------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------- |
 | `permissions`                  | `string[]`                                                                   | —       | Your permission catalog (concrete, no wildcards). **Required**             |
