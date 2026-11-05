@@ -166,13 +166,17 @@ Measured by `npm run bench` on a GitHub-hosted Linux runner, with PostgreSQL 18 
 
 | What                                                        | p50 (ms) | p95 (ms) | Queries |
 | ----------------------------------------------------------- | -------: | -------: | ------: |
-| `can()`, warm cache, user version already known (a session) |     0.29 |     0.32 |       1 |
-| `can()`, warm cache, user version read from the database    |     0.59 |     0.68 |       2 |
-| `can()`, cold cache (first time for that person)            |     1.75 |     2.75 |       5 |
-| `can()` right after a role everyone holds was edited        |     1.76 |     2.86 |       5 |
-| Granting a role, one at a time                              |     5.92 |    25.06 |       — |
-| Granting a role, 16 at a time                               |    93.10 |   241.36 |       — |
+| `can()`, warm cache, user version already known (a session) |     0.26 |     0.31 |       1 |
+| `can()`, warm cache, user version read from the database    |     0.56 |     0.91 |       2 |
+| `can()`, cold cache (first time for that person)            |     1.54 |     1.81 |       5 |
+| `can()` right after a role everyone holds was edited        |     1.63 |     2.12 |       5 |
+| A route: resolve the company, then `can()`                  |     0.55 |     0.65 |       2 |
+| A route: resolve the business and its company, then `can()` |     0.82 |     1.08 |       3 |
+| Audit log page of 50, 20,000 events, no filter              |     0.58 |     1.41 |       1 |
+| The same, filtered by a person who wrote half of the events |    10.51 |    11.34 |       1 |
+| Granting a role, one at a time                              |     5.29 |    74.21 |       — |
+| Granting a role, 16 at a time                               |    89.66 |   283.57 |       — |
 
 Checking permissions is the frequent operation and costs one cheap query once the cache is warm. Editing a role does not stall anyone: the next check of each person simply takes the cold path (about 2 ms). Administration is rare and heavier on purpose: a grant is one transaction that also writes the audit record, and grants made by the same person are applied one at a time (their own permissions cannot change while they grant), so one person tops out near 130 grants per second however many requests are in flight.
 
-The table above is `can()` on its own. A route that first resolves a company or a business from the database (Axeda never trusts the identifier a request sends) pays for that too: **2 queries** for a company and **3** for a business once the cache is warm and the session carries the user's version, one more if it does not. The benchmark counts them and fails if they grow. It also measures the paginated lists on a large audit log and a large scope, and how many times Better Auth writes the session per request.
+The table above is `can()` on its own. A route that first resolves a company or a business from the database (Axeda never trusts the identifier a request sends) pays for that too: **2 queries** for a company and **3** for a business once the cache is warm and the session carries the user's version, one more if it does not. The benchmark counts them and fails if they grow. It also measures the paginated lists on a large audit log and a large scope, and how many times Better Auth writes the session per request. At this size the one list that stands out is the audit log filtered by a very active person: about 18 times the unfiltered page (10.51 ms against 0.58 ms, derived from the table); the unfiltered page and the lists by scope stay near 1 ms.
