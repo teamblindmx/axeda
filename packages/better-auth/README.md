@@ -9,6 +9,6 @@ import { axeda, secureAuthOptions, sessionPrincipal } from '@teamblind/axeda-bet
 import { axedaClient } from '@teamblind/axeda-better-auth/client';
 ```
 
-Peer dependencies: `better-auth` and `@better-auth/core` (`^1.7.10`; tested on 1.7.10 and 1.7.14).
+Peer dependencies: `better-auth` and `@better-auth/core` (`^1.7.10`; tested on 1.7.10 and 1.7.17).
 
 Part of [Axeda](https://github.com/teamblindmx/axeda), hierarchical authorization (global → company → business) on top of [Better Auth](https://www.better-auth.com). Licensed under [Apache-2.0](LICENSE).

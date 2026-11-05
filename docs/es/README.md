@@ -42,7 +42,7 @@ _qué puedes hacer y dónde_.
 | Componente     | Soportado                                                                               |
 | -------------- | --------------------------------------------------------------------------------------- |
 | Node.js        | 22 y 24                                                                                 |
-| Better Auth    | `^1.7.10`; el CI corre la 1.7.10 (la mínima) y la 1.7.14, y vigila la beta 1.8          |
+| Better Auth    | `^1.7.10`; el CI corre la 1.7.10 (la mínima) y la 1.7.17, y vigila la beta 1.8          |
 | Módulos        | Solo módulos ES. Desde CommonJS usa `import()`, o `require()` en Node 22.12 o posterior |
 | Express        | 5 (Express 4 no está soportado)                                                         |
 | Bases de datos | SQLite y PostgreSQL (16 y 18 en el CI). MySQL y MongoDB: todavía no                     |
