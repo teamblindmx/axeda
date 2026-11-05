@@ -167,13 +167,42 @@ Axeda guarda sus datos a través del adaptador de base de datos de Better Auth, 
 las bases de datos que Better Auth soporta **y que tienen transacciones reales**; lo comprueba al
 arrancar y, si no, se niega.
 
-| Base de datos | Lo que le das a Better Auth                              | Comprobado en el CI                     |
-| ------------- | -------------------------------------------------------- | --------------------------------------- |
-| SQLite        | `new Database(archivo)` de `better-sqlite3`              | En memoria                              |
-| PostgreSQL    | `new pg.Pool({ connectionString })`                      | 16 y 18, servidores reales, grupo de 10 |
-| MySQL         | `createPool({ uri, timezone: 'Z' })` de `mysql2/promise` | 8.4 y 9, servidores reales, grupo de 10 |
+| Base de datos | Lo que le das a Better Auth                                        | Comprobado en el CI                                |
+| ------------- | ------------------------------------------------------------------ | -------------------------------------------------- |
+| SQLite        | `new Database(archivo)` de `better-sqlite3`                        | En memoria                                         |
+| PostgreSQL    | `new pg.Pool({ connectionString })`                                | 16 y 18, servidores reales, grupo de 10            |
+| MySQL         | `createPool({ uri, timezone: 'Z' })` de `mysql2/promise`           | 8.4 y 9, servidores reales, grupo de 10            |
+| MongoDB       | `mongodbAdapter(db, { client })` de `better-auth/adapters/mongodb` | 7.0 y 8.0, conjuntos de réplicas de un nodo reales |
 
-MongoDB aún no se soporta.
+**MongoDB.**
+
+- **Un conjunto de réplicas.** MongoDB solo ejecuta transacciones en un conjunto de réplicas o en un
+  clúster con particiones, y Axeda las necesita para mantener coherentes las versiones de permisos.
+  Basta un conjunto de réplicas de un solo nodo, también en desarrollo (`mongod --replSet rs0` y
+  luego `rs.initiate()`). Dale el cliente al adaptador: `mongodbAdapter(db, { client })`; sin él,
+  Better Auth apaga las transacciones. Con un `mongod` suelto, o sin el cliente, Axeda se detiene
+  al arrancar con `AXEDA_TRANSACTIONS_UNSUPPORTED`.
+- **Sin migraciones.** Las migraciones de Better Auth solo funcionan con bases SQL. Su adaptador de
+  MongoDB crea cada colección y sus índices, los únicos incluidos, la primera vez que escribe en
+  ella; eso es lo que mantiene única una clave de rol, un slug de compañía o la concesión de la misma
+  función en el mismo alcance. Antes de su primera transacción, Axeda hace una escritura que no
+  coincide con nada en cada una de sus colecciones, para que eso nunca ocurra dentro de una
+  transacción (MongoDB haría que la transacción esperara al índice hasta que caduca, a los 60
+  segundos). En una colección existente con muchos documentos, esa primera escritura espera a que se
+  construya el índice.
+- **Sin claves foráneas.** Las bases SQL rechazan una concesión a una función o un usuario que no
+  existe, y borran las concesiones de un usuario con el usuario. En MongoDB, Axeda lo comprueba
+  antes de escribir y borra las concesiones con un hook cuando se borra un usuario. Una concesión que
+  compite con el borrado de su función puede dejar una asignación a una función que ya no existe; se
+  ignora al calcular los permisos, así que no concede nada.
+- **Las concesiones simultáneas del mismo administrador son más lentas.** Una concesión bloquea la
+  fila del propio administrador. SQL hace esperar a la siguiente; MongoDB la aborta y Axeda reintenta
+  la transacción. El resultado es el mismo, pero el tiempo es menos parejo. En una prueba local (un
+  portátil, MongoDB 8.0, un nodo) una concesión tardó de 14 a 16 ms de una en una, y con 16 a la vez el
+  percentil 95 superó el segundo y se aplicaron de 50 a 60 concesiones por segundo, frente a 150 a 180
+  en PostgreSQL en el CI. Comprobar permisos no se ve afectado: cuesta el mismo número de
+  consultas que en SQL, que el benchmark cuenta.
+- Better Auth admite la versión 6 o 7 del controlador `mongodb`; el CI usa la 7.
 
 **MySQL.**
 

@@ -165,13 +165,40 @@ never from request data.
 Axeda stores its data through Better Auth's database adapter, so it runs on the databases Better
 Auth supports **that have real transactions**; it checks this at start and refuses otherwise.
 
-| Database   | What you give Better Auth                                  | Checked in the CI                   |
-| ---------- | ---------------------------------------------------------- | ----------------------------------- |
-| SQLite     | `new Database(file)` from `better-sqlite3`                 | In memory                           |
-| PostgreSQL | `new pg.Pool({ connectionString })`                        | 16 and 18, real servers, pool of 10 |
-| MySQL      | `createPool({ uri, timezone: 'Z' })` from `mysql2/promise` | 8.4 and 9, real servers, pool of 10 |
+| Database   | What you give Better Auth                                            | Checked in the CI                          |
+| ---------- | -------------------------------------------------------------------- | ------------------------------------------ |
+| SQLite     | `new Database(file)` from `better-sqlite3`                           | In memory                                  |
+| PostgreSQL | `new pg.Pool({ connectionString })`                                  | 16 and 18, real servers, pool of 10        |
+| MySQL      | `createPool({ uri, timezone: 'Z' })` from `mysql2/promise`           | 8.4 and 9, real servers, pool of 10        |
+| MongoDB    | `mongodbAdapter(db, { client })` from `better-auth/adapters/mongodb` | 7.0 and 8.0, real single-node replica sets |
 
-MongoDB is not supported yet.
+**MongoDB.**
+
+- **A replica set.** MongoDB only runs transactions on a replica set or a sharded cluster, and Axeda
+  needs them to keep permission versions consistent. A single-node replica set is enough, also for
+  development (`mongod --replSet rs0`, then `rs.initiate()`). Give the adapter the client:
+  `mongodbAdapter(db, { client })`; without it Better Auth turns transactions off. On a standalone
+  `mongod`, or without the client, Axeda stops at start with `AXEDA_TRANSACTIONS_UNSUPPORTED`.
+- **No migrations.** Better Auth's migrations only work on SQL databases. Its MongoDB adapter creates
+  each collection and its indexes, the unique ones included, the first time it writes to it; that
+  is what keeps a role key, a company slug or a grant of the same role in the same scope unique.
+  Before its first transaction Axeda makes one write that matches nothing in each of its collections,
+  so that this never happens inside a transaction (MongoDB would make the transaction wait for the
+  index until it expires, after 60 seconds). On an existing collection with many documents, that
+  first write waits for the index to be built.
+- **No foreign keys.** SQL databases refuse a grant to a role or a user that does not exist, and
+  delete a user's grants with the user. On MongoDB Axeda checks before writing and deletes the grants
+  with a hook when a user is deleted. A grant that races with the deletion of its role can leave an
+  assignment to a role that no longer exists; it is ignored when permissions are computed, so it
+  grants nothing.
+- **Concurrent grants by the same administrator are slower.** A grant locks the administrator's own
+  row. SQL makes the next grant wait for it; MongoDB aborts it and Axeda retries the transaction.
+  The result is the same, but the time is less even. In a local test (one laptop, MongoDB 8.0, one
+  node) a grant took 14 to 16 ms one at a time, and with 16 at the same time the 95th percentile
+  went above one second and 50 to 60 grants per second were applied, against 150 to 180 on
+  PostgreSQL in the CI. Checking permissions is not affected: it costs the same number of queries
+  as on SQL, which the benchmark counts.
+- Better Auth accepts version 6 or 7 of the `mongodb` driver; the CI runs 7.
 
 **MySQL.**
 

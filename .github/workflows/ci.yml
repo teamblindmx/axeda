@@ -114,6 +114,42 @@ jobs:
       - name: Tests against a real MySQL server with a connection pool
         run: npx vitest run packages/better-auth
 
+  mongodb:
+    name: MongoDB ${{ matrix.mongo }} (real replica set)
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # Las dos versiones con soporte que tiene el controlador que Better Auth admite.
+        mongo: ['7.0', '8.0']
+    env:
+      # Las transacciones exigen un conjunto de réplicas: se levanta uno de un solo nodo. Se usa
+      # 127.0.0.1 y no localhost por lo mismo que en MySQL (IPv6).
+      AXEDA_TEST_MONGO_URL: mongodb://127.0.0.1:27017/?replicaSet=rs0
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Start a single-node replica set
+        run: |
+          docker run -d --name mongo -p 27017:27017 mongo:${{ matrix.mongo }} --replSet rs0 --bind_ip_all
+          for i in $(seq 1 30); do
+            docker exec mongo mongosh --quiet --eval 'db.hello().ok' && break
+            sleep 2
+          done
+          docker exec mongo mongosh --quiet --eval 'rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "127.0.0.1:27017" }] })'
+          for i in $(seq 1 30); do
+            [ "$(docker exec mongo mongosh --quiet --eval 'db.hello().isWritablePrimary')" = "true" ] && exit 0
+            sleep 2
+          done
+          echo "The replica set never got a primary" >&2
+          exit 1
+      - name: Tests against a real MongoDB replica set
+        run: npx vitest run packages/better-auth
+
   package:
     name: Packages (build, contents, install in an empty project)
     runs-on: ubuntu-24.04
