@@ -15,6 +15,7 @@
 | `limits.maxCachedUsers`        | `number`                                                                     | `10000` | Users whose permissions each process keeps cached                          |
 | `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                        | off     | How invitations are delivered. Without it they are disabled                |
 | `publicIdentity`               | `boolean`                                                                    | `false` | Exposes `GET /axeda/public/identity` (the only endpoint without a session) |
+| `maxSessionAge`                | `number` (seconds) or `false`                                                | 30 days | Longest a session can live from sign-in, however much it is used           |
 
 `acceptUrl` must be built from your configured base URL, never from a request's `Host` header.
 

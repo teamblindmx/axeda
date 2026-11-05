@@ -18,6 +18,7 @@ import {
   createTenantEndpoints,
 } from './endpoints-tenants.js';
 import { axedaSchema } from './schema.js';
+import { cappedExpiry, resolveMaxSessionAge, sessionBeingRefreshed } from './session-lifetime.js';
 import { createBetterAuthPersistence } from './stores.js';
 import { createBetterAuthUserAdmin } from './user-admin.js';
 import { createBetterAuthUserDirectory } from './users.js';
@@ -43,6 +44,13 @@ export interface AxedaPluginOptions extends AxedaOptions {
    * sesión). Desactivado por defecto: es el único endpoint que no exige iniciar sesión.
    */
   readonly publicIdentity?: boolean;
+  /**
+   * La vida máxima de una sesión, en segundos, contada desde que se abrió. Better Auth renueva la
+   * sesión mientras se usa (`session.expiresIn` es el tiempo sin actividad), así que sin esto una
+   * sesión usada a diario no caducaría nunca. Pasado este tiempo hay que volver a iniciar sesión.
+   * Por defecto 30 días; `false` lo desactiva.
+   */
+  readonly maxSessionAge?: number | false;
 }
 
 interface BanRow {
@@ -126,6 +134,7 @@ const RATE_LIMITS = [
  * ```
  */
 export function axeda(options: AxedaPluginOptions) {
+  const maxSessionAge = resolveMaxSessionAge(options.maxSessionAge);
   let core: Axeda | undefined;
   let persistence: AxedaPersistence | undefined;
 
@@ -212,6 +221,32 @@ export function axeda(options: AxedaPluginOptions) {
                       message: 'This account is suspended.',
                     });
                   }
+                  // La vida máxima también recorta la sesión que nace (p. ej. si es menor que
+                  // `session.expiresIn`).
+                  const expiresAt =
+                    maxSessionAge === undefined
+                      ? undefined
+                      : cappedExpiry(
+                          (session as { expiresAt?: unknown }).expiresAt,
+                          (session as { createdAt?: unknown }).createdAt ?? new Date(),
+                          maxSessionAge,
+                        );
+                  return expiresAt === undefined ? undefined : { data: { expiresAt } };
+                },
+              },
+              update: {
+                // Better Auth renueva la sesión moviendo su caducidad hacia delante cada vez que
+                // se usa. Aquí se recorta para que nunca pase de su creación más la vida máxima, y
+                // su propia caducidad hace el resto, en sus endpoints y en tus rutas.
+                before: (session: { expiresAt?: unknown }, context: unknown) => {
+                  const current = sessionBeingRefreshed(context);
+                  const expiresAt =
+                    maxSessionAge === undefined || current === undefined
+                      ? undefined
+                      : cappedExpiry(session.expiresAt, current.createdAt, maxSessionAge);
+                  return Promise.resolve(
+                    expiresAt === undefined ? undefined : { data: { expiresAt } },
+                  );
                 },
               },
             },

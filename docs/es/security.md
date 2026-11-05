@@ -33,17 +33,17 @@ betterAuth({
 });
 ```
 
-| Ajuste                          | Valor                                                                  | Por qué                                                            |
-| ------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `trustedOrigins`                | Lista explícita, normalizada                                           | Decide qué sitios pueden llamar con cookie y recibir redirecciones |
-| Cookies                         | `HttpOnly`, `SameSite=Lax`, `Secure` en producción                     | Los scripts no las leen; se limita el envío entre sitios           |
-| Contraseñas                     | De 12 a 128 caracteres                                                 | La longitud pesa más que las reglas de composición                 |
-| Verificación de correo          | Obligatoria                                                            | Las invitaciones dependen de un correo verificado                  |
-| Restablecer contraseña          | Cierra todas las sesiones                                              | Una sesión robada no sobrevive al restablecimiento                 |
-| Sesiones                        | 7 días, renovadas a diario, 15 minutos «frescas»                       | Exposición acotada                                                 |
-| Caché de cookie de sesión       | Apagada                                                                | Una sesión o permiso revocado seguiría vigente                     |
-| Comprobaciones CSRF y de origen | Activas                                                                | Los endpoints de Axeda se autentican con cookie                    |
-| Límites de peticiones           | Activos; inicio de sesión 5/min, registro 5/5 min, restablecer 3/5 min | Frenan los intentos y el abuso, por dirección                      |
+| Ajuste                          | Valor                                                                         | Por qué                                                            |
+| ------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `trustedOrigins`                | Lista explícita, normalizada                                                  | Decide qué sitios pueden llamar con cookie y recibir redirecciones |
+| Cookies                         | `HttpOnly`, `SameSite=Lax`, `Secure` en producción                            | Los scripts no las leen; se limita el envío entre sitios           |
+| Contraseñas                     | De 12 a 128 caracteres                                                        | La longitud pesa más que las reglas de composición                 |
+| Verificación de correo          | Obligatoria                                                                   | Las invitaciones dependen de un correo verificado                  |
+| Restablecer contraseña          | Cierra todas las sesiones                                                     | Una sesión robada no sobrevive al restablecimiento                 |
+| Sesiones                        | 7 días sin uso, renovadas a diario, 30 días como máximo, 15 minutos «frescas» | Exposición acotada                                                 |
+| Caché de cookie de sesión       | Apagada                                                                       | Una sesión o permiso revocado seguiría vigente                     |
+| Comprobaciones CSRF y de origen | Activas                                                                       | Los endpoints de Axeda se autentican con cookie                    |
+| Límites de peticiones           | Activos; inicio de sesión 5/min, registro 5/5 min, restablecer 3/5 min        | Frenan los intentos y el abuso, por dirección                      |
 
 **Se niega a devolver** una configuración débil: un secreto de menos de 32 caracteres o con menos
 de 8 caracteres distintos, un origen con comodín, un origen con ruta, `http` fuera de `localhost`,
@@ -63,6 +63,16 @@ usuario junto a cada sesión y la refresca cuando él mismo cambia al usuario (a
 sube el `authzVersion` del usuario) no llegarían a esa copia, así que con `secondaryStorage` los
 endpoints del plugin y `sessionPrincipal` releen al usuario de la base de datos: una consulta más
 por petición, a cambio de que una revocación valga al instante.
+
+**¿Cuánto puede durar una sesión?** Better Auth renueva la sesión cada vez que se usa, así que por
+sí sola una sesión de uso diario no termina nunca. Axeda añade un límite absoluto: por omisión 30
+días desde que se inicia sesión (`maxSessionAge`, en segundos; `false` lo desactiva). Pasado ese
+tiempo la persona vuelve a iniciar sesión, tanto en los endpoints de Better Auth como en tus rutas,
+con las sesiones en la base de datos o en `secondaryStorage`. Iniciar sesión de nuevo empieza una
+cuenta nueva. El precio: durante el último tramo de la sesión (`session.expiresIn` menos
+`session.updateAge`, 6 días con el preset), el límite impide que la renovación avance, así que Better
+Auth escribe la fila de la sesión en cada petición en lugar de una vez al día. Un `session.expiresIn`
+más corto acorta ese tramo.
 
 ## Lista antes de salir a producción
 
