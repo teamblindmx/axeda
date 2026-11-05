@@ -128,8 +128,8 @@ function trustedOriginList(input: SecureAuthInput, production: boolean): string[
  * comodín o sin `https` en producción.
  *
  * No añade plugins (2FA, passkeys…): las funciones que exigen 2FA (`requireMfa`) necesitan el
- * plugin `twoFactor` de Better Auth, y conviene desactivar «confiar en este dispositivo» en las
- * cuentas administrativas (ver la guía de seguridad).
+ * plugin `twoFactor` de Better Auth, y conviene desactivar «confiar en este dispositivo» con
+ * `trustDeviceMaxAge: 0` en las cuentas administrativas (ver la guía de seguridad).
  */
 export function secureAuthOptions(input: SecureAuthInput): SecureAuthOptions {
   const production = (input.environment ?? 'production') === 'production';
