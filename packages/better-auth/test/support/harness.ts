@@ -1,9 +1,8 @@
 import type { AuthContext, BetterAuthOptions } from '@better-auth/core';
 import type { DBAdapter } from '@better-auth/core/db/adapter';
 import { betterAuth, type Auth } from 'better-auth';
-import { getMigrations } from 'better-auth/db/migration';
 import { axeda } from '../../src/index.js';
-import { openDatabase, type DatabaseKind } from './databases.js';
+import { migrate, openDatabase, type DatabaseKind } from './databases.js';
 
 export type { DatabaseKind } from './databases.js';
 
@@ -15,7 +14,7 @@ export interface TestAuth {
 
 /** Un Better Auth real con el plugin de Axeda, migrado, sobre una base de datos nueva. */
 export async function createAuth(kind: DatabaseKind): Promise<TestAuth> {
-  const { database } = await openDatabase(kind);
+  const { database, options: databaseOptions } = await openDatabase(kind);
 
   const options: BetterAuthOptions = {
     secret: 'test-secret-test-secret-test-secret-0123456789',
@@ -23,9 +22,9 @@ export async function createAuth(kind: DatabaseKind): Promise<TestAuth> {
     database,
     emailAndPassword: { enabled: true },
     plugins: [axeda({ permissions: [] })],
+    ...databaseOptions,
   };
-  const { runMigrations } = await getMigrations(options);
-  await runMigrations();
+  await migrate(kind, options);
 
   const auth = betterAuth(options);
   const context = await auth.$context;

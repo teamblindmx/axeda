@@ -11,7 +11,7 @@ import {
   createBetterAuthUserDirectory,
 } from '../src/index.js';
 import { closeAfterTest } from './support/cleanup.js';
-import { databaseKinds, openDatabase } from './support/databases.js';
+import { databaseKinds, migrate, openDatabase } from './support/databases.js';
 import { createAuth, createUsers } from './support/harness.js';
 
 const perms = (...keys: string[]) => keys.map(parsePermissionKey);
@@ -306,7 +306,7 @@ describe('migrations', () => {
       };
 
       // 1) Una aplicación que todavía no usa Axeda, con un usuario.
-      await (await getMigrations({ ...base, plugins: [] })).runMigrations();
+      await migrate(kind, { ...base, plugins: [] });
       const before = betterAuth({ ...base, plugins: [] });
       await before.api.signUpEmail({
         body: { email: 'old@test.dev', password: 'correct-horse-battery-12', name: 'Old' },
@@ -314,7 +314,7 @@ describe('migrations', () => {
 
       // 2) La misma base con el plugin añadido.
       const withPlugin = { ...base, plugins: [axeda({ permissions: [] })] };
-      await (await getMigrations(withPlugin)).runMigrations();
+      await migrate(kind, withPlugin);
       const context = await betterAuth(withPlugin).$context;
       const persistence = createBetterAuthPersistence(context.adapter);
       const user = await context.adapter.findOne<{ id: string }>({

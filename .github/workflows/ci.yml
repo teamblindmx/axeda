@@ -80,6 +80,92 @@ jobs:
           path: bench-results.json
           if-no-files-found: ignore
 
+  mysql:
+    name: MySQL ${{ matrix.mysql }} (real server)
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # La versión con soporte a largo plazo y la última de la rama de innovación.
+        mysql: ['8.4', '9']
+    services:
+      mysql:
+        image: mysql:${{ matrix.mysql }}
+        env:
+          MYSQL_ROOT_PASSWORD: mysql
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -pmysql"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      # Las pruebas crean y borran una base de datos por prueba en este servidor. Se usa
+      # 127.0.0.1 y no localhost: el controlador resolvería localhost también a IPv6.
+      AXEDA_TEST_MYSQL_URL: mysql://root:mysql@127.0.0.1:3306
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tests against a real MySQL server with a connection pool
+        run: npx vitest run packages/better-auth
+
+  mongodb:
+    name: MongoDB ${{ matrix.mongo }} (real replica set)${{ matrix.experimental && ' (informational)' || '' }}
+    runs-on: ubuntu-24.04
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - mongo: '7.0'
+            experimental: false
+          # MongoDB 8.0 no arranca en los ejecutores con Linux 6.19 o más nuevo (SERVER-121912, sin
+          # corrección publicada): es un aviso de cuándo vuelve a funcionar, no un bloqueo. Se probó a
+          # mano (8.0.34 en Windows): el contrato de persistencia y la suite completa pasan.
+          - mongo: '8.0'
+            experimental: true
+    env:
+      # Las transacciones exigen un conjunto de réplicas: se levanta uno de un solo nodo. Se usa
+      # 127.0.0.1 y no localhost por lo mismo que en MySQL (IPv6).
+      AXEDA_TEST_MONGO_URL: mongodb://127.0.0.1:27017/?replicaSet=rs0
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Start a single-node replica set
+        run: |
+          fail() {
+            echo "$1" >&2
+            docker ps -a
+            echo "--- what mongod printed ---"
+            docker logs mongo 2>&1 | tail -n 60
+            exit 1
+          }
+          docker run -d --name mongo -p 27017:27017 mongo:${{ matrix.mongo }} --replSet rs0 --bind_ip_all
+          ready=false
+          for i in $(seq 1 30); do
+            [ "$(docker inspect -f '{{.State.Running}}' mongo)" = "true" ] || fail "The MongoDB container stopped"
+            if docker exec mongo mongosh --quiet --eval 'db.hello().ok' > /dev/null 2>&1; then ready=true; break; fi
+            sleep 2
+          done
+          [ "$ready" = "true" ] || fail "MongoDB never answered"
+          docker exec mongo mongosh --quiet --eval 'rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "127.0.0.1:27017" }] })'
+          for i in $(seq 1 30); do
+            [ "$(docker exec mongo mongosh --quiet --eval 'db.hello().isWritablePrimary')" = "true" ] && exit 0
+            sleep 2
+          done
+          fail "The replica set never got a primary"
+      - name: Tests against a real MongoDB replica set
+        run: npx vitest run packages/better-auth
+
   package:
     name: Packages (build, contents, install in an empty project)
     runs-on: ubuntu-24.04
@@ -115,7 +201,7 @@ jobs:
           - version: 1.7.10
             experimental: false
           # The latest stable release when this was written.
-          - version: 1.7.14
+          - version: 1.7.17
             experimental: false
           # The next minor, still in beta: a heads-up, never a blocker.
           - version: 1.8.0-beta.3
@@ -130,7 +216,7 @@ jobs:
       - name: Use Better Auth ${{ matrix.version }}
         run: |
           npm install --no-save --ignore-scripts --no-audit --no-fund better-auth@${{ matrix.version }}
-          npm install --no-save --ignore-scripts --no-audit --no-fund better-auth@${{ matrix.version }} @better-auth/core@${{ matrix.version }} -w @teamblind/axeda-better-auth
+          npm install --no-save --ignore-scripts --no-audit --no-fund better-auth@${{ matrix.version }} @better-auth/core@${{ matrix.version }} @better-auth/api-key@${{ matrix.version }} -w @teamblind/axeda-better-auth
       - name: Types and every test
         if: ${{ !matrix.experimental }}
         run: |

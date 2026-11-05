@@ -33,17 +33,17 @@ betterAuth({
 });
 ```
 
-| Ajuste                          | Valor                                                                  | Por qué                                                            |
-| ------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `trustedOrigins`                | Lista explícita, normalizada                                           | Decide qué sitios pueden llamar con cookie y recibir redirecciones |
-| Cookies                         | `HttpOnly`, `SameSite=Lax`, `Secure` en producción                     | Los scripts no las leen; se limita el envío entre sitios           |
-| Contraseñas                     | De 12 a 128 caracteres                                                 | La longitud pesa más que las reglas de composición                 |
-| Verificación de correo          | Obligatoria                                                            | Las invitaciones dependen de un correo verificado                  |
-| Restablecer contraseña          | Cierra todas las sesiones                                              | Una sesión robada no sobrevive al restablecimiento                 |
-| Sesiones                        | 7 días, renovadas a diario, 15 minutos «frescas»                       | Exposición acotada                                                 |
-| Caché de cookie de sesión       | Apagada                                                                | Una sesión o permiso revocado seguiría vigente                     |
-| Comprobaciones CSRF y de origen | Activas                                                                | Los endpoints de Axeda se autentican con cookie                    |
-| Límites de peticiones           | Activos; inicio de sesión 5/min, registro 5/5 min, restablecer 3/5 min | Frenan los intentos y el abuso, por dirección                      |
+| Ajuste                          | Valor                                                                         | Por qué                                                            |
+| ------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `trustedOrigins`                | Lista explícita, normalizada                                                  | Decide qué sitios pueden llamar con cookie y recibir redirecciones |
+| Cookies                         | `HttpOnly`, `SameSite=Lax`, `Secure` en producción                            | Los scripts no las leen; se limita el envío entre sitios           |
+| Contraseñas                     | De 12 a 128 caracteres                                                        | La longitud pesa más que las reglas de composición                 |
+| Verificación de correo          | Obligatoria                                                                   | Las invitaciones dependen de un correo verificado                  |
+| Restablecer contraseña          | Cierra todas las sesiones                                                     | Una sesión robada no sobrevive al restablecimiento                 |
+| Sesiones                        | 7 días sin uso, renovadas a diario, 30 días como máximo, 15 minutos «frescas» | Exposición acotada                                                 |
+| Caché de cookie de sesión       | Apagada                                                                       | Una sesión o permiso revocado seguiría vigente                     |
+| Comprobaciones CSRF y de origen | Activas                                                                       | Los endpoints de Axeda se autentican con cookie                    |
+| Límites de peticiones           | Activos; inicio de sesión 5/min, registro 5/5 min, restablecer 3/5 min        | Frenan los intentos y el abuso, por dirección                      |
 
 **Se niega a devolver** una configuración débil: un secreto de menos de 32 caracteres o con menos
 de 8 caracteres distintos, un origen con comodín, un origen con ruta, `http` fuera de `localhost`,
@@ -58,10 +58,21 @@ en un `X-Forwarded-For` de un único valor; una cadena podría falsificarse para
 el límite real se multiplica por el número de instancias. Usa `rateLimitStorage: 'database'`.
 
 **¿Sesiones en `secondaryStorage` (Redis)?** Entonces Better Auth guarda una copia de la fila del
-usuario junto a cada sesión y solo la refresca cuando él mismo cambia al usuario. Los cambios de
-Axeda (una asignación revocada, la marca de 2FA) no llegarían a esa copia, así que con
-`secondaryStorage` los endpoints del plugin y `sessionPrincipal` releen al usuario de la base de
-datos: una consulta más por petición, a cambio de que una revocación valga al instante.
+usuario junto a cada sesión y la refresca cuando él mismo cambia al usuario (activar o desactivar el
+2FA, por ejemplo, llega a todas las sesiones). Los cambios propios de Axeda (revocar una asignación
+sube el `authzVersion` del usuario) no llegarían a esa copia, así que con `secondaryStorage` los
+endpoints del plugin y `sessionPrincipal` releen al usuario de la base de datos: una consulta más
+por petición, a cambio de que una revocación valga al instante.
+
+**¿Cuánto puede durar una sesión?** Better Auth renueva la sesión cada vez que se usa, así que por
+sí sola una sesión de uso diario no termina nunca. Axeda añade un límite absoluto: por omisión 30
+días desde que se inicia sesión (`maxSessionAge`, en segundos; `false` lo desactiva). Pasado ese
+tiempo la persona vuelve a iniciar sesión, tanto en los endpoints de Better Auth como en tus rutas,
+con las sesiones en la base de datos o en `secondaryStorage`. Iniciar sesión de nuevo empieza una
+cuenta nueva. El precio: durante el último tramo de la sesión (`session.expiresIn` menos
+`session.updateAge`, 6 días con el preset), el límite impide que la renovación avance, así que Better
+Auth escribe la fila de la sesión en cada petición en lugar de una vez al día. Un `session.expiresIn`
+más corto acorta ese tramo.
 
 ## Lista antes de salir a producción
 
@@ -82,22 +93,30 @@ datos: una consulta más por petición, a cambio de que una revocación valga al
 Marca las funciones delicadas con `requireMfa: true`. Esa función no concede nada a un usuario sin
 2FA. Sé preciso con lo que significa: la sesión de Better Auth **no** registra si esa sesión pasó
 un segundo factor, solo si el usuario **tiene** el 2FA activado. Y «confiar en este dispositivo»
-se salta el código. En las cuentas administrativas, desactiva los dispositivos de confianza en el
-plugin `twoFactor`.
+se salta el código. En las cuentas administrativas, desactiva los dispositivos de confianza con
+`trustDeviceMaxAge: 0` en las opciones del plugin `twoFactor`; el segundo factor se pide entonces en
+cada inicio de sesión, aunque el cliente pida confiar en el dispositivo.
 
 ## Llaves de API
 
 Si usas el plugin `apiKey` de Better Auth con sesiones para las llaves, construye a quien llama con
 `await principalFromSession(ctx)` / `sessionPrincipal`, que llevan las marcas `banned` y de 2FA. Un usuario
-bloqueado no tiene ningún permiso ni siquiera con una llave.
+bloqueado no tiene ningún permiso ni siquiera con una llave, y revocar una asignación surte efecto
+en la llave al instante.
+
+Una llave representa a su dueño: tiene todo lo que él tiene, tanto en los endpoints `/axeda/*` como
+en tus rutas, y Axeda ignora el campo `permissions` de la propia llave. A nadie se le pide un código
+cuando se usa una llave, así que si su dueño tiene el 2FA activado, la llave lleva los permisos de
+las funciones que exigen 2FA. Para un acceso más acotado, crea un usuario de servicio con una
+función mínima y dale la llave a él.
 
 ## Límites conocidos
 
 Dichos con claridad, para que puedas decidir:
 
-- **Bases de datos.** Verificadas: SQLite y PostgreSQL (PostgreSQL mediante un motor dentro del
-  proceso; las pruebas contra un servidor real con grupo de conexiones están programadas antes de
-  la primera versión). MySQL y MongoDB aún no se soportan.
+- **Bases de datos.** Verificadas: SQLite, PostgreSQL (16 y 18), MySQL (8.4 y 9) y MongoDB (7.0; 8.0 a mano), las
+  tres últimas contra servidores reales. MySQL pide configurar dos cosas y MongoDB necesita un
+  conjunto de réplicas y no tiene claves foráneas ([Referencia](reference.md#bases-de-datos)).
 - **Una sola autoridad.** Axeda es la única fuente de permisos. Los plugins `admin` y `organization` de Better Auth tienen roles propios; Axeda los ignora, así que no los consultes en tus rutas o tendrás dos sistemas que pueden discrepar.
 - **Los menús** son de solo lectura y vienen del código; editarlos por la API está previsto.
 - **Los mensajes** de la API están en inglés; los códigos (`AXEDA_*`) son estables y están pensados

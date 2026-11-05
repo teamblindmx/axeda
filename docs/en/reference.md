@@ -2,6 +2,8 @@
 
 ## Plugin options (`axeda({ … })`)
 
+Accepted values, ranges and what happens when one is wrong: [Configuration](configuration.md#2-the-plugin-axeda).
+
 | Option                         | Type                                                                         | Default | Meaning                                                                    |
 | ------------------------------ | ---------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------- |
 | `permissions`                  | `string[]`                                                                   | —       | Your permission catalog (concrete, no wildcards). **Required**             |
@@ -15,6 +17,7 @@
 | `limits.maxCachedUsers`        | `number`                                                                     | `10000` | Users whose permissions each process keeps cached                          |
 | `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                        | off     | How invitations are delivered. Without it they are disabled                |
 | `publicIdentity`               | `boolean`                                                                    | `false` | Exposes `GET /axeda/public/identity` (the only endpoint without a session) |
+| `maxSessionAge`                | `number` (seconds) or `false`                                                | 30 days | Longest a session can live from sign-in, however much it is used           |
 
 `acceptUrl` must be built from your configured base URL, never from a request's `Host` header.
 
@@ -159,17 +162,85 @@ A `Principal` is `{ userId, authzVersion?, twoFactorEnabled?, banned? }`. Always
 `sessionPrincipal(auth)` or `principalFromUser(row)` from the user row Better Auth just read —
 never from request data.
 
+## Databases
+
+Axeda stores its data through Better Auth's database adapter, so it runs on the databases Better
+Auth supports **that have real transactions**; it checks this at start and refuses otherwise.
+
+| Database   | What you give Better Auth                                            | Checked in the CI                                         |
+| ---------- | -------------------------------------------------------------------- | --------------------------------------------------------- |
+| SQLite     | `new Database(file)` from `better-sqlite3`                           | In memory                                                 |
+| PostgreSQL | `new pg.Pool({ connectionString })`                                  | 16 and 18, real servers, pool of 10                       |
+| MySQL      | `createPool({ uri, timezone: 'Z' })` from `mysql2/promise`           | 8.4 and 9, real servers, pool of 10                       |
+| MongoDB    | `mongodbAdapter(db, { client })` from `better-auth/adapters/mongodb` | 7.0, a real single-node replica set (8.0 checked by hand) |
+
+**MongoDB.**
+
+- **A replica set.** MongoDB only runs transactions on a replica set or a sharded cluster, and Axeda
+  needs them to keep permission versions consistent. A single-node replica set is enough, also for
+  development (`mongod --replSet rs0`, then `rs.initiate()`). Give the adapter the client:
+  `mongodbAdapter(db, { client })`; without it Better Auth turns transactions off. On a standalone
+  `mongod`, or without the client, Axeda stops at start with `AXEDA_TRANSACTIONS_UNSUPPORTED`.
+- **No migrations.** Better Auth's migrations only work on SQL databases. Its MongoDB adapter creates
+  each collection and its indexes, the unique ones included, the first time it writes to it; that
+  is what keeps a role key, a company slug or a grant of the same role in the same scope unique.
+  Before its first transaction Axeda makes one write that matches nothing in each of its collections,
+  so that this never happens inside a transaction (MongoDB would make the transaction wait for the
+  index until it expires, after 60 seconds). On an existing collection with many documents, that
+  first write waits for the index to be built.
+- **No foreign keys.** SQL databases refuse a grant to a role or a user that does not exist, and
+  delete a user's grants with the user. On MongoDB Axeda checks before writing and deletes the grants
+  with a hook when a user is deleted. A grant that races with the deletion of its role can leave an
+  assignment to a role that no longer exists; it is ignored when permissions are computed, so it
+  grants nothing.
+- **Concurrent grants by the same administrator are slower.** A grant locks the administrator's own
+  row. SQL makes the next grant wait for it; MongoDB aborts it and Axeda retries the transaction.
+  The result is the same, but the time is less even. In a local test (one laptop, MongoDB 8.0, one
+  node) a grant took 14 to 16 ms one at a time, and with 16 at the same time the 95th percentile
+  went above one second and 50 to 60 grants per second were applied, against 150 to 180 on
+  PostgreSQL in the CI. Checking permissions is not affected: it costs the same number of queries
+  as on SQL, which the benchmark counts.
+- Better Auth accepts version 6 or 7 of the `mongodb` driver; the CI runs 7.
+
+**MySQL.**
+
+- Give Better Auth the pool from `mysql2/promise`, not the one from `mysql2`, and set
+  `timezone: 'Z'`. Without it the driver converts dates to the local time of your process, and a
+  server in another zone (or a daylight-saving change) shifts them.
+- **Table names.** Better Auth validates the schema at start and in authentication requests, and it
+  compares table names with their case. A server that stores them in lowercase
+  (`lower_case_table_names` 1 or 2: Windows, macOS and some managed services) makes it report
+  Axeda's tables (`axedaRole`, `axedaAssignment`…) as missing, and authentication requests fail with
+  “Database schema mismatch”. Either run the server with `lower_case_table_names=0` (the default
+  on Linux; it can only be chosen when the server is first initialised), or turn that check off
+  with `advanced: { database: { validateSchema: false } }`, which also stops checking the rest of
+  your schema. The CI covers Linux; the second option was checked against a Windows server.
+- Text columns use the server's default collation, which does not tell `A` from `a`. It changes
+  nothing for Axeda: role keys, slugs and permission keys are lowercase by validation.
+- **Upgrading an existing database.** The audit log has an index on `action` since the version
+  after 0.1.0-alpha.0. Better Auth creates string columns without an index as `text`, and on MySQL
+  it will not index an existing `text` column: the migration stops with “can exceed MySQL's
+  3072-byte index-key limit”. Before running it, bound the column once:
+  `ALTER TABLE axedaAudit MODIFY action varchar(255) NOT NULL;`. A new database is not affected.
+
 ## Performance
 
 Measured by `npm run bench` on a GitHub-hosted Linux runner, with PostgreSQL 18 on the same machine and a pool of 10 connections. These are the numbers of one run on a shared machine, so read them as an order of magnitude, not a promise; run the benchmark against your own database for yours.
 
 | What                                                        | p50 (ms) | p95 (ms) | Queries |
 | ----------------------------------------------------------- | -------: | -------: | ------: |
-| `can()`, warm cache, user version already known (a session) |     0.29 |     0.32 |       1 |
-| `can()`, warm cache, user version read from the database    |     0.59 |     0.68 |       2 |
-| `can()`, cold cache (first time for that person)            |     1.75 |     2.75 |       5 |
-| `can()` right after a role everyone holds was edited        |     1.76 |     2.86 |       5 |
-| Granting a role, one at a time                              |     5.92 |    25.06 |       — |
-| Granting a role, 16 at a time                               |    93.10 |   241.36 |       — |
+| `can()`, warm cache, user version already known (a session) |     0.31 |     0.43 |       1 |
+| `can()`, warm cache, user version read from the database    |     0.68 |     1.03 |       2 |
+| `can()`, cold cache (first time for that person)            |     2.05 |     2.51 |       5 |
+| `can()` right after a role everyone holds was edited        |     1.97 |     2.97 |       5 |
+| A route: resolve the company, then `can()`                  |     0.66 |     0.86 |       2 |
+| A route: resolve the business and its company, then `can()` |     0.96 |     1.24 |       3 |
+| Audit log page of 50, 20,000 events, no filter              |     0.75 |     1.47 |       1 |
+| The same, filtered by a person who wrote half of the events |     0.75 |     1.90 |       1 |
+| The same, filtered by a rare action (5 events)              |     0.39 |     0.42 |       1 |
+| Granting a role, one at a time                              |     6.83 |     8.51 |       — |
+| Granting a role, 16 at a time                               |    71.26 |   187.48 |       — |
 
-Checking permissions is the frequent operation and costs one cheap query once the cache is warm. Editing a role does not stall anyone: the next check of each person simply takes the cold path (about 2 ms). Administration is rare and heavier on purpose: a grant is one transaction that also writes the audit record, and grants made by the same person are applied one at a time (their own permissions cannot change while they grant), so one person tops out near 130 grants per second however many requests are in flight.
+Checking permissions is the frequent operation and costs one cheap query once the cache is warm. Editing a role does not stall anyone: the next check of each person simply takes the cold path (about 2 ms). Administration is rare and heavier on purpose: a grant is one transaction that also writes the audit record, and grants made by the same person are applied one at a time (their own permissions cannot change while they grant), so one person tops out between 150 and 180 grants per second in the last run however many requests are in flight.
+
+The table above is `can()` on its own. A route that first resolves a company or a business from the database (Axeda never trusts the identifier a request sends) pays for that too: **2 queries** for a company and **3** for a business once the cache is warm and the session carries the user's version, one more if it does not. The benchmark counts them and fails if they grow. It also measures the paginated lists on a large audit log and a large scope, and how many times Better Auth writes the session per request. At this size the audit log filtered by a very active person used to be the least steady list: across four earlier CI runs (PostgreSQL 16 and 18) the same page took 0.82, 10.51, 13.39 and 13.70 ms. `EXPLAIN` on real PostgreSQL 16 and 18 explained it: the benchmark measured a table that had just been bulk loaded, before PostgreSQL had computed statistics for it, and without them it picks a plan that sorts every row of that person (about 50 ms at 20,000 events and 470 to 570 ms at 200,000); with statistics it walks the primary key backwards. The benchmark now runs `ANALYZE` after seeding, and the page takes 0.75 ms (p50) on PostgreSQL 18 and 0.36 ms on 16. In a running system autovacuum does this on its own, but the minutes after a very large import can be slow until it does. The search for a rare action used to read the whole table (30 to 74 ms at 200,000 events, growing with the log), so the schema now indexes `action`: with 20,000 events it takes 0.39 ms (p50) on PostgreSQL 18 and 0.16 ms on 16. The unfiltered page and the lists by scope stay under 2 ms at p95.

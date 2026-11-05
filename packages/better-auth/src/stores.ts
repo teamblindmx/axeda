@@ -30,9 +30,24 @@ import {
   type AuditRow,
   type RoleRow,
 } from './rows.js';
-import { MODELS, POLICY_STATE_KEY } from './schema.js';
+import { axedaSchema, MODELS, POLICY_STATE_KEY } from './schema.js';
 import { byId, decodeCursor, encodeCursor, type Adapter, type Atomic } from './shared.js';
 import { createBusinessStore, createCompanyStore, createInvitationStore } from './tenant-stores.js';
+
+/**
+ * MongoDB sin conjunto de réplicas (un `mongod` suelto) rechaza las transacciones con un error del
+ * servidor que no dice qué hacer. Se traduce al error de Axeda para ese caso.
+ */
+function explainTransactionFailure(error: unknown): never {
+  if (error instanceof Error && /replica set member or mongos/i.test(error.message)) {
+    throw new AxedaError(
+      'AXEDA_TRANSACTIONS_UNSUPPORTED',
+      'MongoDB only runs transactions on a replica set (a single-node one is enough, also for development) or on a sharded cluster, and Axeda needs them to keep permission versions consistent. Start MongoDB with --replSet and run rs.initiate(), or use a database that supports transactions.',
+      { cause: error },
+    );
+  }
+  throw error;
+}
 
 export interface BetterAuthPersistenceOptions {
   /** Reloj para `createdAt` y `updatedAt`. Por defecto, la hora del sistema. */
@@ -405,6 +420,37 @@ export function createBetterAuthPersistence<Options extends BetterAuthOptions>(
     return ensured;
   };
 
+  // MongoDB no tiene migraciones: su adaptador crea cada colección y sus índices la primera vez que
+  // escribe en ella. Si esa primera vez cae DENTRO de una transacción, que ya leyó la colección, el
+  // adaptador pide crear el índice fuera de la sesión, MongoDB lo deja esperando a que acabe la
+  // transacción y la transacción espera al índice: se cuelga hasta que caduca (60 s). Se evita
+  // escribiendo una vez, antes de la primera transacción, en cada colección de Axeda (sin tocar nada:
+  // el filtro no coincide con ningún documento).
+  let prepared: Promise<void> | null = null;
+  const prepare = (): Promise<void> => {
+    prepared ??= (async () => {
+      await ensurePolicyRow();
+      if (adapter.id !== 'mongodb-adapter') return;
+      await Promise.all(
+        Object.values(MODELS).map((model) => {
+          const field = Object.entries(axedaSchema[model].fields).find(
+            ([, attributes]) => attributes.type === 'string',
+          )?.[0];
+          if (field === undefined) return Promise.resolve();
+          return adapter.updateMany({
+            model,
+            where: [{ field: 'id', value: 'axeda-collection-setup' }],
+            update: { [field]: '' },
+          });
+        }),
+      );
+    })().catch((error: unknown) => {
+      prepared = null;
+      throw error;
+    });
+    return prepared;
+  };
+
   const storesFor = (
     target: Adapter,
     atomic: Atomic,
@@ -421,23 +467,28 @@ export function createBetterAuthPersistence<Options extends BetterAuthOptions>(
 
   const root = storesFor(
     adapter,
-    (work) => adapter.transaction((trx) => work(trx)),
+    async (work) => {
+      await prepare();
+      return adapter.transaction((trx) => work(trx)).catch(explainTransactionFailure);
+    },
     ensurePolicyRow,
   );
 
   return {
     ...root,
     async transaction<T>(callback: (stores: AxedaStores) => Promise<T>): Promise<T> {
-      await ensurePolicyRow();
-      return adapter.transaction((trx) =>
-        callback(
-          storesFor(
-            trx,
-            (work) => work(trx),
-            () => Promise.resolve(),
+      await prepare();
+      return adapter
+        .transaction((trx) =>
+          callback(
+            storesFor(
+              trx,
+              (work) => work(trx),
+              () => Promise.resolve(),
+            ),
           ),
-        ),
-      );
+        )
+        .catch(explainTransactionFailure);
     },
   };
 }

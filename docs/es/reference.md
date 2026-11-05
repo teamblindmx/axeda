@@ -2,6 +2,8 @@
 
 ## Opciones del plugin (`axeda({ … })`)
 
+Valores aceptados, rangos y qué pasa cuando uno es incorrecto: [Configuración](configuration.md#2-el-plugin-axeda).
+
 | Opción                         | Tipo                                                                           | Por omisión | Significado                                                         |
 | ------------------------------ | ------------------------------------------------------------------------------ | ----------- | ------------------------------------------------------------------- |
 | `permissions`                  | `string[]`                                                                     | —           | Tu catálogo de permisos (concretos, sin comodines). **Obligatoria** |
@@ -15,6 +17,7 @@
 | `limits.maxCachedUsers`        | `number`                                                                       | `10000`     | Usuarios cuyos permisos guarda en caché cada proceso                |
 | `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                          | apagado     | Cómo se entregan las invitaciones. Sin esto están desactivadas      |
 | `publicIdentity`               | `boolean`                                                                      | `false`     | Expone `GET /axeda/public/identity` (el único endpoint sin sesión)  |
+| `maxSessionAge`                | `number` (segundos) o `false`                                                  | 30 días     | Lo máximo que vive una sesión desde el inicio, por mucho que se use |
 
 `acceptUrl` debe construirse con tu URL base configurada, nunca con la cabecera `Host` de una petición.
 
@@ -160,17 +163,90 @@ Un `Principal` es `{ userId, authzVersion?, twoFactorEnabled?, banned? }`. Const
 `sessionPrincipal(auth)` o `principalFromUser(row)` a partir de la fila de usuario que Better Auth
 acaba de leer; nunca con datos de la petición.
 
+## Bases de datos
+
+Axeda guarda sus datos a través del adaptador de base de datos de Better Auth, así que funciona en
+las bases de datos que Better Auth soporta **y que tienen transacciones reales**; lo comprueba al
+arrancar y, si no, se niega.
+
+| Base de datos | Lo que le das a Better Auth                                        | Comprobado en el CI                                                  |
+| ------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| SQLite        | `new Database(archivo)` de `better-sqlite3`                        | En memoria                                                           |
+| PostgreSQL    | `new pg.Pool({ connectionString })`                                | 16 y 18, servidores reales, grupo de 10                              |
+| MySQL         | `createPool({ uri, timezone: 'Z' })` de `mysql2/promise`           | 8.4 y 9, servidores reales, grupo de 10                              |
+| MongoDB       | `mongodbAdapter(db, { client })` de `better-auth/adapters/mongodb` | 7.0, un conjunto de réplicas de un nodo real (8.0 comprobado a mano) |
+
+**MongoDB.**
+
+- **Un conjunto de réplicas.** MongoDB solo ejecuta transacciones en un conjunto de réplicas o en un
+  clúster con particiones, y Axeda las necesita para mantener coherentes las versiones de permisos.
+  Basta un conjunto de réplicas de un solo nodo, también en desarrollo (`mongod --replSet rs0` y
+  luego `rs.initiate()`). Dale el cliente al adaptador: `mongodbAdapter(db, { client })`; sin él,
+  Better Auth apaga las transacciones. Con un `mongod` suelto, o sin el cliente, Axeda se detiene
+  al arrancar con `AXEDA_TRANSACTIONS_UNSUPPORTED`.
+- **Sin migraciones.** Las migraciones de Better Auth solo funcionan con bases SQL. Su adaptador de
+  MongoDB crea cada colección y sus índices, los únicos incluidos, la primera vez que escribe en
+  ella; eso es lo que mantiene única una clave de rol, un slug de compañía o la concesión de la misma
+  función en el mismo alcance. Antes de su primera transacción, Axeda hace una escritura que no
+  coincide con nada en cada una de sus colecciones, para que eso nunca ocurra dentro de una
+  transacción (MongoDB haría que la transacción esperara al índice hasta que caduca, a los 60
+  segundos). En una colección existente con muchos documentos, esa primera escritura espera a que se
+  construya el índice.
+- **Sin claves foráneas.** Las bases SQL rechazan una concesión a una función o un usuario que no
+  existe, y borran las concesiones de un usuario con el usuario. En MongoDB, Axeda lo comprueba
+  antes de escribir y borra las concesiones con un hook cuando se borra un usuario. Una concesión que
+  compite con el borrado de su función puede dejar una asignación a una función que ya no existe; se
+  ignora al calcular los permisos, así que no concede nada.
+- **Las concesiones simultáneas del mismo administrador son más lentas.** Una concesión bloquea la
+  fila del propio administrador. SQL hace esperar a la siguiente; MongoDB la aborta y Axeda reintenta
+  la transacción. El resultado es el mismo, pero el tiempo es menos parejo. En una prueba local (un
+  portátil, MongoDB 8.0, un nodo) una concesión tardó de 14 a 16 ms de una en una, y con 16 a la vez el
+  percentil 95 superó el segundo y se aplicaron de 50 a 60 concesiones por segundo, frente a 150 a 180
+  en PostgreSQL en el CI. Comprobar permisos no se ve afectado: cuesta el mismo número de
+  consultas que en SQL, que el benchmark cuenta.
+- Better Auth admite la versión 6 o 7 del controlador `mongodb`; el CI usa la 7.
+
+**MySQL.**
+
+- Dale a Better Auth el grupo de `mysql2/promise`, no el de `mysql2`, y pon `timezone: 'Z'`. Sin
+  eso el controlador convierte las fechas a la hora local de tu proceso, y un servidor en otra zona
+  (o un cambio de horario) las desplaza.
+- **Nombres de tabla.** Better Auth valida el esquema al arrancar y en las peticiones de
+  autenticación, y compara los nombres de tabla distinguiendo mayúsculas. Un servidor que los
+  guarda en minúsculas (`lower_case_table_names` 1 o 2: Windows, macOS y algunos servicios
+  gestionados) hace que dé por faltantes las tablas de Axeda (`axedaRole`, `axedaAssignment`…), y las
+  peticiones de autenticación fallan con «Database schema mismatch». O arrancas el servidor con
+  `lower_case_table_names=0` (lo normal en Linux; solo se puede elegir al inicializar el servidor
+  por primera vez), o apagas esa comprobación con
+  `advanced: { database: { validateSchema: false } }`, que además deja de validar el resto de tu
+  esquema. El CI cubre Linux; la segunda opción se comprobó contra un servidor Windows.
+- Las columnas de texto usan la collation por omisión del servidor, que no distingue `A` de `a`.
+  No cambia nada para Axeda: las claves de rol, los slugs y las claves de permiso son en minúsculas
+  por validación.
+- **Actualizar una base existente.** El registro de auditoría tiene un índice en `action` desde la
+  versión posterior a 0.1.0-alpha.0. Better Auth crea como `text` las columnas de texto sin
+  índice, y en MySQL no indexa una columna `text` que ya existe: la migración se detiene con «can
+  exceed MySQL's 3072-byte index-key limit». Antes de ejecutarla, acota la columna una vez:
+  `ALTER TABLE axedaAudit MODIFY action varchar(255) NOT NULL;`. Una base nueva no se ve afectada.
+
 ## Rendimiento
 
 Medido con `npm run bench` en un ejecutor de GitHub con Linux, con PostgreSQL 18 en la misma máquina y un grupo de 10 conexiones. Son las cifras de una sola corrida en una máquina compartida: léelas como un orden de magnitud, no como una promesa; ejecuta el benchmark contra tu propia base de datos para obtener las tuyas.
 
-| Qué                                                               | p50 (ms) | p95 (ms) | Consultas |
-| ----------------------------------------------------------------- | -------: | -------: | --------: |
-| `can()`, caché caliente, versión del usuario ya conocida (sesión) |     0.29 |     0.32 |         1 |
-| `can()`, caché caliente, versión leída de la base de datos        |     0.59 |     0.68 |         2 |
-| `can()`, caché fría (la primera vez de esa persona)               |     1.75 |     2.75 |         5 |
-| `can()` justo después de editar una función que todos tienen      |     1.76 |     2.86 |         5 |
-| Conceder una función, una a la vez                                |     5.92 |    25.06 |         — |
-| Conceder una función, 16 a la vez                                 |    93.10 |   241.36 |         — |
+| Qué                                                                     | p50 (ms) | p95 (ms) | Consultas |
+| ----------------------------------------------------------------------- | -------: | -------: | --------: |
+| `can()`, caché caliente, versión del usuario ya conocida (sesión)       |     0.31 |     0.43 |         1 |
+| `can()`, caché caliente, versión leída de la base de datos              |     0.68 |     1.03 |         2 |
+| `can()`, caché fría (la primera vez de esa persona)                     |     2.05 |     2.51 |         5 |
+| `can()` justo después de editar una función que todos tienen            |     1.97 |     2.97 |         5 |
+| Una ruta: resolver la compañía y luego `can()`                          |     0.66 |     0.86 |         2 |
+| Una ruta: resolver el negocio y su compañía y luego `can()`             |     0.96 |     1.24 |         3 |
+| Página de 50 de la auditoría, 20 000 eventos, sin filtro                |     0.75 |     1.47 |         1 |
+| Lo mismo, filtrada por una persona que escribió la mitad de los eventos |     0.75 |     1.90 |         1 |
+| Lo mismo, filtrada por una acción rara (5 eventos)                      |     0.39 |     0.42 |         1 |
+| Conceder una función, una a la vez                                      |     6.83 |     8.51 |         — |
+| Conceder una función, 16 a la vez                                       |    71.26 |   187.48 |         — |
 
-Comprobar permisos es la operación frecuente y, con la caché caliente, cuesta una consulta barata. Editar una función no detiene a nadie: la siguiente comprobación de cada persona toma el camino frío (unos 2 ms). La administración es poco frecuente y más pesada a propósito: una concesión es una transacción que además escribe el registro de auditoría, y las concesiones de una misma persona se aplican de una en una (sus propios permisos no pueden cambiar mientras concede), así que una persona llega a unas 130 concesiones por segundo sin importar cuántas peticiones haya en curso.
+Comprobar permisos es la operación frecuente y, con la caché caliente, cuesta una consulta barata. Editar una función no detiene a nadie: la siguiente comprobación de cada persona toma el camino frío (unos 2 ms). La administración es poco frecuente y más pesada a propósito: una concesión es una transacción que además escribe el registro de auditoría, y las concesiones de una misma persona se aplican de una en una (sus propios permisos no pueden cambiar mientras concede), así que una persona llega a entre 150 y 180 concesiones por segundo en la última corrida sin importar cuántas peticiones haya en curso.
+
+La tabla de arriba es `can()` a solas. Una ruta que antes resuelve una compañía o un negocio en la base de datos (Axeda nunca se fía del identificador que envía la petición) paga además eso: **2 consultas** para una compañía y **3** para un negocio con la caché caliente y la sesión entregando la versión del usuario, una más si no la entrega. El benchmark las cuenta y falla si aumentan. También mide los listados paginados sobre una auditoría grande y un alcance grande, y cuántas veces escribe Better Auth la sesión por petición. A este tamaño, la auditoría filtrada por una persona muy activa era el listado menos estable: en cuatro ejecuciones anteriores del CI (PostgreSQL 16 y 18) la misma página tardó 0.82, 10.51, 13.39 y 13.70 ms. Un `EXPLAIN` en PostgreSQL 16 y 18 reales lo explicó: el benchmark medía una tabla recién cargada en bloque, antes de que PostgreSQL calculara estadísticas, y sin ellas elige un plan que ordena todas las filas de esa persona (unos 50 ms con 20 000 eventos y de 470 a 570 ms con 200 000); con estadísticas recorre la clave primaria al revés. El benchmark ahora ejecuta `ANALYZE` tras sembrar, y la página tarda 0.75 ms (p50) en PostgreSQL 18 y 0.36 ms en la 16. En un sistema en marcha lo hace autovacuum por su cuenta, pero los minutos posteriores a una importación muy grande pueden ser lentos hasta que lo hace. La búsqueda de una acción rara leía toda la tabla (de 30 a 74 ms con 200 000 eventos, y crece con el registro), así que el esquema ahora indexa `action`: con 20 000 eventos tarda 0.39 ms (p50) en PostgreSQL 18 y 0.16 ms en la 16. La página sin filtrar y los listados por alcance se quedan por debajo de 2 ms en p95.

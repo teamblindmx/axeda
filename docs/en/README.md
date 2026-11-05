@@ -4,19 +4,21 @@ Hierarchical authorization (**global → company → business**) for Node.js, on
 [Better Auth](https://www.better-auth.com). Better Auth answers _who are you_; Axeda answers
 _what can you do, and where_.
 
-> **Status:** alpha (`0.1.0-alpha.0`). Install with the `alpha` tag (`npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express`),
+> **Status:** alpha (`0.1.0-alpha.1`). Install with the `alpha` tag (`npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express`),
 > or run the [example application](quickstart.md) from this repository. The API can still change before 1.0.
 > Documentation in Spanish: [`../es`](../es/README.md).
 
-| Guide                           | Read it to…                                                                                    |
-| ------------------------------- | ---------------------------------------------------------------------------------------------- |
-| [Quick start](quickstart.md)    | Run the example, then add Axeda to your own app                                                |
-| [Concepts](concepts.md)         | Understand scopes, permissions, roles, assignments, companies, invitations and menus           |
-| [Protecting routes](express.md) | Use `requirePermission()` and `resolveScope()` in Express                                      |
-| [Security](security.md)         | Configure Better Auth safely, know what Axeda guarantees and what is still yours               |
-| [Reference](reference.md)       | Look up endpoints, error codes, options and the TypeScript API                                 |
-| [ASVS register](asvs.md)        | See what Axeda guarantees against the OWASP standard, what is delegated and what is still open |
-| [Testing](testing.md)           | Test your app with the in-memory stores                                                        |
+| Guide                             | Read it to…                                                                                    |
+| --------------------------------- | ---------------------------------------------------------------------------------------------- |
+| [Quick start](quickstart.md)      | Run the example, then add Axeda to your own app                                                |
+| [Configuration](configuration.md) | Set every option, in order: what each accepts, its default and what happens when it is wrong   |
+| [Concepts](concepts.md)           | Understand scopes, permissions, roles, assignments, companies, invitations and menus           |
+| [Protecting routes](express.md)   | Use `requirePermission()` and `resolveScope()` in Express                                      |
+| [Security](security.md)           | Configure Better Auth safely, know what Axeda guarantees and what is still yours               |
+| [Upgrading](upgrading.md)         | Move from one alpha to the next: what changed and what you must do                             |
+| [Reference](reference.md)         | Look up endpoints, error codes, options and the TypeScript API                                 |
+| [ASVS register](asvs.md)          | See what Axeda guarantees against the OWASP standard, what is delegated and what is still open |
+| [Testing](testing.md)             | Test your app with the in-memory stores                                                        |
 
 ## How the pieces fit
 
@@ -42,7 +44,7 @@ _what can you do, and where_.
 | Component   | Supported                                                                             |
 | ----------- | ------------------------------------------------------------------------------------- |
 | Node.js     | 22 and 24                                                                             |
-| Better Auth | `^1.7.10`; the CI runs 1.7.10 (the minimum) and 1.7.14, and watches 1.8 beta          |
+| Better Auth | `^1.7.10`; the CI runs 1.7.10 (the minimum) and 1.7.17, and watches 1.8 beta          |
 | Modules     | ES modules only. From CommonJS use `import()`, or `require()` on Node 22.12 and later |
 | Express     | 5 (Express 4 is not supported)                                                        |
-| Databases   | SQLite and PostgreSQL (16 and 18 in the CI). MySQL and MongoDB: not yet               |
+| Databases   | SQLite, PostgreSQL (16 and 18), MySQL (8.4 and 9) and MongoDB (7.0) in the CI         |

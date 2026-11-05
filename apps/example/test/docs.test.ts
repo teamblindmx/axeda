@@ -14,11 +14,13 @@ const FILES = [
   'README.md',
   'asvs.md',
   'concepts.md',
+  'configuration.md',
   'express.md',
   'quickstart.md',
   'reference.md',
   'security.md',
   'testing.md',
+  'upgrading.md',
 ];
 const read = (language: string, file: string) =>
   readFileSync(resolve(DOCS, language, file), 'utf8');

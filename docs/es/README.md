@@ -4,19 +4,21 @@ Autorización jerárquica (**global → compañía → negocio**) para Node.js, 
 [Better Auth](https://www.better-auth.com). Better Auth responde _quién eres_; Axeda responde
 _qué puedes hacer y dónde_.
 
-> **Estado:** alfa (`0.1.0-alpha.0`). Instala con la etiqueta `alpha` (`npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express`),
+> **Estado:** alfa (`0.1.0-alpha.1`). Instala con la etiqueta `alpha` (`npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express`),
 > o ejecuta la [aplicación de ejemplo](quickstart.md) desde este repositorio. La API aún puede cambiar antes de la 1.0.
 > Documentation in English: [`../en`](../en/README.md).
 
-| Guía                           | Léela para…                                                                             |
-| ------------------------------ | --------------------------------------------------------------------------------------- |
-| [Inicio rápido](quickstart.md) | Ejecutar el ejemplo y luego añadir Axeda a tu aplicación                                |
-| [Conceptos](concepts.md)       | Entender alcances, permisos, funciones, asignaciones, compañías, invitaciones y menús   |
-| [Proteger rutas](express.md)   | Usar `requirePermission()` y `resolveScope()` en Express                                |
-| [Seguridad](security.md)       | Configurar Better Auth con seguridad, saber qué garantiza Axeda y qué sigue siendo tuyo |
-| [Referencia](reference.md)     | Consultar endpoints, códigos de error, opciones y la API de TypeScript                  |
-| [Registro ASVS](asvs.md)       | Ver qué garantiza Axeda frente al estándar de OWASP, qué se delega y qué sigue abierto  |
-| [Pruebas](testing.md)          | Probar tu aplicación con los almacenes en memoria                                       |
+| Guía                              | Léela para…                                                                               |
+| --------------------------------- | ----------------------------------------------------------------------------------------- |
+| [Inicio rápido](quickstart.md)    | Ejecutar el ejemplo y luego añadir Axeda a tu aplicación                                  |
+| [Configuración](configuration.md) | Fijar cada opción, en orden: qué acepta, su valor por omisión y qué pasa si es incorrecta |
+| [Conceptos](concepts.md)          | Entender alcances, permisos, funciones, asignaciones, compañías, invitaciones y menús     |
+| [Proteger rutas](express.md)      | Usar `requirePermission()` y `resolveScope()` en Express                                  |
+| [Seguridad](security.md)          | Configurar Better Auth con seguridad, saber qué garantiza Axeda y qué sigue siendo tuyo   |
+| [Actualizar](upgrading.md)        | Pasar de una alfa a la siguiente: qué cambió y qué debes hacer                            |
+| [Referencia](reference.md)        | Consultar endpoints, códigos de error, opciones y la API de TypeScript                    |
+| [Registro ASVS](asvs.md)          | Ver qué garantiza Axeda frente al estándar de OWASP, qué se delega y qué sigue abierto    |
+| [Pruebas](testing.md)             | Probar tu aplicación con los almacenes en memoria                                         |
 
 ## Cómo encajan las piezas
 
@@ -42,7 +44,7 @@ _qué puedes hacer y dónde_.
 | Componente     | Soportado                                                                               |
 | -------------- | --------------------------------------------------------------------------------------- |
 | Node.js        | 22 y 24                                                                                 |
-| Better Auth    | `^1.7.10`; el CI corre la 1.7.10 (la mínima) y la 1.7.14, y vigila la beta 1.8          |
+| Better Auth    | `^1.7.10`; el CI corre la 1.7.10 (la mínima) y la 1.7.17, y vigila la beta 1.8          |
 | Módulos        | Solo módulos ES. Desde CommonJS usa `import()`, o `require()` en Node 22.12 o posterior |
 | Express        | 5 (Express 4 no está soportado)                                                         |
-| Bases de datos | SQLite y PostgreSQL (16 y 18 en el CI). MySQL y MongoDB: todavía no                     |
+| Bases de datos | SQLite, PostgreSQL (16 y 18), MySQL (8.4 y 9) y MongoDB (7.0) en el CI                  |

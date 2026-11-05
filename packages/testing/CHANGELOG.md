@@ -1,5 +1,13 @@
 # @teamblind/axeda-testing
 
+## 0.1.0-alpha.1
+
+### Patch Changes
+
+- No changes of its own. It is versioned together with the other packages so that the four share one version, and it now depends on `@teamblind/axeda-core` `0.1.0-alpha.1`.
+- Updated dependencies [ce83aff]
+  - @teamblind/axeda-core@0.1.0-alpha.1
+
 ## 0.1.0-alpha.0
 
 ### Minor Changes

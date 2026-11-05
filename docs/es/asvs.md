@@ -19,8 +19,8 @@ ASVS verifica **aplicaciones**; Axeda es una biblioteca dentro de una. Por eso c
 
 | Estado    | Filas |
 | --------- | ----: |
-| Cumple    |    53 |
-| Parcial   |    17 |
+| Cumple    |    54 |
+| Parcial   |    16 |
 | Delegado  |    12 |
 | Tuyo      |    14 |
 | No aplica |    11 |
@@ -87,11 +87,11 @@ ASVS verifica **aplicaciones**; Axeda es una biblioteca dentro de una. Por eso c
 
 | ASVS              | Nivel | Estado   | Cómo                                                                                                                                                                                                                                     |
 | ----------------- | :---: | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| V7.1.1            |   2   | Cumple   | Las vigencias están documentadas: 7 días, renovadas a diario, 15 minutos "recientes" ([Seguridad](security.md)).                                                                                                                         |
+| V7.1.1            |   2   | Cumple   | Las vigencias están documentadas: 7 días sin uso, renovadas a diario, 30 días como máximo, 15 minutos "recientes" ([Seguridad](security.md)).                                                                                            |
 | V7.1.2            |   2   | Tuyo     | Better Auth admite cualquier número de sesiones simultáneas; limítalas si lo necesitas.                                                                                                                                                  |
 | V7.2.1            |   1   | Cumple   | Toda comprobación consulta a Better Auth en el servidor. Axeda se niega a arrancar con la caché de cookie de sesión activa, así que una sesión revocada no puede seguir vigente (`plugin-http.test.ts`).                                 |
 | V7.2.2 to V7.2.4  |   1   | Delegado | Better Auth genera tokens de referencia aleatorios con un CSPRNG y emite uno nuevo en cada inicio de sesión.                                                                                                                             |
-| V7.3.1 and V7.3.2 |   2   | Parcial  | Las sesiones caducan a los 7 días y se renuevan con el uso. No hay un máximo absoluto aparte: una sesión de uso diario no caduca sola.                                                                                                   |
+| V7.3.1 and V7.3.2 |   2   | Cumple   | Las sesiones caducan a los 7 días sin uso y, por mucho que se usen, a los 30 días como máximo (`maxSessionAge`); `session-lifetime.test.ts` simula un mes de uso diario contra ese límite.                                               |
 | V7.4.1            |   1   | Cumple   | Una sesión terminada se rechaza en la siguiente petición (sin caché; ver V7.2.1).                                                                                                                                                        |
 | V7.4.2            |   1   | Cumple   | Un bloqueo cierra todas las sesiones abiertas y bloquea las nuevas (`users-http.test.ts`); borrar un usuario elimina sus sesiones en Better Auth.                                                                                        |
 | V7.4.3            |   2   | Delegado | El preset cierra todas las sesiones al restablecer la contraseña; cambiarla también puede revocar las demás sesiones (Better Auth).                                                                                                      |
@@ -209,7 +209,6 @@ Todo lo marcado Brecha o Parcial arriba, en un solo lugar, para que nada sea una
 
 - Los endpoints administrativos de Axeda no exigen una sesión autenticada hace poco y no se evalúa el dispositivo (V8.4.2, un requisito de nivel 3).
 - Better Auth no guarda un registro de autenticación y Axeda audita solo la autorización (V16.3.1).
-- No hay una vigencia máxima absoluta de la sesión; una sesión de uso diario no caduca sola (V7.3).
 - La auditoría no tiene retención automática y depende de los permisos de la base de datos para no modificarse (V14.1.2, V16.4.2).
 - La comprobación de contraseñas comunes no está en el preset (V6.2.4).
 - Aún no hay una descripción de la API legible por máquinas (V2.1.1).

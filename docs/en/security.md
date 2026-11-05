@@ -32,17 +32,17 @@ betterAuth({
 });
 ```
 
-| Setting                | Value                                              | Why                                                             |
-| ---------------------- | -------------------------------------------------- | --------------------------------------------------------------- |
-| `trustedOrigins`       | Explicit list, normalised                          | Decides which sites may call with a cookie and be redirected to |
-| Cookies                | `HttpOnly`, `SameSite=Lax`, `Secure` in production | Scripts cannot read them; cross-site sends are limited          |
-| Passwords              | 12 to 128 characters                               | Length beats composition rules                                  |
-| Email verification     | Required                                           | Invitations rely on a verified email                            |
-| Password reset         | Closes every session                               | A stolen session does not survive the reset                     |
-| Sessions               | 7 days, refreshed daily, 15 minutes “fresh”        | Bounded exposure                                                |
-| Session cookie cache   | Off                                                | A revoked session or permission would stay valid                |
-| CSRF and origin checks | On                                                 | Axeda's endpoints authenticate with a cookie                    |
-| Rate limits            | On; sign-in 5/min, sign-up 5/5 min, reset 3/5 min  | Slows guessing and abuse, per address                           |
+| Setting                | Value                                                             | Why                                                             |
+| ---------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------- |
+| `trustedOrigins`       | Explicit list, normalised                                         | Decides which sites may call with a cookie and be redirected to |
+| Cookies                | `HttpOnly`, `SameSite=Lax`, `Secure` in production                | Scripts cannot read them; cross-site sends are limited          |
+| Passwords              | 12 to 128 characters                                              | Length beats composition rules                                  |
+| Email verification     | Required                                                          | Invitations rely on a verified email                            |
+| Password reset         | Closes every session                                              | A stolen session does not survive the reset                     |
+| Sessions               | 7 days idle, refreshed daily, 30 days at most, 15 minutes “fresh” | Bounded exposure                                                |
+| Session cookie cache   | Off                                                               | A revoked session or permission would stay valid                |
+| CSRF and origin checks | On                                                                | Axeda's endpoints authenticate with a cookie                    |
+| Rate limits            | On; sign-in 5/min, sign-up 5/5 min, reset 3/5 min                 | Slows guessing and abuse, per address                           |
 
 It **refuses to return** a weak configuration: a secret under 32 characters or with fewer than 8
 distinct characters, a wildcard origin, an origin with a path, `http` outside `localhost`, or
@@ -57,10 +57,20 @@ only a single-value `X-Forwarded-For`; a chain could be forged to dodge rate lim
 limit multiplies by the number of instances. Use `rateLimitStorage: 'database'`.
 
 **Sessions in `secondaryStorage` (Redis)?** Better Auth then keeps a copy of the user row next to
-each session and refreshes it only when Better Auth itself changes the user. Axeda's changes
-(a revoked assignment, a 2FA flag) would not reach that copy, so when `secondaryStorage` is set,
-the plugin endpoints and `sessionPrincipal` re-read the user from the database: one extra query
-per request, in exchange for revocations that take effect at once.
+each session and refreshes it when Better Auth itself changes the user (turning 2FA on or off, for example, reaches
+every session). Axeda's own changes (a revoked assignment raises the user's `authzVersion`) would
+not reach that copy, so when `secondaryStorage` is set, the plugin endpoints and
+`sessionPrincipal` re-read the user from the database: one extra query per request, in exchange
+for revocations that take effect at once.
+
+**How long can a session live?** Better Auth renews a session every time it is used, so by itself a
+session in daily use never ends. Axeda adds an absolute limit: by default 30 days from sign-in
+(`maxSessionAge`, in seconds; `false` turns it off). Past it the person signs in again, in Better
+Auth's endpoints and in your routes alike, with sessions in the database or in `secondaryStorage`.
+Signing in again starts a new count. The price: during the last stretch of a session (`session.expiresIn`
+minus `session.updateAge`, 6 days with the preset), the limit stops the renewal from moving forward, so
+Better Auth writes the session row on every request instead of once a day. A shorter
+`session.expiresIn` shortens that stretch.
 
 ## Checklist before you go live
 
@@ -81,21 +91,29 @@ per request, in exchange for revocations that take effect at once.
 Mark sensitive roles `requireMfa: true`. Such a role grants nothing to a user without 2FA. Be
 precise about what that means: Better Auth's session does **not** record whether this session
 passed a second factor, only whether the user **has** 2FA enabled. And “trust this device” skips
-the code. For administrative accounts, disable trusted devices in the `twoFactor` plugin.
+the code. For administrative accounts, turn trusted devices off with `trustDeviceMaxAge: 0` in the
+`twoFactor` plugin options; the second factor is then asked at every sign-in, even if the client
+asks to trust the device.
 
 ## API keys
 
 If you use Better Auth's `apiKey` plugin with sessions for keys, build the caller with
 `await principalFromSession(ctx)` / `sessionPrincipal`, which carry the `banned` and 2FA flags. A banned
-user holds no permission even through a key.
+user holds no permission even through a key, and revoking an assignment takes effect on the key at
+once.
+
+A key stands for its owner: it holds everything the owner holds, on the `/axeda/*` endpoints and on
+your routes alike, and Axeda ignores the key's own `permissions` field. Nobody is asked for a code
+when a key is used, so if its owner has 2FA on, the key carries the permissions of roles that
+require 2FA. For narrower access, create a service user with a minimal role and give the key to it.
 
 ## Known limits
 
 Stated plainly, so you can decide:
 
-- **Databases.** Verified: SQLite and PostgreSQL (PostgreSQL through an in-process engine; tests
-  against a real server with a connection pool are scheduled before the first release). MySQL and
-  MongoDB are not supported yet.
+- **Databases.** Verified: SQLite, PostgreSQL (16 and 18), MySQL (8.4 and 9) and MongoDB (7.0; 8.0 by hand), the
+  last three against real servers. MySQL has two things to set and MongoDB needs a replica set and
+  has no foreign keys ([Reference](reference.md#databases)).
 - **One authority.** Axeda is the only source of permissions. Better Auth's own `admin` and `organization` plugins have roles of their own; Axeda ignores them, so do not check them in your routes or you will have two systems that can disagree.
 - **Menus** are read-only and come from code; editing them through the API is planned.
 - **Messages** from the API are in English; the codes (`AXEDA_*`) are stable and meant for you to

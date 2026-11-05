@@ -503,9 +503,9 @@ describe('user deletion', () => {
   );
 });
 
-const postgresKinds = databaseKinds.filter((kind) => kind !== 'sqlite');
+const serverKinds = databaseKinds.filter((kind) => kind !== 'sqlite');
 
-describe.each(postgresKinds)('on PostgreSQL (%s)', (kind) => {
+describe.each(serverKinds)('on a database server (%s)', (kind) => {
   it('runs the same flow', async () => {
     const { app, admin, alice } = await world({ kind });
     const role = await createRole(app, admin.cookie, 'cashier', ['invoice:read']);
