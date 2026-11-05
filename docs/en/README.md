@@ -4,7 +4,7 @@ Hierarchical authorization (**global → company → business**) for Node.js, on
 [Better Auth](https://www.better-auth.com). Better Auth answers _who are you_; Axeda answers
 _what can you do, and where_.
 
-> **Status:** alpha (`0.1.0-alpha.0`). Install with the `alpha` tag (`npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express`),
+> **Status:** alpha (`0.1.0-alpha.1`). Install with the `alpha` tag (`npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express`),
 > or run the [example application](quickstart.md) from this repository. The API can still change before 1.0.
 > Documentation in Spanish: [`../es`](../es/README.md).
 
@@ -15,6 +15,7 @@ _what can you do, and where_.
 | [Concepts](concepts.md)           | Understand scopes, permissions, roles, assignments, companies, invitations and menus           |
 | [Protecting routes](express.md)   | Use `requirePermission()` and `resolveScope()` in Express                                      |
 | [Security](security.md)           | Configure Better Auth safely, know what Axeda guarantees and what is still yours               |
+| [Upgrading](upgrading.md)         | Move from one alpha to the next: what changed and what you must do                             |
 | [Reference](reference.md)         | Look up endpoints, error codes, options and the TypeScript API                                 |
 | [ASVS register](asvs.md)          | See what Axeda guarantees against the OWASP standard, what is delegated and what is still open |
 | [Testing](testing.md)             | Test your app with the in-memory stores                                                        |

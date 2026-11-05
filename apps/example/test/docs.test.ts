@@ -20,6 +20,7 @@ const FILES = [
   'reference.md',
   'security.md',
   'testing.md',
+  'upgrading.md',
 ];
 const read = (language: string, file: string) =>
   readFileSync(resolve(DOCS, language, file), 'utf8');
