@@ -1,9 +1,8 @@
 import type { AuthContext, BetterAuthOptions } from '@better-auth/core';
 import type { DBAdapter } from '@better-auth/core/db/adapter';
 import { betterAuth, type Auth } from 'better-auth';
-import { getMigrations } from 'better-auth/db/migration';
 import { axeda } from '../../src/index.js';
-import { openDatabase, type DatabaseKind } from './databases.js';
+import { migrate, openDatabase, type DatabaseKind } from './databases.js';
 
 export type { DatabaseKind } from './databases.js';
 
@@ -25,8 +24,7 @@ export async function createAuth(kind: DatabaseKind): Promise<TestAuth> {
     plugins: [axeda({ permissions: [] })],
     ...databaseOptions,
   };
-  const { runMigrations } = await getMigrations(options);
-  await runMigrations();
+  await migrate(kind, options);
 
   const auth = betterAuth(options);
   const context = await auth.$context;

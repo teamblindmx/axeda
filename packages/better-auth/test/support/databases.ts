@@ -1,7 +1,10 @@
 import { randomBytes } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import type { BetterAuthOptions } from '@better-auth/core';
+import { mongodbAdapter } from 'better-auth/adapters/mongodb';
+import { getMigrations } from 'better-auth/db/migration';
 import Database from 'better-sqlite3';
+import { MongoClient } from 'mongodb';
 import {
   createPool as createMysqlPool,
   type Pool as MysqlPool,
@@ -18,11 +21,15 @@ import { createPgliteDialect } from './pglite-dialect.js';
  *   se define `AXEDA_TEST_POSTGRES_URL`; el CI lo hace con un servicio de PostgreSQL.
  * - `mysql-server`: un servidor MySQL de verdad con un grupo de conexiones. Solo existe si se
  *   define `AXEDA_TEST_MYSQL_URL`; el CI lo hace con un servicio de MySQL.
+ * - `mongo-server`: un conjunto de réplicas de MongoDB de verdad (las transacciones lo exigen). Solo
+ *   existe si se define `AXEDA_TEST_MONGO_URL`.
  */
-export type DatabaseKind = 'sqlite' | 'postgres' | 'postgres-server' | 'mysql-server';
+export type DatabaseKind =
+  'sqlite' | 'postgres' | 'postgres-server' | 'mysql-server' | 'mongo-server';
 
 export const SERVER_URL: string | undefined = process.env['AXEDA_TEST_POSTGRES_URL'] || undefined;
 export const MYSQL_URL: string | undefined = process.env['AXEDA_TEST_MYSQL_URL'] || undefined;
+export const MONGO_URL: string | undefined = process.env['AXEDA_TEST_MONGO_URL'] || undefined;
 
 /** Los tipos contra los que corren las pruebas en este entorno. */
 export const databaseKinds: readonly DatabaseKind[] = [
@@ -30,6 +37,7 @@ export const databaseKinds: readonly DatabaseKind[] = [
   'postgres',
   ...(SERVER_URL === undefined ? [] : (['postgres-server'] as const)),
   ...(MYSQL_URL === undefined ? [] : (['mysql-server'] as const)),
+  ...(MONGO_URL === undefined ? [] : (['mongo-server'] as const)),
 ];
 
 /** Conexiones del grupo del servidor real: más de una, para que haya paralelismo de verdad. */
@@ -120,6 +128,19 @@ async function openMysqlDatabase(
   };
 }
 
+/** Una base de datos MongoDB nueva en el conjunto de réplicas, que se borra al terminar la prueba. */
+async function openMongoDatabase(url: string): Promise<OpenedDatabase['database']> {
+  const client = new MongoClient(url, { maxPoolSize: SERVER_POOL_SIZE });
+  await client.connect();
+  // El nombre sale de bytes aleatorios en hexadecimal: no hay nada que escapar.
+  const db = client.db(`axeda_test_${randomBytes(8).toString('hex')}`);
+  closeAfterTest(async () => {
+    await db.dropDatabase();
+    await client.close();
+  });
+  return mongodbAdapter(db, { client });
+}
+
 /** Abre una base de datos nueva del tipo pedido y la cierra al terminar la prueba. */
 export async function openDatabase(
   kind: DatabaseKind,
@@ -130,6 +151,12 @@ export async function openDatabase(
     closeAfterTest(() => void sqlite.close());
     if (options.foreignKeys === false) sqlite.pragma('foreign_keys = OFF');
     return { database: sqlite, sqlite, options: {} };
+  }
+  if (kind === 'mongo-server') {
+    if (MONGO_URL === undefined) {
+      throw new Error('AXEDA_TEST_MONGO_URL is not set; there is no MongoDB server to use.');
+    }
+    return { database: await openMongoDatabase(MONGO_URL), sqlite: undefined, options: {} };
   }
   if (kind === 'mysql-server') {
     if (MYSQL_URL === undefined) {
@@ -154,4 +181,14 @@ export async function openDatabase(
     sqlite: undefined,
     options: {},
   };
+}
+
+/**
+ * Crea las tablas del esquema. MongoDB no tiene migraciones en Better Auth (`getMigrations` solo
+ * entiende Kysely y termina el proceso): su adaptador crea las colecciones y los índices la primera
+ * vez que las usa, así que ahí no hay nada que ejecutar.
+ */
+export async function migrate(kind: DatabaseKind, options: BetterAuthOptions): Promise<void> {
+  if (kind === 'mongo-server') return;
+  await (await getMigrations(options)).runMigrations();
 }

@@ -33,12 +33,20 @@ import {
   createBetterAuthUserDirectory,
 } from '@teamblind/axeda-better-auth';
 import { betterAuth } from 'better-auth';
+import { mongodbAdapter } from 'better-auth/adapters/mongodb';
 import { getMigrations } from 'better-auth/db/migration';
 import Database from 'better-sqlite3';
+import { MongoClient } from 'mongodb';
 import pg from 'pg';
 
 const SERVER_URL = process.env['AXEDA_TEST_POSTGRES_URL'] || undefined;
-const KIND = SERVER_URL === undefined ? 'sqlite' : 'postgres-server';
+const MONGO_URL = process.env['AXEDA_TEST_MONGO_URL'] || undefined;
+const KIND =
+  MONGO_URL !== undefined
+    ? 'mongo-server'
+    : SERVER_URL === undefined
+      ? 'sqlite'
+      : 'postgres-server';
 const POOL_SIZE = 10;
 const USERS = 400;
 const COMPANIES = 5;
@@ -189,6 +197,20 @@ async function openDatabase(): Promise<{
   analyze: () => Promise<void>;
   close: () => Promise<void>;
 }> {
+  if (MONGO_URL !== undefined) {
+    const client = new MongoClient(MONGO_URL, { maxPoolSize: POOL_SIZE });
+    await client.connect();
+    const db = client.db(`axeda_bench_${randomBytes(6).toString('hex')}`);
+    return {
+      database: mongodbAdapter(db, { client }),
+      // MongoDB planifica con las estadísticas que ya tiene el índice: no hay nada que calcular.
+      analyze: async () => {},
+      close: async () => {
+        await db.dropDatabase();
+        await client.close();
+      },
+    };
+  }
   if (SERVER_URL === undefined) {
     const sqlite = new Database(':memory:');
     return {
@@ -358,7 +380,8 @@ async function prepare(): Promise<Bench> {
     plugins: [plugin],
     rateLimit: { enabled: false },
   } satisfies AuthOptions;
-  await (await getMigrations(options)).runMigrations();
+  // MongoDB no tiene migraciones: su adaptador crea colecciones e índices al usarlas.
+  if (KIND !== 'mongo-server') await (await getMigrations(options)).runMigrations();
   const auth = betterAuth(options);
   const context = await auth.$context;
 
