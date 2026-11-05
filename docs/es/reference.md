@@ -161,6 +161,38 @@ Un `Principal` es `{ userId, authzVersion?, twoFactorEnabled?, banned? }`. Const
 `sessionPrincipal(auth)` o `principalFromUser(row)` a partir de la fila de usuario que Better Auth
 acaba de leer; nunca con datos de la petición.
 
+## Bases de datos
+
+Axeda guarda sus datos a través del adaptador de base de datos de Better Auth, así que funciona en
+las bases de datos que Better Auth soporta **y que tienen transacciones reales**; lo comprueba al
+arrancar y, si no, se niega.
+
+| Base de datos | Lo que le das a Better Auth                              | Comprobado en el CI                     |
+| ------------- | -------------------------------------------------------- | --------------------------------------- |
+| SQLite        | `new Database(archivo)` de `better-sqlite3`              | En memoria                              |
+| PostgreSQL    | `new pg.Pool({ connectionString })`                      | 16 y 18, servidores reales, grupo de 10 |
+| MySQL         | `createPool({ uri, timezone: 'Z' })` de `mysql2/promise` | 8.4 y 9, servidores reales, grupo de 10 |
+
+MongoDB aún no se soporta.
+
+**MySQL.**
+
+- Dale a Better Auth el grupo de `mysql2/promise`, no el de `mysql2`, y pon `timezone: 'Z'`. Sin
+  eso el controlador convierte las fechas a la hora local de tu proceso, y un servidor en otra zona
+  (o un cambio de horario) las desplaza.
+- **Nombres de tabla.** Better Auth valida el esquema al arrancar y en las peticiones de
+  autenticación, y compara los nombres de tabla distinguiendo mayúsculas. Un servidor que los
+  guarda en minúsculas (`lower_case_table_names` 1 o 2: Windows, macOS y algunos servicios
+  gestionados) hace que dé por faltantes las tablas de Axeda (`axedaRole`, `axedaAssignment`…), y las
+  peticiones de autenticación fallan con «Database schema mismatch». O arrancas el servidor con
+  `lower_case_table_names=0` (lo normal en Linux; solo se puede elegir al inicializar el servidor
+  por primera vez), o apagas esa comprobación con
+  `advanced: { database: { validateSchema: false } }`, que además deja de validar el resto de tu
+  esquema. El CI cubre Linux; la segunda opción se comprobó contra un servidor Windows.
+- Las columnas de texto usan la collation por omisión del servidor, que no distingue `A` de `a`.
+  No cambia nada para Axeda: las claves de rol, los slugs y las claves de permiso son en minúsculas
+  por validación.
+
 ## Rendimiento
 
 Medido con `npm run bench` en un ejecutor de GitHub con Linux, con PostgreSQL 18 en la misma máquina y un grupo de 10 conexiones. Son las cifras de una sola corrida en una máquina compartida: léelas como un orden de magnitud, no como una promesa; ejecuta el benchmark contra tu propia base de datos para obtener las tuyas.

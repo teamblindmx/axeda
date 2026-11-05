@@ -80,6 +80,40 @@ jobs:
           path: bench-results.json
           if-no-files-found: ignore
 
+  mysql:
+    name: MySQL ${{ matrix.mysql }} (real server)
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # La versión con soporte a largo plazo y la última de la rama de innovación.
+        mysql: ['8.4', '9']
+    services:
+      mysql:
+        image: mysql:${{ matrix.mysql }}
+        env:
+          MYSQL_ROOT_PASSWORD: mysql
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -pmysql"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      # Las pruebas crean y borran una base de datos por prueba en este servidor. Se usa
+      # 127.0.0.1 y no localhost: el controlador resolvería localhost también a IPv6.
+      AXEDA_TEST_MYSQL_URL: mysql://root:mysql@127.0.0.1:3306
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tests against a real MySQL server with a connection pool
+        run: npx vitest run packages/better-auth
+
   package:
     name: Packages (build, contents, install in an empty project)
     runs-on: ubuntu-24.04

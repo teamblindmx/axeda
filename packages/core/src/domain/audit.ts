@@ -58,11 +58,14 @@ export type NewAuditEvent = Omit<AuditEvent, 'id' | 'at'>;
 /** Tamaño máximo de `metadata` serializado (S12). */
 export const MAX_AUDIT_METADATA_BYTES = 2048;
 
+/** Largo de un identificador de auditoría: cabe en la columna `id` de Better Auth en MySQL. */
+export const AUDIT_ID_LENGTH = 36;
+
 /**
- * Generador de identificadores de auditoría que ordenan cronológicamente como cadenas:
- * milisegundos, un contador (estrictamente creciente dentro del proceso, aunque el reloj
- * retroceda o dos eventos caigan en el mismo milisegundo) y un UUID para evitar colisiones
- * entre procesos.
+ * Generador de identificadores de auditoría que ordenan cronológicamente como cadenas, de
+ * `AUDIT_ID_LENGTH` caracteres: milisegundos, un contador (estrictamente creciente dentro del
+ * proceso, aunque el reloj retroceda o dos eventos caigan en el mismo milisegundo) y 88 bits
+ * aleatorios para evitar colisiones entre procesos.
  */
 export function createAuditIdFactory(): (at: Date) => string {
   let lastMillis = 0;
@@ -71,6 +74,9 @@ export function createAuditIdFactory(): (at: Date) => string {
     const millis = Math.max(at.getTime(), lastMillis);
     sequence = millis === lastMillis ? sequence + 1 : 0;
     lastMillis = millis;
-    return `${millis.toString(36).padStart(9, '0')}${sequence.toString(36).padStart(4, '0')}-${globalThis.crypto.randomUUID()}`;
+    const random = Array.from(globalThis.crypto.getRandomValues(new Uint8Array(11)), (byte) =>
+      byte.toString(16).padStart(2, '0'),
+    ).join('');
+    return `${millis.toString(36).padStart(9, '0')}${sequence.toString(36).padStart(4, '0')}-${random}`;
   };
 }

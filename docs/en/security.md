@@ -111,9 +111,9 @@ require 2FA. For narrower access, create a service user with a minimal role and 
 
 Stated plainly, so you can decide:
 
-- **Databases.** Verified: SQLite and PostgreSQL (PostgreSQL through an in-process engine; tests
-  against a real server with a connection pool are scheduled before the first release). MySQL and
-  MongoDB are not supported yet.
+- **Databases.** Verified: SQLite, PostgreSQL (16 and 18) and MySQL (8.4 and 9), the last two
+  against real servers with a connection pool. MongoDB is not supported yet. MySQL has two things
+  to set ([Reference](reference.md#databases)).
 - **One authority.** Axeda is the only source of permissions. Better Auth's own `admin` and `organization` plugins have roles of their own; Axeda ignores them, so do not check them in your routes or you will have two systems that can disagree.
 - **Menus** are read-only and come from code; editing them through the API is planned.
 - **Messages** from the API are in English; the codes (`AXEDA_*`) are stable and meant for you to

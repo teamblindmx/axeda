@@ -23,15 +23,18 @@
 | `npm run coverage`                | Informe de cobertura (orientativo, no bloquea)                                                                                                        |
 | `npm run changeset`               | Añade una nota de cambio para la próxima versión                                                                                                      |
 
-## PostgreSQL real
+## PostgreSQL y MySQL reales
 
-Por defecto las pruebas usan SQLite y PostgreSQL dentro del proceso (PGlite), sin instalar nada. Con un servidor PostgreSQL de verdad corren además las mismas pruebas, con un grupo de 10 conexiones, y las de concurrencia compiten de verdad:
+Por defecto las pruebas usan SQLite y PostgreSQL dentro del proceso (PGlite), sin instalar nada. Con un servidor de verdad corren además las mismas pruebas, con un grupo de 10 conexiones, y las de concurrencia compiten de verdad:
 
 ```
 AXEDA_TEST_POSTGRES_URL=postgres://usuario:clave@localhost:5432/postgres npm test
+AXEDA_TEST_MYSQL_URL=mysql://root:clave@127.0.0.1:3306 npm test
 ```
 
-Cada prueba crea y borra su propia base de datos en ese servidor, así que usa uno de desarrollo. El CI lo hace con un servicio de PostgreSQL 16 y 18.
+Cada prueba crea y borra su propia base de datos en ese servidor, así que usa uno de desarrollo. El CI lo hace con PostgreSQL 16 y 18 y con MySQL 8.4 y 9 (en Linux).
+
+En MySQL, si tu servidor guarda los nombres de tabla en minúsculas (`lower_case_table_names` distinto de 0: Windows y macOS), dos pruebas fallarán con «Database schema mismatch»: es la comprobación de esquema de Better Auth, no un fallo de Axeda (ver «Bases de datos» en la referencia).
 
 ## Flujo de ramas
 

@@ -70,7 +70,11 @@ export interface HttpAppOptions {
 
 /** Un Better Auth real, migrado, con el plugin de Axeda y una API HTTP para llamarlo. */
 export async function createHttpApp(options: HttpAppOptions = {}): Promise<HttpApp> {
-  const { database, sqlite } = await openDatabase(options.kind ?? 'sqlite', {
+  const {
+    database,
+    sqlite,
+    options: databaseOptions,
+  } = await openDatabase(options.kind ?? 'sqlite', {
     foreignKeys: options.foreignKeys !== false,
   });
 
@@ -97,6 +101,7 @@ export async function createHttpApp(options: HttpAppOptions = {}): Promise<HttpA
     emailAndPassword: { enabled: true },
     plugins: [plugin, ...(options.extraPlugins ?? [])],
     rateLimit: { enabled: false },
+    ...databaseOptions,
     ...options.betterAuth,
   };
   await (await getMigrations(config)).runMigrations();
