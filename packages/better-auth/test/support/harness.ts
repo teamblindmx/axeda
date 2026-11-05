@@ -15,7 +15,7 @@ export interface TestAuth {
 
 /** Un Better Auth real con el plugin de Axeda, migrado, sobre una base de datos nueva. */
 export async function createAuth(kind: DatabaseKind): Promise<TestAuth> {
-  const { database } = await openDatabase(kind);
+  const { database, options: databaseOptions } = await openDatabase(kind);
 
   const options: BetterAuthOptions = {
     secret: 'test-secret-test-secret-test-secret-0123456789',
@@ -23,6 +23,7 @@ export async function createAuth(kind: DatabaseKind): Promise<TestAuth> {
     database,
     emailAndPassword: { enabled: true },
     plugins: [axeda({ permissions: [] })],
+    ...databaseOptions,
   };
   const { runMigrations } = await getMigrations(options);
   await runMigrations();
