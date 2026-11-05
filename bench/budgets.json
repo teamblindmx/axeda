@@ -1,13 +1,20 @@
 {
   "sqlite": {
     "can() warm cache": {
-      "p95Ms": 5
+      "p95Ms": 5,
+      "maxQueries": 2
+    },
+    "can() warm cache, version from the session": {
+      "p95Ms": 5,
+      "maxQueries": 1
     },
     "can() cold cache": {
-      "p95Ms": 25
+      "p95Ms": 25,
+      "maxQueries": 5
     },
     "can() after a role edit (all users miss)": {
-      "p95Ms": 25
+      "p95Ms": 25,
+      "maxQueries": 5
     },
     "assignments.assign, 1 at a time": {
       "p95Ms": 100
@@ -18,22 +25,55 @@
     "assignments.assign, 16 at a time": {
       "p95Ms": 1000
     },
-    "can() warm cache, version from the session": {
-      "p95Ms": 5
+    "route: resolveTarget + can(), company scope": {
+      "p95Ms": 8,
+      "maxQueries": 2
+    },
+    "route: resolveTarget + can(), business scope": {
+      "p95Ms": 8,
+      "maxQueries": 3
+    },
+    "audit.list, no filter": {
+      "p95Ms": 20,
+      "maxQueries": 1
+    },
+    "audit.list, by an actor with half the rows": {
+      "p95Ms": 200,
+      "maxQueries": 1
+    },
+    "audit.list, by a rare action": {
+      "p95Ms": 80,
+      "maxQueries": 1
+    },
+    "assignments.listForScope, 1,600 in the scope": {
+      "p95Ms": 20,
+      "maxQueries": 1
+    },
+    "session: 10 requests a day, mid-life (queries = session writes)": {
+      "p95Ms": 30,
+      "maxQueries": 0.1
+    },
+    "session: 10 requests a day, last stretch (queries = session writes)": {
+      "p95Ms": 30,
+      "maxQueries": 1
     }
   },
   "postgres-server": {
     "can() warm cache": {
-      "p95Ms": 3
+      "p95Ms": 3,
+      "maxQueries": 2
     },
     "can() warm cache, version from the session": {
-      "p95Ms": 2
+      "p95Ms": 2,
+      "maxQueries": 1
     },
     "can() cold cache": {
-      "p95Ms": 15
+      "p95Ms": 15,
+      "maxQueries": 5
     },
     "can() after a role edit (all users miss)": {
-      "p95Ms": 15
+      "p95Ms": 15,
+      "maxQueries": 5
     },
     "assignments.assign, 1 at a time": {
       "p95Ms": 120
@@ -43,6 +83,30 @@
     },
     "assignments.assign, 16 at a time": {
       "p95Ms": 1000
+    },
+    "route: resolveTarget + can(), company scope": {
+      "maxQueries": 2
+    },
+    "route: resolveTarget + can(), business scope": {
+      "maxQueries": 3
+    },
+    "audit.list, no filter": {
+      "maxQueries": 1
+    },
+    "audit.list, by an actor with half the rows": {
+      "maxQueries": 1
+    },
+    "audit.list, by a rare action": {
+      "maxQueries": 1
+    },
+    "assignments.listForScope, 1,600 in the scope": {
+      "maxQueries": 1
+    },
+    "session: 10 requests a day, mid-life (queries = session writes)": {
+      "maxQueries": 0.1
+    },
+    "session: 10 requests a day, last stretch (queries = session writes)": {
+      "maxQueries": 1
     }
   }
 }

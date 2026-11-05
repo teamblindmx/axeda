@@ -6,14 +6,27 @@
  *                                  contra un PostgreSQL real con un grupo de 10 conexiones
  *   npm run bench -- --check       además falla si algo supera su presupuesto (bench/budgets.json)
  *   npm run bench -- --json salida.json
+ *   AXEDA_BENCH_AUDIT_ROWS=100000 npm run bench   más filas de auditoría (por defecto 20 000)
  *
- * Los presupuestos son TECHOS GENEROSOS para detectar regresiones grandes en el CI, no cifras
- * objetivo: los ejecutores compartidos del CI son ruidosos. Se ajustan con las cifras reales.
+ * Mide cuatro cosas: la comprobación de permisos (`can`), el coste de una ruta con alcance
+ * (resolver la compañía o el negocio y luego decidir), los listados paginados con volumen
+ * (auditoría y asignaciones de un alcance) y las escrituras de sesión por petición.
+ *
+ * Los presupuestos son de dos clases. La de latencia (`p95Ms`) son TECHOS GENEROSOS para detectar
+ * regresiones grandes: los ejecutores compartidos del CI son ruidosos, y se ajustan con las cifras
+ * reales. La de consultas (`maxQueries`, por llamada) no depende del ruido de la máquina: es el
+ * mejor guardia contra un viaje de más a la base de datos.
  */
 import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
-import { createAxeda, type Axeda, type AxedaPersistence } from '@teamblind/axeda-core';
+import {
+  createAxeda,
+  type Axeda,
+  type AuditFilter,
+  type AxedaPersistence,
+  type NewAuditEvent,
+} from '@teamblind/axeda-core';
 import {
   axeda,
   createBetterAuthPersistence,
@@ -30,6 +43,16 @@ const POOL_SIZE = 10;
 const USERS = 400;
 const COMPANIES = 5;
 const PERMISSIONS = ['invoice:read', 'invoice:create', 'invoice:delete', 'report:read'];
+const AUDIT_ROWS = Number(process.env['AXEDA_BENCH_AUDIT_ROWS'] ?? 20_000);
+/** Personas distintas que reparten la otra mitad de los eventos de auditoría. */
+const AUDIT_ACTORS = 40;
+const DAY_MS = 86_400_000;
+const NAME_WIDTH = 66;
+/**
+ * Holgura de `maxQueries`. El promedio incluye el calentamiento (la primera vez que se resuelve
+ * cada compañía o negocio), así que no sale entero; una regresión real es de una consulta entera.
+ */
+const QUERY_SLACK = 0.05;
 
 interface Stats {
   readonly scenario: string;
@@ -65,23 +88,31 @@ function summarize(
   };
 }
 
-/** Una a una, midiendo cada llamada. */
+/**
+ * Una a una, midiendo cada llamada. `prepare` corre antes de cada una y fuera de la medición (su
+ * tiempo no cuenta, aunque sus consultas sí pasarían por el contador si las hiciera por él).
+ */
 async function sequential(
   scenario: string,
   iterations: number,
   call: (i: number) => Promise<unknown>,
   counter?: { n: number },
+  prepare?: (i: number) => Promise<void>,
 ): Promise<Stats> {
   const samples: number[] = [];
   const before = counter?.n ?? 0;
   const started = performance.now();
   for (let i = 0; i < iterations; i++) {
+    if (prepare !== undefined) await prepare(i);
     const t0 = performance.now();
     await call(i);
     samples.push(performance.now() - t0);
   }
   const queries = counter === undefined ? null : counter.n - before;
-  return summarize(scenario, samples, performance.now() - started, queries);
+  // Con preparación, las operaciones por segundo se cuentan sobre el tiempo medido, no el total.
+  const wallMs =
+    prepare === undefined ? performance.now() - started : samples.reduce((a, b) => a + b, 0);
+  return summarize(scenario, samples, wallMs, queries);
 }
 
 /** `concurrency` llamadas a la vez hasta completar `iterations`. */
@@ -173,14 +204,120 @@ async function openDatabase(): Promise<{
   };
 }
 
+/** Lo mínimo de Better Auth que usa la medición de sesiones (los tipos genéricos no encajan). */
+interface SessionAuth {
+  readonly api: {
+    signUpEmail(input: {
+      body: { email: string; password: string; name: string };
+      asResponse: true;
+    }): Promise<Response>;
+    getSession(input: { headers: Headers }): Promise<unknown>;
+  };
+}
+
+interface SessionContext {
+  readonly adapter: {
+    findOne<T>(input: {
+      model: string;
+      where: Array<{ field: string; value: string }>;
+    }): Promise<T | null>;
+    update(input: {
+      model: string;
+      where: Array<{ field: string; value: string }>;
+      update: Record<string, unknown>;
+    }): Promise<unknown>;
+  };
+  readonly internalAdapter: { updateSession(...args: never[]): Promise<unknown> };
+}
+
+/** Una sesión real de Better Auth para medir cuántas veces se escribe por petición. */
+interface BenchSession {
+  readonly auth: SessionAuth;
+  readonly adapter: SessionContext['adapter'];
+  readonly userId: string;
+  readonly headers: Headers;
+  /** Llamadas a `internalAdapter.updateSession`: cada una es una escritura de la sesión. */
+  readonly writes: { n: number };
+}
+
 interface Bench {
   readonly core: Axeda;
   readonly persistence: AxedaPersistence;
   readonly counter: { n: number };
   readonly companyIds: readonly string[];
+  readonly businessIds: readonly string[];
   readonly roleIds: readonly string[];
   readonly userIds: readonly string[];
+  /** Asignaciones que hay en el alcance de la primera compañía. */
+  readonly scopeSize: number;
+  readonly session: BenchSession;
   readonly close: () => Promise<void>;
+}
+
+/** Corre `work` sobre `items` en tandas de `size` a la vez. */
+async function inBatches<T>(
+  items: readonly T[],
+  size: number,
+  work: (item: T) => Promise<unknown>,
+): Promise<void> {
+  for (let start = 0; start < items.length; start += size) {
+    await Promise.all(items.slice(start, start + size).map(work));
+  }
+}
+
+/**
+ * Eventos de auditoría de volumen: la mitad de una misma persona (como un administrador
+ * activo), la otra mitad repartida entre otras, una de cada cinco con alcance de compañía, y unos
+ * pocos de una acción rara para medir el filtro por acción.
+ */
+async function seedAudit(
+  persistence: AxedaPersistence,
+  companyIds: readonly string[],
+): Promise<void> {
+  const base = { outcome: 'success', ip: null, userAgent: null, metadata: {} } as const;
+  const common = Array.from({ length: AUDIT_ROWS }, (_, i): NewAuditEvent => ({
+    ...base,
+    actorId: i % 2 === 0 ? 'bench-admin' : `bench-user-${i % AUDIT_ACTORS}`,
+    action: i % 3 === 0 ? 'role.update' : 'assignment.create',
+    targetType: 'assignment',
+    targetId: `bench-target-${i}`,
+    scope: i % 5 === 0 ? { type: 'company', id: companyIds[i % companyIds.length] ?? '' } : null,
+  }));
+  const rare = Array.from({ length: 5 }, (_, i): NewAuditEvent => ({
+    ...base,
+    actorId: null,
+    action: 'company.purge',
+    targetType: 'company',
+    targetId: `bench-purged-${i}`,
+    scope: null,
+  }));
+  await inBatches([...common, ...rare], 20, (event) => persistence.audit.append(event));
+}
+
+async function openSession(auth: SessionAuth, context: SessionContext): Promise<BenchSession> {
+  const response = await auth.api.signUpEmail({
+    body: { email: 'bench-session@bench.dev', password: 'bench-password-12345', name: 'bench' },
+    asResponse: true,
+  });
+  const cookie = response.headers
+    .getSetCookie()
+    .map((value) => value.split(';')[0])
+    .join('; ');
+  const { user } = (await response.json()) as { user: { id: string } };
+  const writes = { n: 0 };
+  const internal = context.internalAdapter;
+  const original = internal.updateSession.bind(internal);
+  (internal as { updateSession: unknown }).updateSession = (...args: never[]) => {
+    writes.n += 1;
+    return original(...args);
+  };
+  return {
+    auth,
+    adapter: context.adapter,
+    userId: user.id,
+    headers: new Headers({ cookie }),
+    writes,
+  };
 }
 
 async function prepare(): Promise<Bench> {
@@ -191,11 +328,14 @@ async function prepare(): Promise<Bench> {
     baseURL: 'http://localhost:3000',
     database,
     emailAndPassword: { enabled: true },
+    // Los valores del preset: siete días sin uso, renovada como mucho una vez al día.
+    session: { expiresIn: 7 * 86_400, updateAge: 86_400 },
     plugins: [plugin],
     rateLimit: { enabled: false },
   } satisfies AuthOptions;
   await (await getMigrations(options)).runMigrations();
-  const context = await betterAuth(options).$context;
+  const auth = betterAuth(options);
+  const context = await auth.$context;
 
   const counter = { n: 0 };
   const persistence = createBetterAuthPersistence(counting(context.adapter, counter));
@@ -248,7 +388,136 @@ async function prepare(): Promise<Bench> {
       });
     }
   }
-  return { core, persistence, counter, companyIds, roleIds, userIds, close };
+  // Un negocio en cada compañía, para medir las rutas con alcance de negocio.
+  const businessIds: string[] = [];
+  for (const companyId of companyIds) {
+    businessIds.push(
+      (await core.businesses.create(admin, companyId, { slug: 'shop', name: 'Shop' })).id,
+    );
+  }
+  // La primera compañía acumula todas las funciones de todas las personas: un alcance grande.
+  const firstCompany = companyIds[0] ?? '';
+  const extra = userIds.flatMap((userId, u) =>
+    [1, 2, 3].map((k) => ({ userId, roleId: roleIds[(u + k) % roleIds.length] ?? '' })),
+  );
+  await inBatches(extra, 20, (input) =>
+    persistence.assignments.create({
+      ...input,
+      scope: { type: 'company', id: firstCompany },
+      grantedBy: null,
+    }),
+  );
+  await seedAudit(persistence, companyIds);
+  const session = await openSession(
+    auth as unknown as SessionAuth,
+    context as unknown as SessionContext,
+  );
+  return {
+    core,
+    persistence,
+    counter,
+    companyIds,
+    businessIds,
+    roleIds,
+    userIds,
+    scopeSize: userIds.length * roleIds.length,
+    session,
+    close,
+  };
+}
+
+/**
+ * Lo que cuesta una RUTA con alcance, no solo `can()`: resolver la compañía o el negocio en la base
+ * de datos (nunca se confía en el identificador que llega) y después decidir. Con la sesión
+ * entregando la versión del usuario, es lo que paga cada petición a una ruta protegida.
+ */
+async function routeScenarios(b: Bench): Promise<Stats[]> {
+  const principal = { userId: b.userIds[1] ?? '', authzVersion: 0 };
+  const route = (type: 'company' | 'business', ids: readonly string[]) => async (i: number) => {
+    const target = await b.core.resolveTarget({ type, id: ids[i % ids.length] ?? '' });
+    if (target === null) throw new Error('the bench scope does not resolve');
+    return b.core.can(principal, 'invoice:read', target);
+  };
+  const company = route('company', b.companyIds);
+  const business = route('business', b.businessIds);
+  await company(0);
+  await business(0);
+  return [
+    await sequential('route: resolveTarget + can(), company scope', 1000, company, b.counter),
+    await sequential('route: resolveTarget + can(), business scope', 1000, business, b.counter),
+  ];
+}
+
+/** Listados paginados con volumen: la auditoría y las asignaciones de un alcance grande. */
+async function listScenarios(b: Bench): Promise<Stats[]> {
+  const page = { limit: 50 };
+  const audit = (filter: AuditFilter) => () => b.persistence.audit.list(filter, page);
+  const scope = { type: 'company', id: b.companyIds[0] ?? '' } as const;
+  return [
+    await sequential('audit.list, no filter', 200, audit({}), b.counter),
+    await sequential(
+      'audit.list, by an actor with half the rows',
+      200,
+      audit({ actorId: 'bench-admin' }),
+      b.counter,
+    ),
+    await sequential(
+      'audit.list, by a rare action',
+      200,
+      audit({ action: 'company.purge' }),
+      b.counter,
+    ),
+    await sequential(
+      `assignments.listForScope, ${b.scopeSize.toLocaleString('en-US')} in the scope`,
+      200,
+      () => b.persistence.assignments.listForScope(scope, page),
+      b.counter,
+    ),
+  ];
+}
+
+/**
+ * Escrituras de sesión por petición. Se deja la fila de la sesión como estaría tras cierta edad
+ * (sin esperar días de verdad) y se mide Better Auth leyéndola: el valor de la columna de consultas
+ * es el número de veces que se escribió la sesión por petición, no de lecturas.
+ *
+ * A mitad de vida, la primera petición del día renueva y las demás no. En el último tramo, el
+ * límite absoluto impide que la caducidad avance y Better Auth renueva en cada petición.
+ */
+async function sessionScenarios(b: Bench): Promise<Stats[]> {
+  const { auth, adapter, userId, headers, writes } = b.session;
+  const DAILY = 10;
+  const where = [{ field: 'userId', value: userId }];
+  const reseed = (ageDays: number) => async (i: number) => {
+    if (i % DAILY !== 0) return;
+    const now = Date.now();
+    const createdAt = new Date(now - ageDays * DAY_MS);
+    // Renovada por última vez hace dos días: tocaría renovarla hoy.
+    const lastRefresh = now - 2 * DAY_MS;
+    const expiresAt = Math.min(lastRefresh + 7 * DAY_MS, createdAt.getTime() + 30 * DAY_MS);
+    await adapter.update({
+      model: 'session',
+      where,
+      update: { createdAt, updatedAt: new Date(lastRefresh), expiresAt: new Date(expiresAt) },
+    });
+  };
+  const read = () => auth.api.getSession({ headers });
+  return [
+    await sequential(
+      `session: ${DAILY} requests a day, mid-life (queries = session writes)`,
+      100,
+      read,
+      writes,
+      reseed(10),
+    ),
+    await sequential(
+      `session: ${DAILY} requests a day, last stretch (queries = session writes)`,
+      100,
+      read,
+      writes,
+      reseed(25),
+    ),
+  ];
 }
 
 async function run(b: Bench): Promise<Stats[]> {
@@ -317,6 +586,9 @@ async function run(b: Bench): Promise<Stats[]> {
       ),
     );
   }
+  results.push(...(await routeScenarios(b)));
+  results.push(...(await listScenarios(b)));
+  results.push(...(await sessionScenarios(b)));
   return results;
 }
 
@@ -326,7 +598,7 @@ function print(results: readonly Stats[]): void {
     `\nDatabase: ${KIND}${KIND === 'sqlite' ? ' (in memory)' : ` (pool of ${POOL_SIZE})`}`,
   );
   console.log(
-    'scenario'.padEnd(46),
+    'scenario'.padEnd(NAME_WIDTH),
     'n'.padStart(6),
     'p50 ms'.padStart(9),
     'p95 ms'.padStart(9),
@@ -336,7 +608,7 @@ function print(results: readonly Stats[]): void {
   );
   for (const r of results) {
     console.log(
-      r.scenario.padEnd(46),
+      r.scenario.padEnd(NAME_WIDTH),
       String(r.iterations).padStart(6),
       cell(r.p50).padStart(9),
       cell(r.p95).padStart(9),
@@ -347,7 +619,8 @@ function print(results: readonly Stats[]): void {
   }
 }
 
-type Budgets = Record<string, Record<string, { p95Ms: number }>>;
+/** `p95Ms`: techo de latencia. `maxQueries`: techo exacto de consultas por llamada. Basta uno. */
+type Budgets = Record<string, Record<string, { p95Ms?: number; maxQueries?: number }>>;
 
 /** Los escenarios que superan su presupuesto de p95. */
 function overBudget(results: readonly Stats[]): string[] {
@@ -357,9 +630,24 @@ function overBudget(results: readonly Stats[]): string[] {
   const own = budgets[KIND];
   if (own === undefined) throw new Error(`bench/budgets.json has no budgets for "${KIND}".`);
   return results.flatMap((r) => {
-    const budget = own[r.scenario]?.p95Ms;
-    if (budget === undefined) return [`${r.scenario}: no budget declared`];
-    return r.p95 > budget ? [`${r.scenario}: p95 ${r.p95.toFixed(2)} ms > ${budget} ms`] : [];
+    const budget = own[r.scenario];
+    if (budget === undefined || (budget.p95Ms === undefined && budget.maxQueries === undefined)) {
+      return [`${r.scenario}: no budget declared`];
+    }
+    const over: string[] = [];
+    if (budget.p95Ms !== undefined && r.p95 > budget.p95Ms) {
+      over.push(`${r.scenario}: p95 ${r.p95.toFixed(2)} ms > ${budget.p95Ms} ms`);
+    }
+    if (
+      budget.maxQueries !== undefined &&
+      r.queriesPerCall !== null &&
+      r.queriesPerCall > budget.maxQueries + QUERY_SLACK
+    ) {
+      over.push(
+        `${r.scenario}: ${r.queriesPerCall.toFixed(2)} queries per call > ${budget.maxQueries}`,
+      );
+    }
+    return over;
   });
 }
 
