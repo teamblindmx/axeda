@@ -8,15 +8,16 @@ _qué puedes hacer y dónde_.
 > o ejecuta la [aplicación de ejemplo](quickstart.md) desde este repositorio. La API aún puede cambiar antes de la 1.0.
 > Documentation in English: [`../en`](../en/README.md).
 
-| Guía                           | Léela para…                                                                             |
-| ------------------------------ | --------------------------------------------------------------------------------------- |
-| [Inicio rápido](quickstart.md) | Ejecutar el ejemplo y luego añadir Axeda a tu aplicación                                |
-| [Conceptos](concepts.md)       | Entender alcances, permisos, funciones, asignaciones, compañías, invitaciones y menús   |
-| [Proteger rutas](express.md)   | Usar `requirePermission()` y `resolveScope()` en Express                                |
-| [Seguridad](security.md)       | Configurar Better Auth con seguridad, saber qué garantiza Axeda y qué sigue siendo tuyo |
-| [Referencia](reference.md)     | Consultar endpoints, códigos de error, opciones y la API de TypeScript                  |
-| [Registro ASVS](asvs.md)       | Ver qué garantiza Axeda frente al estándar de OWASP, qué se delega y qué sigue abierto  |
-| [Pruebas](testing.md)          | Probar tu aplicación con los almacenes en memoria                                       |
+| Guía                              | Léela para…                                                                               |
+| --------------------------------- | ----------------------------------------------------------------------------------------- |
+| [Inicio rápido](quickstart.md)    | Ejecutar el ejemplo y luego añadir Axeda a tu aplicación                                  |
+| [Configuración](configuration.md) | Fijar cada opción, en orden: qué acepta, su valor por omisión y qué pasa si es incorrecta |
+| [Conceptos](concepts.md)          | Entender alcances, permisos, funciones, asignaciones, compañías, invitaciones y menús     |
+| [Proteger rutas](express.md)      | Usar `requirePermission()` y `resolveScope()` en Express                                  |
+| [Seguridad](security.md)          | Configurar Better Auth con seguridad, saber qué garantiza Axeda y qué sigue siendo tuyo   |
+| [Referencia](reference.md)        | Consultar endpoints, códigos de error, opciones y la API de TypeScript                    |
+| [Registro ASVS](asvs.md)          | Ver qué garantiza Axeda frente al estándar de OWASP, qué se delega y qué sigue abierto    |
+| [Pruebas](testing.md)             | Probar tu aplicación con los almacenes en memoria                                         |
 
 ## Cómo encajan las piezas
 

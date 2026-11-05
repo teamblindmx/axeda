@@ -2,6 +2,8 @@
 
 ## Opciones del plugin (`axeda({ … })`)
 
+Valores aceptados, rangos y qué pasa cuando uno es incorrecto: [Configuración](configuration.md#2-el-plugin-axeda).
+
 | Opción                         | Tipo                                                                           | Por omisión | Significado                                                         |
 | ------------------------------ | ------------------------------------------------------------------------------ | ----------- | ------------------------------------------------------------------- |
 | `permissions`                  | `string[]`                                                                     | —           | Tu catálogo de permisos (concretos, sin comodines). **Obligatoria** |
