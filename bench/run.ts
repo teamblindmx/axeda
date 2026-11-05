@@ -291,7 +291,10 @@ async function seedAudit(
     targetId: `bench-purged-${i}`,
     scope: null,
   }));
-  await inBatches([...common, ...rare], 20, (event) => persistence.audit.append(event));
+  // Los raros van PRIMERO: son los más antiguos, y el listado va del más nuevo al más viejo. Si fueran
+  // los últimos, el listado los encontraría al instante y no mediría lo que cuesta buscar una acción
+  // que ocurrió hace tiempo.
+  await inBatches([...rare, ...common], 20, (event) => persistence.audit.append(event));
 }
 
 async function openSession(auth: SessionAuth, context: SessionContext): Promise<BenchSession> {
