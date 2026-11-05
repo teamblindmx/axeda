@@ -181,11 +181,21 @@ type AuthOptions = Parameters<typeof betterAuth>[0];
 
 async function openDatabase(): Promise<{
   database: NonNullable<AuthOptions['database']>;
+  /**
+   * Calcula las estadísticas del planificador. Se llama justo después de sembrar los datos: una tabla
+   * recién cargada no las tiene, y hasta que el motor las calcula por su cuenta elige planes que no
+   * son los de un sistema en marcha (la misma consulta pasó de 0,8 ms a 13 ms entre ejecuciones del CI).
+   */
+  analyze: () => Promise<void>;
   close: () => Promise<void>;
 }> {
   if (SERVER_URL === undefined) {
     const sqlite = new Database(':memory:');
-    return { database: sqlite, close: async () => void sqlite.close() };
+    return {
+      database: sqlite,
+      analyze: async () => void sqlite.exec('ANALYZE'),
+      close: async () => void sqlite.close(),
+    };
   }
   const admin = new pg.Pool({ connectionString: SERVER_URL, max: 1 });
   const name = `axeda_bench_${randomBytes(6).toString('hex')}`;
@@ -196,6 +206,18 @@ async function openDatabase(): Promise<{
   pool.on('error', () => {});
   return {
     database: pool,
+    analyze: async () => {
+      await pool.query('ANALYZE');
+      // Si no quedaron estadísticas (reltuples sigue en -1), el benchmark mediría otra cosa.
+      const { rows } = await pool.query<{ reltuples: number }>(
+        `SELECT reltuples FROM pg_class WHERE relname = 'axedaAudit'`,
+      );
+      if ((rows[0]?.reltuples ?? -1) < 0) {
+        throw new Error(
+          'ANALYZE left no statistics on "axedaAudit"; the lists would be planned blind.',
+        );
+      }
+    },
     close: async () => {
       await pool.end();
       await dropWhenQuiet(admin, name);
@@ -324,7 +346,7 @@ async function openSession(auth: SessionAuth, context: SessionContext): Promise<
 }
 
 async function prepare(): Promise<Bench> {
-  const { database, close } = await openDatabase();
+  const { database, analyze, close } = await openDatabase();
   const plugin = axeda({ permissions: PERMISSIONS });
   const options = {
     secret: 'bench-secret-bench-secret-bench-secret-012345',
@@ -415,6 +437,7 @@ async function prepare(): Promise<Bench> {
     auth as unknown as SessionAuth,
     context as unknown as SessionContext,
   );
+  await analyze();
   return {
     core,
     persistence,
