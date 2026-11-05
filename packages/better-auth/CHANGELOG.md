@@ -1,5 +1,22 @@
 # @teamblind/axeda-better-auth
 
+## 0.1.0-alpha.1
+
+### Minor Changes
+
+- a8a33dd: Add an absolute lifetime to sessions. Better Auth renews a session every time it is used, so a session in daily use never ended. The plugin now cuts a session's expiry, when it is created and on every renewal, so it never goes past its creation plus `maxSessionAge` (30 days by default, in seconds; `false` turns it off). It applies in Better Auth's own endpoints and in your routes, with sessions in the database or in `secondaryStorage`, and signing in again starts a new count. Sessions that are already older than 30 days are cut the next time Better Auth renews them. While the limit holds a session back, Better Auth writes the session row on every request during the last `session.expiresIn` minus `session.updateAge` of its life, instead of once a day.
+- 0d37dca: Index the `action` column of the audit log. Listing the audit log filtered by action read the whole table, so it got slower as the log grew (30 to 74 ms with 200,000 events in PostgreSQL 16 and 18, measured with `EXPLAIN`); with the index it takes a fraction of a millisecond. Better Auth creates the index when you run its migration. On a very large audit table, building it blocks writes to that table while it runs, so run the migration at a quiet moment. On MySQL, a table created before this version has `action` as `text`, which Better Auth will not index: run `ALTER TABLE axedaAudit MODIFY action varchar(255) NOT NULL;` before the migration (a new database is not affected).
+- 547cc20: Support MongoDB (tested on 7.0 in the CI and on 8.0 by hand, on a replica set; a single node is enough). Give Better Auth `mongodbAdapter(db, { client })`. MongoDB has no migrations in Better Auth, so Axeda writes once, before its first transaction, in each of its collections so that the adapter creates them and their indexes outside of a transaction, where a first use made the transaction hang. On a standalone `mongod` Axeda now stops at start with `AXEDA_TRANSACTIONS_UNSUPPORTED` and says what to do.
+
+  The unique constraints of Axeda's tables (role key, company slug, the policy state key and the pending invitation key) are now declared as unique table indexes instead of `unique` fields, because Better Auth's MongoDB adapter only creates table indexes, and without them two simultaneous writes with the same key both succeeded. On SQL they are the same constraint: running Better Auth's migration on an existing database adds the unique indexes next to the old column constraints (four small extra indexes), keeps every row and still refuses duplicates, which a test checks against the schema of 0.1.0-alpha.0.
+
+- Support MySQL (8.4 and 9, tested against real servers with a connection pool). Give Better Auth the pool from `mysql2/promise` (not the one from `mysql2`) created with `timezone: 'Z'`; without it the driver converts dates to the local time of your process. On a server that stores table names in lowercase (`lower_case_table_names` 1 or 2: Windows, macOS and some managed services) Better Auth's schema check reports Axeda's tables as missing, so turn it off with `advanced: { database: { validateSchema: false } }`. The reference lists both, and what to do when upgrading an existing MySQL database.
+
+### Patch Changes
+
+- Updated dependencies [ce83aff]
+  - @teamblind/axeda-core@0.1.0-alpha.1
+
 ## 0.1.0-alpha.0
 
 ### Minor Changes
