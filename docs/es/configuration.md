@@ -156,10 +156,18 @@ Un permiso es `recurso:acción` (`invoice:create`) o `recurso:subrecurso:acción
 `roles` asocia una clave con una lista de permisos, o con una definición:
 
 ```ts
-roles: {
-  viewer: ['invoice:read'],
-  cashier: { name: 'Cashier', description: 'Takes payments', permissions: ['invoice:*'], requireMfa: true },
-}
+axeda({
+  permissions: ['invoice:read', 'invoice:create'],
+  roles: {
+    viewer: ['invoice:read'],
+    cashier: {
+      name: 'Cashier',
+      description: 'Takes payments',
+      permissions: ['invoice:*'],
+      requireMfa: true,
+    },
+  },
+});
 ```
 
 | Campo         | Por omisión | Valores aceptados                                                                                                                                                                                |
@@ -176,10 +184,13 @@ código, y la API se niega a editarlas (`AXEDA_ROLE_MANAGED`). Las funciones cre
 ### Entregar las invitaciones
 
 ```ts
-invitationDelivery: {
-  acceptUrl: (token) => `https://app.example.com/accept?token=${encodeURIComponent(token)}`,
-  send: async ({ email, link }) => mailer.send({ to: email, subject: 'You are invited', link }),
-},
+axeda({
+  permissions: ['invoice:read'],
+  invitationDelivery: {
+    acceptUrl: (token) => `https://app.example.com/accept?token=${encodeURIComponent(token)}`,
+    send: async ({ email, link }) => mailer.send({ to: email, subject: 'You are invited', link }),
+  },
+});
 ```
 
 - Construye `acceptUrl` a partir de **tu URL base configurada**, nunca de la cabecera `Host` de una petición.

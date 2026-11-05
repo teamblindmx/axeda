@@ -152,10 +152,18 @@ A permission is `resource:action` (`invoice:create`) or `resource:sub:action` (`
 `roles` maps a key to a list of permissions, or to a definition:
 
 ```ts
-roles: {
-  viewer: ['invoice:read'],
-  cashier: { name: 'Cashier', description: 'Takes payments', permissions: ['invoice:*'], requireMfa: true },
-}
+axeda({
+  permissions: ['invoice:read', 'invoice:create'],
+  roles: {
+    viewer: ['invoice:read'],
+    cashier: {
+      name: 'Cashier',
+      description: 'Takes payments',
+      permissions: ['invoice:*'],
+      requireMfa: true,
+    },
+  },
+});
 ```
 
 | Field         | Default | Accepted values                                                                                                                                                              |
@@ -172,10 +180,13 @@ API refuses to edit them (`AXEDA_ROLE_MANAGED`). Roles created through the API a
 ### Delivering invitations
 
 ```ts
-invitationDelivery: {
-  acceptUrl: (token) => `https://app.example.com/accept?token=${encodeURIComponent(token)}`,
-  send: async ({ email, link }) => mailer.send({ to: email, subject: 'You are invited', link }),
-},
+axeda({
+  permissions: ['invoice:read'],
+  invitationDelivery: {
+    acceptUrl: (token) => `https://app.example.com/accept?token=${encodeURIComponent(token)}`,
+    send: async ({ email, link }) => mailer.send({ to: email, subject: 'You are invited', link }),
+  },
+});
 ```
 
 - Build `acceptUrl` from **your configured base URL**, never from a request's `Host` header.
