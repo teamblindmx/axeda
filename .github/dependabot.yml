@@ -13,6 +13,20 @@ updates:
     # instalar un paquete comprometido que se retira poco después. Los avisos de seguridad no esperan.
     cooldown:
       default-days: 5
+    # Un rango (`peerDependencies`, `dependencies`) solo se sube cuando hace falta, nunca por
+    # costumbre: subirlo quita soporte a quien usa una versión anterior.
+    versioning-strategy: increase-if-necessary
+    ignore:
+      # El rango de Better Auth que aceptan los paquetes es una decisión, no una actualización:
+      # se prueba a mano en la matriz del CI (la mínima, la última y la beta siguiente).
+      - dependency-name: better-auth
+      - dependency-name: '@better-auth/core'
+      # Las mayores esperan a lo que soportan typescript-eslint (hoy TypeScript < 6.1) y la
+      # versión mínima de Node que declaran los paquetes.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     groups:
       dev-tooling:
         dependency-type: development
