@@ -2,21 +2,29 @@
 
 ## La jerarquía
 
-Axeda decide en tres niveles. Un permiso siempre se comprueba **en un alcance**:
+Axeda decide en cuatro niveles. Un permiso siempre se comprueba **en un alcance**:
 
 ```
 global                         toda la plataforma
  └─ compañía  (acme)           el límite de aislamiento entre clientes
-     └─ negocio  (tienda-1)    una sucursal, tienda o unidad dentro de una compañía
+     ├─ sede  (hq)             un lugar de la compañía (puede tener sedes sin negocios)
+     └─ negocio  (tienda-1)    una línea de negocio o unidad dentro de una compañía
+         └─ sede  (norte)      un lugar de ese negocio
 ```
 
-Una función asignada en un nivel **se aplica hacia abajo**: la global cubre todas las compañías y
-negocios; la de una compañía cubre sus negocios; la de un negocio cubre solo ese negocio. Nada se
-aplica hacia arriba ni hacia los lados: una función en una compañía no dice nada de otra.
+Una función asignada en un nivel **se aplica hacia abajo**: la global cubre todo; la de una
+compañía cubre sus negocios y todas sus sedes; la de un negocio cubre ese negocio y sus sedes; la
+de una sede cubre solo esa sede. Una sede que cuelga directamente de la compañía no hereda de
+ningún negocio. Nada se aplica hacia arriba ni hacia los lados: una función en una compañía no dice
+nada de otra.
 
-La **compañía es el límite de aislamiento**. Un negocio pertenece siempre a una compañía, fijada
-al crearlo. Cuando una petición nombra un negocio, Axeda lee su compañía de la base de datos y
-nunca de la petición.
+La **compañía es el límite de aislamiento**. Un negocio pertenece a una compañía, y una sede a una
+compañía y, opcionalmente, a uno de sus negocios, fijados al crearlos. Cuando una petición nombra un
+negocio o una sede, Axeda lee su compañía (y el negocio de una sede) de la base de datos y nunca de
+la petición.
+
+Los **empleados de una sede** son las personas con una función asignada en ella: no hay un registro
+de empleado aparte. Listar las asignaciones de la sede lista a sus empleados.
 
 ## Permisos
 
@@ -30,15 +38,16 @@ Un permiso es `recurso:acción` (`invoice:read`); los propios de Axeda se ven as
 - Los permisos propios de Axeda solo valen en algunos niveles (por ejemplo `axeda:role:manage` es
   solo global). Por eso una función con `*` solo puede asignarse en global.
 
-| Permiso de Axeda          | Niveles                   | Permite                                        |
-| ------------------------- | ------------------------- | ---------------------------------------------- |
-| `axeda:role:manage`       | global                    | Crear, editar, desactivar y borrar funciones   |
-| `axeda:assignment:manage` | global, compañía, negocio | Conceder y revocar funciones en un alcance     |
-| `axeda:company:manage`    | global, compañía          | Administrar compañías                          |
-| `axeda:business:manage`   | global, compañía          | Administrar negocios                           |
-| `axeda:invitation:manage` | global, compañía, negocio | Invitar personas                               |
-| `axeda:user:manage`       | global                    | Listar, crear, bloquear y desbloquear usuarios |
-| `axeda:audit:read`        | global, compañía          | Leer la auditoría                              |
+| Permiso de Axeda          | Niveles                         | Permite                                                                   |
+| ------------------------- | ------------------------------- | ------------------------------------------------------------------------- |
+| `axeda:role:manage`       | global                          | Crear, editar, desactivar y borrar funciones                              |
+| `axeda:assignment:manage` | global, compañía, negocio, sede | Conceder y revocar funciones en un alcance                                |
+| `axeda:company:manage`    | global, compañía                | Administrar compañías                                                     |
+| `axeda:business:manage`   | global, compañía                | Administrar negocios                                                      |
+| `axeda:site:manage`       | global, compañía, negocio       | Administrar sedes (desde la compañía, o desde el negocio del que cuelgan) |
+| `axeda:invitation:manage` | global, compañía, negocio, sede | Invitar personas                                                          |
+| `axeda:user:manage`       | global                          | Listar, crear, bloquear y desbloquear usuarios                            |
+| `axeda:audit:read`        | global, compañía                | Leer la auditoría                                                         |
 
 ## Funciones y asignaciones
 
@@ -94,7 +103,9 @@ registro durante un periodo de gracia (30 días por omisión, `retention.graceDa
 puede restaurar; `purgeDeleted()` elimina para siempre lo vencido (lo llamas tú, por ejemplo desde
 un cron: Axeda no ejecuta nada en segundo plano). Una compañía inactiva o borrada, y todo lo que
 contiene, **no concede nada**: las asignaciones ahí dejan de contar. Un negocio hereda el estado
-de su compañía.
+de su compañía. Las sedes funcionan igual, y una sede hereda el estado de su compañía y de su
+negocio: mientras un negocio está inactivo o borrado, sus sedes no conceden nada, y purgar un
+negocio o una compañía purga sus sedes.
 
 ## Invitaciones
 

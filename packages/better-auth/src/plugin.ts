@@ -14,6 +14,7 @@ import { createEndpoints } from './endpoints.js';
 import { createUserEndpoints } from './endpoints-users.js';
 import {
   createInvitationEndpoints,
+  createSiteEndpoints,
   createPublicEndpoints,
   createTenantEndpoints,
 } from './endpoints-tenants.js';
@@ -154,6 +155,7 @@ export function axeda(options: AxedaPluginOptions) {
     endpoints: {
       ...createEndpoints(instance),
       ...createTenantEndpoints(instance),
+      ...createSiteEndpoints(instance),
       ...createInvitationEndpoints(instance),
       ...createUserEndpoints(instance),
       // Siempre registrado (los tipos del cliente no dependen de la configuración); si está

@@ -36,6 +36,18 @@ export interface Read {
 
 const MAX_TARGETS = 10_000;
 
+/** Ruta única de un destino que no es global: compañía, negocio y sede, separados por `/`. */
+function targetPath(target: Exclude<TargetScope, { type: 'global' }>): string {
+  switch (target.type) {
+    case 'company':
+      return target.companyId;
+    case 'business':
+      return `${target.companyId}/${target.businessId}`;
+    case 'site':
+      return `${target.companyId}/${target.businessId ?? '-'}/${target.siteId}`;
+  }
+}
+
 /**
  * Lector de permisos para las **consultas** (`can`, `scopesFor`…): usa la caché validada por
  * versión. Las operaciones de administración NO lo usan: leen siempre con `loadSnapshot`
@@ -73,7 +85,7 @@ export class AuthzReader {
     return { snapshot, policyVersion };
   }
 
-  /** Qué parte del destino (compañía, negocio) no puede conceder poder, con caché por versión. */
+  /** Qué parte del destino (compañía, negocio, sede) no puede conceder poder, con caché por versión. */
   async unusableForTarget(
     policyVersion: number,
     target: TargetScope,
@@ -83,9 +95,7 @@ export class AuthzReader {
       this.#targets.clear();
       this.#targetsVersion = policyVersion;
     }
-    const key =
-      target.type === 'company' ? target.companyId : `${target.companyId}/${target.businessId}`;
-    const cacheKey = `${target.type}:${key}`;
+    const cacheKey = `${target.type}:${targetPath(target)}`;
     const known = this.#targets.get(cacheKey);
     if (known !== undefined) return known;
     const loaded = await loadUnusable(this.#stores, tenantIdsOfTarget(target));

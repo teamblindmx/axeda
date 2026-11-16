@@ -167,14 +167,25 @@ async function resolve(axeda: Axeda, requested: RequestedScope): Promise<Resolut
   if (requested.kind === 'global') return { target: { type: 'global' } };
   const target = await axeda.resolveTarget(requested.scope);
   if (target === null) return { detail: 'scope-not-found' };
-  // /companies/:companyId/businesses/:businessId — el negocio debe ser de esa compañía.
-  if (
-    requested.companyMustBe !== undefined &&
-    (target.type !== 'business' || target.companyId !== requested.companyMustBe)
-  ) {
-    return { detail: 'scope-mismatch' };
+  return mismatches(requested, target) ? { detail: 'scope-mismatch' } : { target };
+}
+
+/**
+ * /companies/:companyId/businesses/:businessId/sites/:siteId — lo que la ruta nombra además del
+ * alcance debe ser de verdad su compañía y su negocio, según la base de datos.
+ */
+function mismatches(
+  requested: Extract<RequestedScope, { kind: 'scope' }>,
+  target: TargetScope,
+): boolean {
+  if (requested.companyMustBe !== undefined) {
+    const nested = target.type === 'business' || target.type === 'site';
+    if (!nested || target.companyId !== requested.companyMustBe) return true;
   }
-  return { target };
+  if (requested.businessMustBe !== undefined) {
+    return target.type !== 'site' || target.businessId !== requested.businessMustBe;
+  }
+  return false;
 }
 
 export function createAxedaExpress(options: AxedaExpressOptions): AxedaExpress {

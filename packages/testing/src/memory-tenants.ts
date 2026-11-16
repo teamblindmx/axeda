@@ -16,8 +16,14 @@ import {
   type Page,
   type PageRequest,
   type RoleAssignment,
+  type Site,
+  type SiteChanges,
+  type SiteFilter,
+  type SiteStore,
+  type NewSite,
   type StoredInvitation,
   type TenantFilter,
+  siteKey,
   withoutSecret,
 } from '@teamblind/axeda-core';
 
@@ -25,6 +31,7 @@ import {
 export interface TenantState {
   companies: Map<string, Company>;
   businesses: Map<string, Business>;
+  sites: Map<string, Site>;
   invitations: Map<string, StoredInvitation>;
   assignments: Map<string, RoleAssignment>;
 }
@@ -73,6 +80,19 @@ const conflict = (kind: string, id: string, found: number, expected: number): Ax
     'AXEDA_VERSION_CONFLICT',
     `${kind} "${id}" is at version ${found}, not ${expected}.`,
   );
+
+/**
+ * Borra las sedes que cumplan `doomed` y añade sus claves de alcance a `keys`, para que
+ * `dropScopes` se lleve también sus asignaciones e invitaciones.
+ */
+function dropSites(state: TenantState, keys: Set<string>, doomed: (site: Site) => boolean): void {
+  for (const [siteId, site] of state.sites) {
+    if (doomed(site)) {
+      keys.add(siteKey(siteId));
+      state.sites.delete(siteId);
+    }
+  }
+}
 
 /** Quita asignaciones e invitaciones de los alcances indicados (claves de `scopeKey`). */
 function dropScopes(state: TenantState, keys: ReadonlySet<string>): void {
@@ -172,6 +192,7 @@ export function createCompanyStore(context: Context): CompanyStore {
             state.businesses.delete(businessId);
           }
         }
+        dropSites(state, keys, (site) => doomed.has(site.companyId));
         for (const id of doomed) state.companies.delete(id);
         dropScopes(state, keys);
         return doomed.size;
@@ -275,10 +296,135 @@ export function createBusinessStore(context: Context): BusinessStore {
       ),
     purge: (ids) =>
       run(async () => {
-        const doomed = ids.filter((id) => state.businesses.has(id));
+        const doomed = new Set(ids.filter((id) => state.businesses.has(id)));
+        const keys = new Set([...doomed].map(businessKey));
+        dropSites(state, keys, (site) => site.businessId !== null && doomed.has(site.businessId));
         for (const id of doomed) state.businesses.delete(id);
-        dropScopes(state, new Set(doomed.map(businessKey)));
-        return doomed.length;
+        dropScopes(state, keys);
+        return doomed.size;
+      }),
+  };
+}
+
+/** ¿Pasa la sede los filtros propios de las sedes (negocio y visibilidad)? */
+function siteMatches(site: Site, filter: SiteFilter): boolean {
+  if (filter.businessId !== undefined && site.businessId !== filter.businessId) return false;
+  const { visible } = filter;
+  if (visible === undefined) return true;
+  return (
+    visible.siteIds.includes(site.id) ||
+    (site.businessId !== null && visible.businessIds.includes(site.businessId))
+  );
+}
+
+export function createSiteStore(context: Context): SiteStore {
+  const { state, run, now, nextId } = context;
+  const need = (id: string, expectedVersion: number): Site => {
+    const current = state.sites.get(id);
+    if (!current) throw new AxedaError('AXEDA_SITE_NOT_FOUND', `Site "${id}" does not exist.`);
+    if (current.version !== expectedVersion)
+      throw conflict('Site', id, current.version, expectedVersion);
+    return current;
+  };
+  const save = (site: Site, patch: Partial<Site>): Site => {
+    const next: Site = { ...site, ...patch, version: site.version + 1, updatedAt: now() };
+    state.sites.set(site.id, next);
+    return next;
+  };
+  /** Las claves foráneas que en SQL tendría la tabla: la compañía y, si lo hay, su negocio. */
+  const checkParents = (input: NewSite): void => {
+    if (!state.companies.has(input.companyId)) {
+      throw new AxedaError(
+        'AXEDA_COMPANY_NOT_FOUND',
+        `Company "${input.companyId}" does not exist.`,
+      );
+    }
+    const businessId = input.businessId ?? null;
+    if (businessId === null) return;
+    if (state.businesses.get(businessId)?.companyId !== input.companyId) {
+      throw new AxedaError('AXEDA_BUSINESS_NOT_FOUND', `Business "${businessId}" does not exist.`);
+    }
+  };
+
+  return {
+    get: (id) => run(async () => state.sites.get(id) ?? null),
+    getMany: (ids) => run(async () => ids.flatMap((id) => state.sites.get(id) ?? [])),
+    getBySlug: (companyId, slug) =>
+      run(
+        async () =>
+          [...state.sites.values()].find(
+            (site) => site.companyId === companyId && site.slug === slug,
+          ) ?? null,
+      ),
+    listForCompany: (companyId, filter, page) =>
+      run(async () => {
+        const sorted = [...state.sites.values()]
+          .filter(
+            (site) =>
+              site.companyId === companyId && matches(site, filter) && siteMatches(site, filter),
+          )
+          .sort((a, b) => a.slug.localeCompare(b.slug));
+        return paginate(sorted, (site) => site.slug, page);
+      }),
+    create: (input: NewSite) =>
+      run(async () => {
+        checkParents(input);
+        const taken = [...state.sites.values()].some(
+          (site) => site.companyId === input.companyId && site.slug === input.slug,
+        );
+        if (taken) {
+          throw new AxedaError(
+            'AXEDA_SLUG_TAKEN',
+            `A site with slug "${input.slug}" already exists in that company.`,
+          );
+        }
+        const at = now();
+        const site: Site = {
+          id: nextId(),
+          companyId: input.companyId,
+          businessId: input.businessId ?? null,
+          slug: input.slug,
+          name: input.name,
+          logoUrl: input.logoUrl ?? null,
+          faviconUrl: input.faviconUrl ?? null,
+          status: 'active',
+          metadata: input.metadata ?? {},
+          version: 1,
+          deletedAt: null,
+          createdAt: at,
+          updatedAt: at,
+        };
+        state.sites.set(site.id, site);
+        return site;
+      }),
+    update: (id, expectedVersion, changes: SiteChanges) =>
+      run(async () => {
+        const current = need(id, expectedVersion);
+        return save(current, {
+          name: changes.name ?? current.name,
+          logoUrl: changes.logoUrl === undefined ? current.logoUrl : changes.logoUrl,
+          faviconUrl: changes.faviconUrl === undefined ? current.faviconUrl : changes.faviconUrl,
+          metadata: changes.metadata ?? current.metadata,
+        });
+      }),
+    setStatus: (id, expectedVersion, status) =>
+      run(async () => save(need(id, expectedVersion), { status })),
+    setDeleted: (id, expectedVersion, at) =>
+      run(async () => save(need(id, expectedVersion), { deletedAt: at })),
+    listDeletedBefore: (before, limit) =>
+      run(async () =>
+        [...state.sites.values()]
+          .filter((site) => site.deletedAt !== null && site.deletedAt < before)
+          .sort((a, b) => a.id.localeCompare(b.id))
+          .slice(0, limit),
+      ),
+    purge: (ids) =>
+      run(async () => {
+        const doomed = new Set(ids.filter((id) => state.sites.has(id)));
+        const keys = new Set<string>();
+        dropSites(state, keys, (site) => doomed.has(site.id));
+        dropScopes(state, keys);
+        return doomed.size;
       }),
   };
 }

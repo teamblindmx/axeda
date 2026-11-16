@@ -76,6 +76,27 @@ export const businessChangesSchema = z.strictObject({
   metadata: metadata.optional(),
 });
 
+const siteBusinessId = z.string().min(1).max(255).nullish();
+
+/**
+ * Solo el negocio del que colgará una sede nueva: decide DÓNDE se autoriza, así que se lee antes
+ * de autorizar; el resto de la entrada se valida después (quien no puede crearla no aprende nada).
+ */
+export const siteParentSchema = z.object({ businessId: siteBusinessId });
+
+/** Una sede cuelga de la compañía o, con `businessId`, de un negocio de esa compañía. */
+export const siteInputSchema = z.strictObject({
+  businessId: siteBusinessId,
+  slug,
+  name,
+  logoUrl: imageUrl.nullish(),
+  faviconUrl: imageUrl.nullish(),
+  metadata: metadata.optional(),
+});
+
+/** Una sede no cambia de compañía ni de negocio: solo sus datos. */
+export const siteChangesSchema = businessChangesSchema;
+
 export function parseInput<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
   if (result.success) return result.data;

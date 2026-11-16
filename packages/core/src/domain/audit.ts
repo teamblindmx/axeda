@@ -26,6 +26,12 @@ export type AuditAction =
   | 'business.delete'
   | 'business.restore'
   | 'business.purge'
+  | 'site.create'
+  | 'site.update'
+  | 'site.set_status'
+  | 'site.delete'
+  | 'site.restore'
+  | 'site.purge'
   | 'invitation.create'
   | 'invitation.accept'
   | 'invitation.revoke'
@@ -34,7 +40,7 @@ export type AuditAction =
 export type AuditOutcome = 'success' | 'denied';
 
 export type AuditTargetType =
-  'role' | 'assignment' | 'user' | 'company' | 'business' | 'invitation' | 'system';
+  'role' | 'assignment' | 'user' | 'company' | 'business' | 'site' | 'invitation' | 'system';
 
 export interface AuditEvent {
   readonly id: string;

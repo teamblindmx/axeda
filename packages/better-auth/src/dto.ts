@@ -7,6 +7,7 @@ import type {
   ManagedUser,
   Role,
   RoleAssignment,
+  Site,
 } from '@teamblind/axeda-core';
 
 /**
@@ -114,6 +115,12 @@ export interface BusinessDto extends TenantDto {
   companyId: string;
 }
 
+export interface SiteDto extends TenantDto {
+  companyId: string;
+  /** El negocio del que cuelga, o `null` si cuelga directamente de la compañía. */
+  businessId: string | null;
+}
+
 export interface InvitationDto {
   id: string;
   email: string;
@@ -148,6 +155,12 @@ export const toCompanyDto = (company: Company): CompanyDto => ({
 export const toBusinessDto = (business: Business): BusinessDto => ({
   ...tenantFields(business),
   companyId: business.companyId,
+});
+
+export const toSiteDto = (site: Site): SiteDto => ({
+  ...tenantFields(site),
+  companyId: site.companyId,
+  businessId: site.businessId,
 });
 
 export const toInvitationDto = (invitation: Invitation): InvitationDto => ({

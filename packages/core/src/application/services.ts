@@ -69,10 +69,12 @@ export function asInput<T>(parse: () => T): T {
 
 /**
  * Pasa de un alcance guardado a uno evaluable, **leyendo la base de datos** (T2): la compañía de
- * un negocio nunca se toma de la petición. Se usa FUERA de las transacciones.
+ * un negocio, y la compañía y el negocio de una sede, nunca se toman de la petición. Se usa FUERA
+ * de las transacciones.
  *
- * Con `requireUsable` (para conceder o invitar) la compañía o el negocio deben existir y estar
- * activos y sin borrar; sin él basta con que existan (para revocar o consultar).
+ * Con `requireUsable` (para conceder o invitar) la compañía, el negocio o la sede (y todo aquello
+ * de lo que cuelgan) deben existir y estar activos y sin borrar; sin él basta con que existan
+ * (para revocar o consultar).
  */
 export async function resolveTarget(
   services: Services,
@@ -88,6 +90,7 @@ export async function resolveTarget(
     if (!acceptable(await companies.get(scope.id))) throw refuse('Company', scope.id);
     return { type: 'company', companyId: scope.id };
   }
+  if (scope.type === 'site') return resolveSite(services, scope.id, acceptable);
   const business = await businesses.get(scope.id);
   if (!acceptable(business)) throw refuse('Business', scope.id);
   if (!acceptable(await companies.get(business.companyId))) throw refuse('Business', scope.id);
@@ -95,6 +98,27 @@ export async function resolveTarget(
 }
 
 type Tenant = { readonly status: 'active' | 'inactive'; readonly deletedAt: Date | null };
+type Acceptable = <T extends Tenant>(entity: T | null) => entity is T;
+
+/** Una sede, su compañía y, si lo tiene, su negocio, todo leído de la base de datos. */
+async function resolveSite(
+  services: Services,
+  siteId: string,
+  acceptable: Acceptable,
+): Promise<TargetScope> {
+  const { companies, businesses, sites } = services.persistence;
+  const site = await sites.get(siteId);
+  if (!acceptable(site)) throw refuse('Site', siteId);
+  if (!acceptable(await companies.get(site.companyId))) throw refuse('Site', siteId);
+  if (site.businessId !== null) {
+    const business = await businesses.get(site.businessId);
+    // Una sede solo cuelga de un negocio de su misma compañía; si no, los datos no son de fiar.
+    if (!acceptable(business) || business.companyId !== site.companyId) {
+      throw refuse('Site', siteId);
+    }
+  }
+  return { type: 'site', companyId: site.companyId, businessId: site.businessId, siteId: site.id };
+}
 
 const refuse = (kind: string, id: string): AxedaError =>
   invalidInput(`${kind} "${id}" does not exist or is not active.`);

@@ -69,6 +69,13 @@ All live under Better Auth's base path (`/api/auth`). Every one needs a session 
 | POST   | `/axeda/business/set-status`  | `axeda:business:manage`                                    | per target      |
 | POST   | `/axeda/business/delete`      | `axeda:business:manage`                                    | per target      |
 | POST   | `/axeda/business/restore`     | `axeda:business:manage`                                    | per target      |
+| GET    | `/axeda/site/list`            | membership                                                 | per target      |
+| GET    | `/axeda/site/get`             | membership                                                 | per target      |
+| POST   | `/axeda/site/create`          | `axeda:site:manage`                                        | per target      |
+| POST   | `/axeda/site/update`          | `axeda:site:manage`                                        | per target      |
+| POST   | `/axeda/site/set-status`      | `axeda:site:manage`                                        | per target      |
+| POST   | `/axeda/site/delete`          | `axeda:site:manage`                                        | per target      |
+| POST   | `/axeda/site/restore`         | `axeda:site:manage`                                        | per target      |
 | GET    | `/axeda/invitation/list`      | `axeda:invitation:manage`                                  | scope parameter |
 | POST   | `/axeda/invitation/create`    | `axeda:invitation:manage`                                  | scope parameter |
 | POST   | `/axeda/invitation/accept`    | (authenticated; the secret and a verified email authorize) | own             |
@@ -84,6 +91,13 @@ All live under Better Auth's base path (`/api/auth`). Every one needs a session 
 Better Auth endpoints accept only `GET` and `POST`, so updates and deletes are `POST`. Axeda's
 endpoints are rate limited per address: 120 per minute, and 30 for `/axeda/public/`. The typed
 client mirrors this: `client.axeda.role.create({ … })`, `client.axeda.menu({ query })`.
+
+`/axeda/me` takes an optional place (`?scopeType=site&scopeId=…`, also `company` or `business`)
+and then adds `permissions`: what the caller may do **there**, for a front end that shows or
+hides things. A place that does not exist, is not theirs or is inactive gives an empty list, without
+telling them apart. Sites are managed from the company, or from the business they hang from, with
+`axeda:site:manage`; `site/list` takes `businessId` to list the sites of one business, or
+`businessId=none` for those that hang directly from the company.
 
 ## Error codes
 
@@ -104,6 +118,7 @@ may change, so branch on `code`.
 | `AXEDA_USER_NOT_FOUND`       | 404    |                                                                   |
 | `AXEDA_COMPANY_NOT_FOUND`    | 404    |                                                                   |
 | `AXEDA_BUSINESS_NOT_FOUND`   | 404    |                                                                   |
+| `AXEDA_SITE_NOT_FOUND`       | 404    |                                                                   |
 | `AXEDA_EMAIL_TAKEN`          | 409    | An account with that email exists                                 |
 | `AXEDA_ROLE_KEY_TAKEN`       | 409    |                                                                   |
 | `AXEDA_ROLE_MANAGED`         | 409    | The role is declared in code and cannot be changed here           |
@@ -143,20 +158,20 @@ the whole key, so copy what you still need.
 
 Get the instance with `axedaPlugin.instance()` once Better Auth has been created.
 
-| Call                                                                      | Returns                                                                                      |
-| ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `can(principal, permission, target?)`                                     | `boolean`; global when no target                                                             |
-| `canAnywhere(principal, permission)`                                      | Holds it in any scope?                                                                       |
-| `effectivePermissions(principal, target?)`                                | The set of permissions held there                                                            |
-| `scopesFor(principal, permission)`                                        | The scopes where it is held                                                                  |
-| `scopeFilter(principal, permission)`                                      | `{ unrestricted, companyIds, businessIds }` for your queries                                 |
-| `resolveTarget(scope)`                                                    | The checkable target for a company or business id, read from the database; `null` if unknown |
-| `menu(principal, { scope?, locale? })`                                    | The filtered menu tree                                                                       |
-| `roles`, `assignments`, `companies`, `businesses`, `invitations`, `users` | The same operations the endpoints expose, taking an `actor`                                  |
-| `publicIdentity({ company, business? })`                                  | Public name and logos of an active company or business                                       |
-| `listAudit(actor, filter, page)`                                          | A page of audit events                                                                       |
-| `purgeDeleted()`                                                          | Permanently removes what is past its grace period                                            |
-| `bootstrap({ userId })`                                                   | Creates the first global administrator (once)                                                |
+| Call                                                                               | Returns                                                                                      |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `can(principal, permission, target?)`                                              | `boolean`; global when no target                                                             |
+| `canAnywhere(principal, permission)`                                               | Holds it in any scope?                                                                       |
+| `effectivePermissions(principal, target?)`                                         | The set of permissions held there                                                            |
+| `scopesFor(principal, permission)`                                                 | The scopes where it is held                                                                  |
+| `scopeFilter(principal, permission)`                                               | `{ unrestricted, companyIds, businessIds, siteIds }` for your queries                        |
+| `resolveTarget(scope)`                                                             | The checkable target for a company or business id, read from the database; `null` if unknown |
+| `menu(principal, { scope?, locale? })`                                             | The filtered menu tree                                                                       |
+| `roles`, `assignments`, `companies`, `businesses`, `sites`, `invitations`, `users` | The same operations the endpoints expose, taking an `actor`                                  |
+| `publicIdentity({ company, business? })`                                           | Public name and logos of an active company or business                                       |
+| `listAudit(actor, filter, page)`                                                   | A page of audit events                                                                       |
+| `purgeDeleted()`                                                                   | Permanently removes what is past its grace period                                            |
+| `bootstrap({ userId })`                                                            | Creates the first global administrator (once)                                                |
 
 A `Principal` is `{ userId, authzVersion?, twoFactorEnabled?, banned? }`. Always build it with
 `sessionPrincipal(auth)` or `principalFromUser(row)` from the user row Better Auth just read —
