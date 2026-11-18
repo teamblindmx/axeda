@@ -66,6 +66,8 @@ interface InvitationRow {
   acceptedAt?: Date | null;
   revokedAt?: Date | null;
   createdAt: Date;
+  /** Ausente en las filas anteriores a alpha.2: entonces es una invitación por correo. */
+  channel?: string | null;
 }
 
 const tenantBase = (row: TenantRow) => ({
@@ -96,9 +98,15 @@ const toSite = (row: SiteRow): Site => ({
   companyId: row.companyId,
   businessId: row.businessId ?? null,
 });
+/** En una invitación por teléfono la columna `email` guarda el número. */
+const recipientOf = (row: InvitationRow) =>
+  row.channel === 'phone'
+    ? { channel: 'phone' as const, email: '', phoneNumber: row.email }
+    : { channel: 'email' as const, email: row.email, phoneNumber: null };
+
 const toInvitation = (row: InvitationRow): StoredInvitation => ({
   id: row.id,
-  email: row.email,
+  ...recipientOf(row),
   scope: toScope({ id: row.id, scopeType: row.scopeType, scopeId: row.scopeId }),
   roleIds: row.roleIds,
   invitedBy: row.invitedBy,
@@ -698,9 +706,12 @@ export function createSiteStore(adapter: Adapter, atomic: Atomic, now: () => Dat
 
 // ---------- invitaciones ----------
 
-/** Texto estable de «correo + alcance»; se reduce a un hash corto para la clave única. */
-async function pendingKey(email: string, scope: AssignmentScope): Promise<string> {
-  const data = new TextEncoder().encode(`${email}|${scopeKey(scope)}`);
+/**
+ * Texto estable de «contacto + alcance» (el correo o el número); se reduce a un hash corto para la
+ * clave única. Para un correo es el mismo de antes de alpha.2.
+ */
+async function pendingKey(contact: string, scope: AssignmentScope): Promise<string> {
+  const data = new TextEncoder().encode(`${contact}|${scopeKey(scope)}`);
   const digest = await globalThis.crypto.subtle.digest('SHA-256', data);
   return `pending:${Buffer.from(digest).toString('hex')}`;
 }
@@ -713,10 +724,10 @@ export function createInvitationStore(adapter: Adapter, now: () => Date): Invita
       const row = await adapter.findOne<InvitationRow>({ model, where: byId(id) });
       return row ? toInvitation(row) : null;
     },
-    async findPending(email, scope) {
+    async findPending(contact, scope) {
       const row = await adapter.findOne<InvitationRow>({
         model,
-        where: [{ field: 'pendingKey', value: await pendingKey(email, scope) }],
+        where: [{ field: 'pendingKey', value: await pendingKey(contact, scope) }],
       });
       return row ? toInvitation(row) : null;
     },
@@ -724,9 +735,17 @@ export function createInvitationStore(adapter: Adapter, now: () => Date): Invita
       const exists = () =>
         new AxedaError(
           'AXEDA_INVITATION_EXISTS',
-          'There is already a pending invitation for that email and scope.',
+          'There is already a pending invitation for that contact and scope.',
         );
-      const key = await pendingKey(input.email, input.scope);
+      const channel = input.channel ?? 'email';
+      const contact = channel === 'phone' ? (input.phoneNumber ?? '') : input.email;
+      if (contact === '') {
+        throw new AxedaError(
+          'AXEDA_INVALID_INPUT',
+          'An invitation needs an email or a phone number.',
+        );
+      }
+      const key = await pendingKey(contact, input.scope);
       if (await adapter.findOne({ model, where: [{ field: 'pendingKey', value: key }] }))
         throw exists();
       try {
@@ -736,7 +755,8 @@ export function createInvitationStore(adapter: Adapter, now: () => Date): Invita
         >({
           model,
           data: {
-            email: input.email,
+            email: contact,
+            channel,
             ...scopeColumns(input.scope),
             roleIds: [...input.roleIds],
             invitedBy: input.invitedBy,

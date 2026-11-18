@@ -75,6 +75,8 @@ describe.each(databaseKinds)('Axeda on a real Better Auth (%s)', (kind) => {
       id: 'alice',
       email: 'alice@test.dev',
       emailVerified: false,
+      phoneNumber: null,
+      phoneNumberVerified: false,
       twoFactorEnabled: false,
       banned: false,
     });

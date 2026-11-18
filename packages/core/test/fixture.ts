@@ -39,7 +39,15 @@ export interface Fixture {
   /** Mientras `on` sea `true`, el envío de invitaciones falla. */
   readonly failDelivery: { on: boolean };
   /** Atajo: crea un usuario y devuelve su actor. */
-  user(id: string, extra?: { twoFactorEnabled?: boolean; emailVerified?: boolean }): Actor;
+  user(
+    id: string,
+    extra?: {
+      twoFactorEnabled?: boolean;
+      emailVerified?: boolean;
+      phoneNumber?: string | null;
+      phoneNumberVerified?: boolean;
+    },
+  ): Actor;
   /** Crea una función como administrador y la devuelve. */
   role(key: string, permissions: string[], extra?: { requireMfa?: boolean }): Promise<Role>;
   /** Asigna una función como administrador. */

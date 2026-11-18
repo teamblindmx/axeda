@@ -4,6 +4,9 @@ export interface ManagedUser {
   readonly email: string;
   readonly name: string;
   readonly emailVerified: boolean;
+  /** El teléfono (E.164), si la aplicación usa el acceso por teléfono; si no, `null`. */
+  readonly phoneNumber: string | null;
+  readonly phoneNumberVerified: boolean;
   readonly twoFactorEnabled: boolean;
   readonly banned: boolean;
   readonly banReason: string | null;

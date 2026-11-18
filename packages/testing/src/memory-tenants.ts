@@ -2,6 +2,7 @@ import {
   AxedaError,
   businessKey,
   companyKey,
+  invitationContact,
   scopeKey,
   type Business,
   type BusinessChanges,
@@ -437,33 +438,38 @@ export function createInvitationStore(context: Context): InvitationStore {
 
   return {
     get: (id) => run(async () => state.invitations.get(id) ?? null),
-    findPending: (email, scope) =>
+    findPending: (contact, scope) =>
       run(
         async () =>
           [...state.invitations.values()].find(
             (invitation) =>
               isPending(invitation) &&
-              invitation.email === email &&
+              invitationContact(invitation) === contact &&
               scopeKey(invitation.scope) === scopeKey(scope),
           ) ?? null,
       ),
     create: (input: NewInvitation) =>
       run(async () => {
+        const recipient = {
+          channel: input.channel ?? 'email',
+          email: input.channel === 'phone' ? '' : input.email,
+          phoneNumber: input.channel === 'phone' ? (input.phoneNumber ?? null) : null,
+        } as const;
         const exists = [...state.invitations.values()].some(
           (invitation) =>
             isPending(invitation) &&
-            invitation.email === input.email &&
+            invitationContact(invitation) === invitationContact(recipient) &&
             scopeKey(invitation.scope) === scopeKey(input.scope),
         );
         if (exists) {
           throw new AxedaError(
             'AXEDA_INVITATION_EXISTS',
-            'There is already a pending invitation for that email and scope.',
+            'There is already a pending invitation for that contact and scope.',
           );
         }
         const invitation: StoredInvitation = {
           id: nextId(),
-          email: input.email,
+          ...recipient,
           scope: input.scope,
           roleIds: [...input.roleIds],
           invitedBy: input.invitedBy,

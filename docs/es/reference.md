@@ -41,52 +41,52 @@ Máximo 200 elementos y 3 niveles. La etiqueta se elige por idioma exacto, luego
 Todos cuelgan de la ruta base de Better Auth (`/api/auth`). Todos exigen sesión salvo el último.
 «Por objetivo» significa que el permiso se comprueba en el alcance de lo que se modifica.
 
-| Método | Ruta                          | Requiere                                              | Se comprueba en      |
-| ------ | ----------------------------- | ----------------------------------------------------- | -------------------- |
-| GET    | `/axeda/me`                   | (sesión)                                              | propio               |
-| GET    | `/axeda/permission/list`      | `axeda:role:manage` o `axeda:assignment:manage`       | cualquiera           |
-| GET    | `/axeda/role/list`            | `axeda:role:manage` o `axeda:assignment:manage`       | cualquiera           |
-| GET    | `/axeda/role/get`             | `axeda:role:manage` o `axeda:assignment:manage`       | cualquiera           |
-| POST   | `/axeda/role/create`          | `axeda:role:manage`                                   | global               |
-| POST   | `/axeda/role/update`          | `axeda:role:manage`                                   | global               |
-| POST   | `/axeda/role/set-status`      | `axeda:role:manage`                                   | global               |
-| POST   | `/axeda/role/delete`          | `axeda:role:manage`                                   | global               |
-| GET    | `/axeda/assignment/list`      | `axeda:assignment:manage`                             | por objetivo         |
-| POST   | `/axeda/assignment/create`    | `axeda:assignment:manage`                             | parámetro de alcance |
-| POST   | `/axeda/assignment/revoke`    | `axeda:assignment:manage`                             | por objetivo         |
-| GET    | `/axeda/audit/list`           | `axeda:audit:read`                                    | parámetro de alcance |
-| GET    | `/axeda/company/list`         | pertenencia                                           | por objetivo         |
-| GET    | `/axeda/company/get`          | pertenencia                                           | por objetivo         |
-| POST   | `/axeda/company/create`       | `axeda:company:manage`                                | global               |
-| POST   | `/axeda/company/update`       | `axeda:company:manage`                                | por objetivo         |
-| POST   | `/axeda/company/set-status`   | `axeda:company:manage`                                | global               |
-| POST   | `/axeda/company/delete`       | `axeda:company:manage`                                | global               |
-| POST   | `/axeda/company/restore`      | `axeda:company:manage`                                | global               |
-| GET    | `/axeda/business/list`        | pertenencia                                           | por objetivo         |
-| GET    | `/axeda/business/get`         | pertenencia                                           | por objetivo         |
-| POST   | `/axeda/business/create`      | `axeda:business:manage`                               | por objetivo         |
-| POST   | `/axeda/business/update`      | `axeda:business:manage`                               | por objetivo         |
-| POST   | `/axeda/business/set-status`  | `axeda:business:manage`                               | por objetivo         |
-| POST   | `/axeda/business/delete`      | `axeda:business:manage`                               | por objetivo         |
-| POST   | `/axeda/business/restore`     | `axeda:business:manage`                               | por objetivo         |
-| GET    | `/axeda/site/list`            | pertenencia                                           | por objetivo         |
-| GET    | `/axeda/site/get`             | pertenencia                                           | por objetivo         |
-| POST   | `/axeda/site/create`          | `axeda:site:manage`                                   | por objetivo         |
-| POST   | `/axeda/site/update`          | `axeda:site:manage`                                   | por objetivo         |
-| POST   | `/axeda/site/set-status`      | `axeda:site:manage`                                   | por objetivo         |
-| POST   | `/axeda/site/delete`          | `axeda:site:manage`                                   | por objetivo         |
-| POST   | `/axeda/site/restore`         | `axeda:site:manage`                                   | por objetivo         |
-| GET    | `/axeda/invitation/list`      | `axeda:invitation:manage`                             | parámetro de alcance |
-| POST   | `/axeda/invitation/create`    | `axeda:invitation:manage`                             | parámetro de alcance |
-| POST   | `/axeda/invitation/accept`    | (sesión; autorizan el secreto y un correo verificado) | propio               |
-| POST   | `/axeda/invitation/revoke`    | `axeda:invitation:manage`                             | por objetivo         |
-| GET    | `/axeda/user/list`            | `axeda:user:manage`                                   | global               |
-| POST   | `/axeda/user/create`          | `axeda:user:manage`                                   | global               |
-| POST   | `/axeda/user/ban`             | `axeda:user:manage`                                   | global               |
-| POST   | `/axeda/user/unban`           | `axeda:user:manage`                                   | global               |
-| POST   | `/axeda/user/revoke-sessions` | `axeda:user:manage`                                   | global               |
-| GET    | `/axeda/menu`                 | (sesión; solo lista lo que puedes usar)               | propio               |
-| GET    | `/axeda/public/identity`      | (pública, apagada salvo `publicIdentity`)             | —                    |
+| Método | Ruta                          | Requiere                                                         | Se comprueba en      |
+| ------ | ----------------------------- | ---------------------------------------------------------------- | -------------------- |
+| GET    | `/axeda/me`                   | (sesión)                                                         | propio               |
+| GET    | `/axeda/permission/list`      | `axeda:role:manage` o `axeda:assignment:manage`                  | cualquiera           |
+| GET    | `/axeda/role/list`            | `axeda:role:manage` o `axeda:assignment:manage`                  | cualquiera           |
+| GET    | `/axeda/role/get`             | `axeda:role:manage` o `axeda:assignment:manage`                  | cualquiera           |
+| POST   | `/axeda/role/create`          | `axeda:role:manage`                                              | global               |
+| POST   | `/axeda/role/update`          | `axeda:role:manage`                                              | global               |
+| POST   | `/axeda/role/set-status`      | `axeda:role:manage`                                              | global               |
+| POST   | `/axeda/role/delete`          | `axeda:role:manage`                                              | global               |
+| GET    | `/axeda/assignment/list`      | `axeda:assignment:manage`                                        | por objetivo         |
+| POST   | `/axeda/assignment/create`    | `axeda:assignment:manage`                                        | parámetro de alcance |
+| POST   | `/axeda/assignment/revoke`    | `axeda:assignment:manage`                                        | por objetivo         |
+| GET    | `/axeda/audit/list`           | `axeda:audit:read`                                               | parámetro de alcance |
+| GET    | `/axeda/company/list`         | pertenencia                                                      | por objetivo         |
+| GET    | `/axeda/company/get`          | pertenencia                                                      | por objetivo         |
+| POST   | `/axeda/company/create`       | `axeda:company:manage`                                           | global               |
+| POST   | `/axeda/company/update`       | `axeda:company:manage`                                           | por objetivo         |
+| POST   | `/axeda/company/set-status`   | `axeda:company:manage`                                           | global               |
+| POST   | `/axeda/company/delete`       | `axeda:company:manage`                                           | global               |
+| POST   | `/axeda/company/restore`      | `axeda:company:manage`                                           | global               |
+| GET    | `/axeda/business/list`        | pertenencia                                                      | por objetivo         |
+| GET    | `/axeda/business/get`         | pertenencia                                                      | por objetivo         |
+| POST   | `/axeda/business/create`      | `axeda:business:manage`                                          | por objetivo         |
+| POST   | `/axeda/business/update`      | `axeda:business:manage`                                          | por objetivo         |
+| POST   | `/axeda/business/set-status`  | `axeda:business:manage`                                          | por objetivo         |
+| POST   | `/axeda/business/delete`      | `axeda:business:manage`                                          | por objetivo         |
+| POST   | `/axeda/business/restore`     | `axeda:business:manage`                                          | por objetivo         |
+| GET    | `/axeda/site/list`            | pertenencia                                                      | por objetivo         |
+| GET    | `/axeda/site/get`             | pertenencia                                                      | por objetivo         |
+| POST   | `/axeda/site/create`          | `axeda:site:manage`                                              | por objetivo         |
+| POST   | `/axeda/site/update`          | `axeda:site:manage`                                              | por objetivo         |
+| POST   | `/axeda/site/set-status`      | `axeda:site:manage`                                              | por objetivo         |
+| POST   | `/axeda/site/delete`          | `axeda:site:manage`                                              | por objetivo         |
+| POST   | `/axeda/site/restore`         | `axeda:site:manage`                                              | por objetivo         |
+| GET    | `/axeda/invitation/list`      | `axeda:invitation:manage`                                        | parámetro de alcance |
+| POST   | `/axeda/invitation/create`    | `axeda:invitation:manage`                                        | parámetro de alcance |
+| POST   | `/axeda/invitation/accept`    | (sesión; autorizan el secreto y un correo o teléfono verificado) | propio               |
+| POST   | `/axeda/invitation/revoke`    | `axeda:invitation:manage`                                        | por objetivo         |
+| GET    | `/axeda/user/list`            | `axeda:user:manage`                                              | global               |
+| POST   | `/axeda/user/create`          | `axeda:user:manage`                                              | global               |
+| POST   | `/axeda/user/ban`             | `axeda:user:manage`                                              | global               |
+| POST   | `/axeda/user/unban`           | `axeda:user:manage`                                              | global               |
+| POST   | `/axeda/user/revoke-sessions` | `axeda:user:manage`                                              | global               |
+| GET    | `/axeda/menu`                 | (sesión; solo lista lo que puedes usar)                          | propio               |
+| GET    | `/axeda/public/identity`      | (pública, apagada salvo `publicIdentity`)                        | —                    |
 
 Los endpoints de Better Auth solo admiten `GET` y `POST`, por eso las modificaciones y los borrados
 son `POST`. Los endpoints de Axeda tienen límite de peticiones por dirección: 120 por minuto, y 30
@@ -100,38 +100,43 @@ distinguir un caso de otro. Las sedes se administran desde la compañía, o desd
 cuelgan, con `axeda:site:manage`; `site/list` acepta `businessId` para listar las sedes de un negocio,
 o `businessId=none` para las que cuelgan directamente de la compañía.
 
+`invitation/create` acepta exactamente uno de `email` o `phoneNumber` (E.164). Las invitaciones
+llevan `channel` (`email` o `phone`), `email` (vacío en una por teléfono) y `phoneNumber` (`null` en
+una por correo). Los usuarios llevan `phoneNumber` y `phoneNumberVerified`, que son `null` y `false`
+si no usas el acceso por teléfono.
+
 ## Códigos de error
 
 Los errores tienen la forma `{ code, message }`. Los códigos son estables; los mensajes están en
 inglés y pueden cambiar, así que decide por `code`.
 
-| Código                       | Estado | Significado                                                                 |
-| ---------------------------- | ------ | --------------------------------------------------------------------------- |
-| `AXEDA_INVALID_INPUT`        | 400    | La entrada no pasó la validación                                            |
-| `AXEDA_INVALID_PERMISSION`   | 400    | No es un permiso bien formado                                               |
-| `AXEDA_UNKNOWN_PERMISSION`   | 400    | Un permiso que no está en el catálogo                                       |
-| `AXEDA_INVITATION_INVALID`   | 400    | Invitación incorrecta, caducada, usada o revocada, o el correo no coincide  |
-| `AXEDA_FORBIDDEN`            | 403    | No tienes permiso para esto                                                 |
-| `AXEDA_MFA_REQUIRED`         | 403    | La función exige un 2FA que el usuario no tiene activado                    |
-| `AXEDA_USER_BANNED`          | 403    | La cuenta está suspendida (al iniciar sesión)                               |
-| `AXEDA_ROLE_NOT_FOUND`       | 404    |                                                                             |
-| `AXEDA_ASSIGNMENT_NOT_FOUND` | 404    |                                                                             |
-| `AXEDA_USER_NOT_FOUND`       | 404    |                                                                             |
-| `AXEDA_COMPANY_NOT_FOUND`    | 404    |                                                                             |
-| `AXEDA_BUSINESS_NOT_FOUND`   | 404    |                                                                             |
-| `AXEDA_SITE_NOT_FOUND`       | 404    |                                                                             |
-| `AXEDA_EMAIL_TAKEN`          | 409    | Ya existe una cuenta con ese correo                                         |
-| `AXEDA_ROLE_KEY_TAKEN`       | 409    |                                                                             |
-| `AXEDA_ROLE_MANAGED`         | 409    | La función está declarada en el código y no se cambia aquí                  |
-| `AXEDA_VERSION_CONFLICT`     | 409    | Alguien la cambió antes; recarga y reintenta                                |
-| `AXEDA_ASSIGNMENT_EXISTS`    | 409    |                                                                             |
-| `AXEDA_LIMIT_EXCEEDED`       | 409    | Se alcanzó un límite configurado                                            |
-| `AXEDA_ALREADY_BOOTSTRAPPED` | 409    | Ya existe una administración global                                         |
-| `AXEDA_SLUG_TAKEN`           | 409    |                                                                             |
-| `AXEDA_INVITATION_EXISTS`    | 409    | Ya hay una invitación pendiente para ese correo y alcance                   |
-| `AXEDA_FEATURE_DISABLED`     | 501    | Las invitaciones o la administración de usuarios no están configuradas      |
-| `AXEDA_DELIVERY_FAILED`      | 502    | Tu `invitationDelivery.send` lanzó un error                                 |
-| `AXEDA_INTERNAL_ERROR`       | 500    | Cualquier cosa inesperada; el detalle queda en los registros de tu servidor |
+| Código                       | Estado | Significado                                                                              |
+| ---------------------------- | ------ | ---------------------------------------------------------------------------------------- |
+| `AXEDA_INVALID_INPUT`        | 400    | La entrada no pasó la validación                                                         |
+| `AXEDA_INVALID_PERMISSION`   | 400    | No es un permiso bien formado                                                            |
+| `AXEDA_UNKNOWN_PERMISSION`   | 400    | Un permiso que no está en el catálogo                                                    |
+| `AXEDA_INVITATION_INVALID`   | 400    | Invitación incorrecta, caducada, usada o revocada, o el correo o el teléfono no coincide |
+| `AXEDA_FORBIDDEN`            | 403    | No tienes permiso para esto                                                              |
+| `AXEDA_MFA_REQUIRED`         | 403    | La función exige un 2FA que el usuario no tiene activado                                 |
+| `AXEDA_USER_BANNED`          | 403    | La cuenta está suspendida (al iniciar sesión)                                            |
+| `AXEDA_ROLE_NOT_FOUND`       | 404    |                                                                                          |
+| `AXEDA_ASSIGNMENT_NOT_FOUND` | 404    |                                                                                          |
+| `AXEDA_USER_NOT_FOUND`       | 404    |                                                                                          |
+| `AXEDA_COMPANY_NOT_FOUND`    | 404    |                                                                                          |
+| `AXEDA_BUSINESS_NOT_FOUND`   | 404    |                                                                                          |
+| `AXEDA_SITE_NOT_FOUND`       | 404    |                                                                                          |
+| `AXEDA_EMAIL_TAKEN`          | 409    | Ya existe una cuenta con ese correo                                                      |
+| `AXEDA_ROLE_KEY_TAKEN`       | 409    |                                                                                          |
+| `AXEDA_ROLE_MANAGED`         | 409    | La función está declarada en el código y no se cambia aquí                               |
+| `AXEDA_VERSION_CONFLICT`     | 409    | Alguien la cambió antes; recarga y reintenta                                             |
+| `AXEDA_ASSIGNMENT_EXISTS`    | 409    |                                                                                          |
+| `AXEDA_LIMIT_EXCEEDED`       | 409    | Se alcanzó un límite configurado                                                         |
+| `AXEDA_ALREADY_BOOTSTRAPPED` | 409    | Ya existe una administración global                                                      |
+| `AXEDA_SLUG_TAKEN`           | 409    |                                                                                          |
+| `AXEDA_INVITATION_EXISTS`    | 409    | Ya hay una invitación pendiente para ese correo o teléfono y alcance                     |
+| `AXEDA_FEATURE_DISABLED`     | 501    | Las invitaciones o la administración de usuarios no están configuradas                   |
+| `AXEDA_DELIVERY_FAILED`      | 502    | Tu `invitationDelivery.send` lanzó un error                                              |
+| `AXEDA_INTERNAL_ERROR`       | 500    | Cualquier cosa inesperada; el detalle queda en los registros de tu servidor              |
 
 Los problemas de configuración (`AXEDA_INVALID_CONFIG`, `AXEDA_TRANSACTIONS_UNSUPPORTED`,
 `AXEDA_DATA_CORRUPT`) nunca llegan al cliente como tales: aparecen como `AXEDA_INTERNAL_ERROR`.
@@ -154,6 +159,21 @@ Los problemas de configuración (`AXEDA_INVALID_CONFIG`, `AXEDA_TRANSACTIONS_UNS
 Devuelve `baseURL`, `secret`, `trustedOrigins`, `emailAndPassword`, `session`, `advanced` y
 `rateLimit` para esparcirlos en `betterAuth({ … })`. Si sobrescribes una de estas claves,
 reemplazas la clave completa, así que copia lo que aún necesites.
+
+## `securePhoneNumberOptions(input)`
+
+Opciones para el plugin `phoneNumber` de Better Auth; mira [Configuración](configuration.md#acceso-por-teléfono-securephonenumberoptions).
+
+| Entrada                | Por omisión | Notas                                                           |
+| ---------------------- | ----------- | --------------------------------------------------------------- |
+| `sendOTP`              | —           | Envía el código; recibe `{ phoneNumber, code }`                 |
+| `maxSendsPerNumber`    | `5`         | Códigos por número y ventana, pida quien los pida; después, 429 |
+| `sendWindowSeconds`    | `3600`      | Duración de la ventana                                          |
+| `signUpOnVerification` | `true`      | Un código para un número desconocido crea la cuenta             |
+
+Los códigos tienen 6 dígitos, duran 5 minutos y admiten 3 intentos; los números deben ir en E.164.
+`isPhoneOnlyEmail(email)` distingue el correo de relleno de una cuenta solo con teléfono
+(`…@phone.invalid`) de uno real.
 
 ## API de TypeScript
 

@@ -637,6 +637,34 @@ export function defineTenantContract(database: () => AxedaPersistence): void {
       await database().invitations.create(input({ email: 'someone@test.dev' }));
     });
 
+    it('stores a phone invitation by its number, apart from email invitations', async () => {
+      const phone = '+5215512345678';
+      const byPhone = await database().invitations.create(
+        input({ channel: 'phone', email: '', phoneNumber: phone }),
+      );
+      expect(byPhone).toMatchObject({ channel: 'phone', email: '', phoneNumber: phone });
+      expect(await database().invitations.get(byPhone.id)).toEqual(byPhone);
+      expect(await database().invitations.findPending(phone, scope)).toEqual(byPhone);
+      await expectCode(
+        database().invitations.create(
+          input({ channel: 'phone', email: '', phoneNumber: phone, secretHash: 'other' }),
+        ),
+        'AXEDA_INVITATION_EXISTS',
+      );
+      // Una por correo al mismo alcance no choca, y por omisión el canal es el correo.
+      const byMail = await database().invitations.create(input());
+      expect(byMail).toMatchObject({ channel: 'email', email: 'new@test.dev', phoneNumber: null });
+      const listed = await database().invitations.list(
+        scope,
+        { pendingOnly: true, now: new Date('2026-06-01T00:00:00.000Z') },
+        { limit: 10 },
+      );
+      expect(listed.items.map((item) => [item.channel, item.phoneNumber]).sort()).toEqual([
+        ['email', null],
+        ['phone', phone],
+      ]);
+    });
+
     it('lets exactly one of two concurrent identical invitations win', async () => {
       const results = await Promise.allSettled([
         database().invitations.create(input()),

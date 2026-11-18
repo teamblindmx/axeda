@@ -31,7 +31,10 @@ export interface InvitationDeliveryOptions {
    * configurada: nunca debe salir de la cabecera `Host` de una petición.
    */
   readonly acceptUrl: (token: string) => string;
-  /** Envía el correo. Recibe datos, no HTML: escapa lo que muestres. */
+  /**
+   * Envía la invitación: un correo a `email`, o un SMS a `phoneNumber` si `channel` es `phone`.
+   * Recibe datos, no HTML: escapa lo que muestres.
+   */
   readonly send: (message: InvitationMessage & { readonly link: string }) => Promise<void>;
 }
 

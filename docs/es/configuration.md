@@ -69,13 +69,13 @@ const options = {
 
 ### Lo que fija por ti
 
-| Área                   | Valor                                                                                                                                                                                                                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Contraseñas            | De 12 a 128 caracteres; al restablecer la contraseña se cierran las sesiones                                                                                                                                                                                                    |
-| Sesiones               | `expiresIn` 7 días (tiempo sin uso), `updateAge` 1 día, `freshAge` 15 minutos, **caché de cookie apagada**                                                                                                                                                                      |
-| Cookies                | `HttpOnly`, `SameSite=Lax`, `Secure` en producción                                                                                                                                                                                                                              |
-| Comprobación de origen | `disableCSRFCheck: false`, `disableOriginCheck: false`                                                                                                                                                                                                                          |
-| Límites de peticiones  | 100 por minuto por dirección, y más estrictos al iniciar sesión (5 por minuto), registrarse (5 cada 5 minutos), pedir restablecer la contraseña (3 cada 5 minutos), restablecerla (5 cada 5 minutos), correo de verificación (3 cada 5 minutos) y verificar TOTP (5 por minuto) |
+| Área                   | Valor                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contraseñas            | De 12 a 128 caracteres; al restablecer la contraseña se cierran las sesiones                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Sesiones               | `expiresIn` 7 días (tiempo sin uso), `updateAge` 1 día, `freshAge` 15 minutos, **caché de cookie apagada**                                                                                                                                                                                                                                                                                                                                                                               |
+| Cookies                | `HttpOnly`, `SameSite=Lax`, `Secure` en producción                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Comprobación de origen | `disableCSRFCheck: false`, `disableOriginCheck: false`                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Límites de peticiones  | 100 por minuto por dirección, y más estrictos al iniciar sesión (5 por minuto), registrarse (5 cada 5 minutos), pedir restablecer la contraseña (3 cada 5 minutos), restablecerla (5 cada 5 minutos), correo de verificación (3 cada 5 minutos), verificar TOTP (5 por minuto), y las rutas de teléfono: enviar un código (3 por minuto), verificarlo (10 por minuto), iniciar sesión con un número (5 por minuto), pedir restablecer (3 cada 5 minutos), restablecer (5 cada 5 minutos) |
 
 Puedes cambiar cualquiera poniendo tu propio valor **después** del spread. El spread es superficial: tu
 `session` (o `advanced`, `rateLimit`, `emailAndPassword`) sustituye al objeto entero del preset, así que
@@ -84,7 +84,8 @@ copia los valores que quieras conservar. Axeda solo rechaza las cuatro opciones 
 ### Lo que añades tú
 
 - `database`: mira [Bases de datos](reference.md#bases-de-datos) para ver lo que pide cada una.
-- `plugins: [axedaPlugin]`, y el plugin `twoFactor` de Better Auth si alguna función usa `requireMfa`.
+- `plugins: [axedaPlugin]`, y el plugin `twoFactor` de Better Auth si alguna función usa `requireMfa`, y
+  su plugin `phoneNumber` para el acceso por teléfono ([abajo](#acceso-por-teléfono-securephonenumberoptions)).
 - `emailVerification.sendVerificationEmail`, obligatorio con el `requireEmailVerification: true` por omisión.
 - `secondaryStorage`, si lo usas. Con él, Axeda lee el usuario de la base de datos en cada petición (una
   consulta más), porque Better Auth refresca la copia del usuario dentro de las sesiones en caché, pero la
@@ -104,6 +105,55 @@ dice por qué. Quitan una protección en la que se apoya cada endpoint `/axeda/*
 
 Axeda añade además su propio límite a sus endpoints, por dirección IP: **120 peticiones por minuto** para
 `/axeda/*` y **30 por minuto** para el único endpoint que no necesita sesión (`/axeda/public/identity`).
+
+### Acceso por teléfono: `securePhoneNumberOptions`
+
+Las personas pueden registrarse e iniciar sesión con su número de teléfono y un código de un solo uso,
+sin correo. Añade el plugin `phoneNumber` de Better Auth con las opciones que devuelve
+`securePhoneNumberOptions`:
+
+```ts
+import { betterAuth } from 'better-auth';
+import { phoneNumber } from 'better-auth/plugins';
+import { secureAuthOptions, securePhoneNumberOptions } from '@teamblind/axeda-better-auth';
+
+const auth = betterAuth({
+  ...secureAuthOptions({ baseURL, secret, trustedOrigins }),
+  database, // la tuya
+  plugins: [
+    axedaPlugin,
+    phoneNumber(
+      securePhoneNumberOptions({
+        sendOTP: async ({ phoneNumber, code }) => sms.send(phoneNumber, `Tu código: ${code}`),
+      }),
+    ),
+  ],
+});
+```
+
+| Opción                 | Tipo                                               | Por omisión     | Qué hace                                                                                      |
+| ---------------------- | -------------------------------------------------- | --------------- | --------------------------------------------------------------------------------------------- |
+| `sendOTP`              | `({ phoneNumber, code }) => void \| Promise<void>` | — (obligatoria) | Envía el código por SMS (o WhatsApp). Nunca registres el código                               |
+| `maxSendsPerNumber`    | `number`                                           | `5`             | Códigos enviados a **un número** por ventana, pida quien los pida. Después, `429`             |
+| `sendWindowSeconds`    | `number`                                           | `3600`          | Duración de esa ventana                                                                       |
+| `signUpOnVerification` | `boolean`                                          | `true`          | Un código para un número desconocido crea la cuenta. Con `false` no crea a nadie: lo haces tú |
+
+Lo que obtienes:
+
+- Códigos de 6 dígitos, válidos 5 minutos; tras 3 intentos fallidos el código queda anulado.
+- Números solo en formato E.164 (`+5215512345678`): cualquier otra cosa se rechaza antes de enviar.
+- El tope por número vive en la base de datos (tabla `axedaThrottle`), así que vale entre instancias. El
+  límite propio de Better Auth cuenta por dirección, y eso no impide que alguien mande códigos al número
+  de una víctima desde muchas direcciones. `secureAuthOptions` también limita las rutas de teléfono por
+  dirección.
+- Verificar un código inicia la sesión. `requireEmailVerification` no se aplica: solo rige el inicio de
+  sesión con correo.
+- Una cuenta que Axeda suspendió no puede volver a entrar con un código (`403 AXEDA_USER_BANNED`).
+- Quien se registra por teléfono recibe un correo de relleno, `<dígitos>@phone.invalid`, porque Better
+  Auth necesita uno. Usa `isPhoneOnlyEmail(email)` para ocultarlo. `/axeda/user/list` muestra
+  `phoneNumber` y `phoneNumberVerified`.
+- `/axeda/user/create` sigue pidiendo un correo. Para dar de alta a alguien que solo tiene teléfono,
+  invítalo por su número ([abajo](#entregar-las-invitaciones)) o deja que se registre.
 
 ---
 
@@ -188,11 +238,17 @@ axeda({
   permissions: ['invoice:read'],
   invitationDelivery: {
     acceptUrl: (token) => `https://app.example.com/accept?token=${encodeURIComponent(token)}`,
-    send: async ({ email, link }) => mailer.send({ to: email, subject: 'You are invited', link }),
+    send: async ({ channel, email, phoneNumber, link }) =>
+      channel === 'phone'
+        ? sms.send(phoneNumber ?? '', `Te invitaron: ${link}`)
+        : mailer.send({ to: email, subject: 'Te invitaron', link }),
   },
 });
 ```
 
+- Una invitación va a un `email` o a un `phoneNumber` (E.164), nunca a los dos; `channel` dice cuál. Una
+  por correo solo la acepta una cuenta con ese correo verificado; una por teléfono, solo una cuenta con
+  ese número verificado.
 - Construye `acceptUrl` a partir de **tu URL base configurada**, nunca de la cabecera `Host` de una petición.
 - `send` recibe datos, no HTML: escapa lo que pongas en un mensaje. Si lanza un error, quien llama recibe
   `AXEDA_DELIVERY_FAILED` (502).
