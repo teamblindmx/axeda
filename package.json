@@ -46,7 +46,8 @@
     "build": "node scripts/build.mjs",
     "pack:check": "node scripts/pack-check.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "sbom": "node scripts/sbom.mjs"
+    "sbom": "node scripts/sbom.mjs",
+    "audit:deps": "node scripts/audit.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
