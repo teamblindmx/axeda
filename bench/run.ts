@@ -290,6 +290,10 @@ interface Bench {
   readonly counter: { n: number };
   readonly companyIds: readonly string[];
   readonly businessIds: readonly string[];
+  /** Una sede directa de cada compañía. */
+  readonly companySiteIds: readonly string[];
+  /** Una sede de cada negocio. */
+  readonly businessSiteIds: readonly string[];
   readonly roleIds: readonly string[];
   readonly userIds: readonly string[];
   /** Asignaciones que hay en el alcance de la primera compañía. */
@@ -365,6 +369,25 @@ async function openSession(auth: SessionAuth, context: SessionContext): Promise<
     headers: new Headers({ cookie }),
     writes,
   };
+}
+
+/** Una sede directa de cada compañía y una de cada negocio, para las rutas con alcance de sede. */
+async function seedSites(
+  core: Axeda,
+  admin: { userId: string },
+  companyIds: readonly string[],
+  businessIds: readonly string[],
+): Promise<{ companySiteIds: string[]; businessSiteIds: string[] }> {
+  const companySiteIds: string[] = [];
+  const businessSiteIds: string[] = [];
+  for (const [i, companyId] of companyIds.entries()) {
+    companySiteIds.push((await core.sites.create(admin, companyId, { slug: 'hq', name: 'HQ' })).id);
+    const businessId = businessIds[i] ?? '';
+    businessSiteIds.push(
+      (await core.sites.create(admin, companyId, { slug: 'north', name: 'North', businessId })).id,
+    );
+  }
+  return { companySiteIds, businessSiteIds };
 }
 
 async function prepare(): Promise<Bench> {
@@ -443,6 +466,7 @@ async function prepare(): Promise<Bench> {
       (await core.businesses.create(admin, companyId, { slug: 'shop', name: 'Shop' })).id,
     );
   }
+  const { companySiteIds, businessSiteIds } = await seedSites(core, admin, companyIds, businessIds);
   // La primera compañía acumula todas las funciones de todas las personas: un alcance grande.
   const firstCompany = companyIds[0] ?? '';
   const extra = userIds.flatMap((userId, u) =>
@@ -467,6 +491,8 @@ async function prepare(): Promise<Bench> {
     counter,
     companyIds,
     businessIds,
+    companySiteIds,
+    businessSiteIds,
     roleIds,
     userIds,
     scopeSize: userIds.length * roleIds.length,
@@ -482,18 +508,32 @@ async function prepare(): Promise<Bench> {
  */
 async function routeScenarios(b: Bench): Promise<Stats[]> {
   const principal = { userId: b.userIds[1] ?? '', authzVersion: 0 };
-  const route = (type: 'company' | 'business', ids: readonly string[]) => async (i: number) => {
-    const target = await b.core.resolveTarget({ type, id: ids[i % ids.length] ?? '' });
-    if (target === null) throw new Error('the bench scope does not resolve');
-    return b.core.can(principal, 'invoice:read', target);
-  };
+  const route =
+    (type: 'company' | 'business' | 'site', ids: readonly string[]) => async (i: number) => {
+      const target = await b.core.resolveTarget({ type, id: ids[i % ids.length] ?? '' });
+      if (target === null) throw new Error('the bench scope does not resolve');
+      return b.core.can(principal, 'invoice:read', target);
+    };
   const company = route('company', b.companyIds);
   const business = route('business', b.businessIds);
-  await company(0);
-  await business(0);
+  const companySite = route('site', b.companySiteIds);
+  const businessSite = route('site', b.businessSiteIds);
+  for (const warm of [company, business, companySite, businessSite]) await warm(0);
   return [
     await sequential('route: resolveTarget + can(), company scope', 1000, company, b.counter),
     await sequential('route: resolveTarget + can(), business scope', 1000, business, b.counter),
+    await sequential(
+      'route: resolveTarget + can(), site of the company',
+      1000,
+      companySite,
+      b.counter,
+    ),
+    await sequential(
+      'route: resolveTarget + can(), site of a business',
+      1000,
+      businessSite,
+      b.counter,
+    ),
   ];
 }
 

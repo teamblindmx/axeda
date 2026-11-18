@@ -1,5 +1,56 @@
 # Actualizar
 
+## De `0.1.0-alpha.1` a `0.1.0-alpha.2`
+
+Nada de lo que ya usas cambia su comportamiento: las sedes son nuevas y solo se suman. Tienes que
+ejecutar la migración de la base de datos, y hay dos casos que conviene revisar.
+
+| Qué cambió                                                                 | ¿Tienes que hacer algo?                                                      |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Las sedes, un alcance nuevo bajo la compañía                               | Solo si las quieres usar ([abajo](#sedes))                                   |
+| Una tabla nueva, `axedaSite`                                               | **Sí**: ejecuta la migración ([abajo](#la-migración-para-las-sedes))         |
+| `AxedaPersistence` necesita un almacén `sites`                             | Solo si escribiste tu propia persistencia ([abajo](#tu-propia-persistencia)) |
+| `scopeFilter` devuelve `siteIds` y `purgeDeleted()` devuelve `sites`       | Solo si tu código compara esos objetos campo a campo                         |
+| `GET /axeda/me` acepta un lugar opcional y entonces devuelve `permissions` | No; mira la [Referencia](reference.md#endpoints)                             |
+
+### Sedes
+
+Una sede es un lugar de una compañía. Pertenece siempre a una compañía y, opcionalmente, a uno de sus
+negocios, así que una compañía puede tener sedes sin negocios. Una función asignada en la compañía
+vale en todas sus sedes, una en un negocio en las sedes de ese negocio, y una en una sede solo allí.
+Los empleados de una sede son las personas con una función asignada en ella. Las sedes se
+administran con el permiso nuevo `axeda:site:manage`, desde la compañía o desde el negocio del que
+cuelgan.
+
+```ts
+// Una sede directamente de la compañía, y otra de un negocio de esa compañía
+await axeda.sites.create(actor, companyId, { slug: 'hq', name: 'Headquarters' });
+await axeda.sites.create(actor, companyId, { slug: 'north', name: 'North', businessId });
+
+// Un empleado: una función asignada en la sede
+await axeda.assignments.assign(actor, { userId, roleId, scope: { type: 'site', id: siteId } });
+
+// Una ruta de Express de una sede; su compañía y su negocio salen de la base de datos
+app.get(
+  '/companies/:companyId/sites/:siteId/invoices',
+  x.requirePermission('invoice:read', {
+    scope: resolveScope({ company: 'companyId', site: 'siteId' }),
+  }),
+  listInvoices,
+);
+```
+
+### La migración para las sedes
+
+Ejecuta la migración de Better Auth como siempre. Crea la tabla `axedaSite` y no cambia ninguna
+tabla existente. MongoDB no tiene migraciones: la colección se crea al usarla.
+
+### Tu propia persistencia
+
+Si implementaste `AxedaPersistence` por tu cuenta, añade un almacén `sites` (`SiteStore`) y haz que
+purgar una compañía o un negocio purgue también sus sedes, con sus asignaciones e invitaciones.
+`runPersistenceContract` de `@teamblind/axeda-testing` lo comprueba todo.
+
 ## De `0.1.0-alpha.0` a `0.1.0-alpha.1`
 
 No se quitó ni se renombró ninguna función, tipo u opción exportada: lo único que crece en la API es la
