@@ -1,4 +1,5 @@
 import type { Principal, Role } from '../domain/role.js';
+import { administrativePermissions } from '../policy/grant.js';
 import type { TargetScope } from '../domain/scope.js';
 import { AxedaError } from '../errors.js';
 import type { AxedaStores } from '../ports/persistence.js';
@@ -16,16 +17,36 @@ export function assertPrincipal(principal: Principal): void {
  * asignaciones no pueden conceder poder, directamente de los almacenes.
  */
 export async function loadSnapshot(stores: AxedaStores, userId: string): Promise<AuthzSnapshot> {
-  const assignments = await stores.assignments.listForUser(userId);
+  // En paralelo: saber si es personal no añade espera, solo una consulta en la carga en frío.
+  const [assignments, staff] = await Promise.all([
+    stores.assignments.listForUser(userId),
+    stores.staff.get(userId),
+  ]);
+  const pinAccount = staff !== null;
   const roleIds = [...new Set(assignments.map((assignment) => assignment.roleId))];
   const roles = new Map<string, Role>(
-    (await stores.roles.getMany(roleIds)).map((role) => [role.id, role]),
+    (await stores.roles.getMany(roleIds)).map((role) => [
+      role.id,
+      pinAccount ? withoutAdministration(role) : role,
+    ]),
   );
   const unusable = await loadUnusable(
     stores,
     tenantIdsOf(assignments.map((assignment) => assignment.scope)),
   );
-  return { assignments, roles, unusable };
+  return { assignments, roles, unusable, pinAccount };
+}
+
+/**
+ * La función tal como la vive una cuenta de personal: sin ningún permiso que cubra uno de Axeda.
+ * Así, aunque alguien edite después una función que ya tiene asignada, no gana poder de
+ * administración (un `*` no le da nada; un `invoice:*` sigue valiendo).
+ */
+function withoutAdministration(role: Role): Role {
+  const administrative = new Set(administrativePermissions(role.permissions));
+  return administrative.size === 0
+    ? role
+    : { ...role, permissions: role.permissions.filter((key) => !administrative.has(key)) };
 }
 
 export interface Read {

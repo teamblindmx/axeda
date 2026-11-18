@@ -16,7 +16,12 @@ const rejectsWith = async (promise: Promise<unknown>, code: AxedaErrorCode) => {
   expect(isAxedaError(error, code), `expected ${code}, got ${String(error)}`).toBe(true);
 };
 
-const empty = { assignments: [], roles: new Map(), unusable: new Set<string>() };
+const empty = {
+  assignments: [],
+  roles: new Map(),
+  unusable: new Set<string>(),
+  pinAccount: false,
+};
 
 describe('AuthzCache', () => {
   it('serves an entry only while both versions match', () => {

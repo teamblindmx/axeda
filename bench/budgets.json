@@ -10,11 +10,11 @@
     },
     "can() cold cache": {
       "p95Ms": 25,
-      "maxQueries": 5
+      "maxQueries": 6
     },
     "can() after a role edit (all users miss)": {
       "p95Ms": 25,
-      "maxQueries": 5
+      "maxQueries": 6
     },
     "assignments.assign, 1 at a time": {
       "p95Ms": 100
@@ -77,11 +77,11 @@
     },
     "can() cold cache": {
       "p95Ms": 15,
-      "maxQueries": 5
+      "maxQueries": 6
     },
     "can() after a role edit (all users miss)": {
       "p95Ms": 15,
-      "maxQueries": 5
+      "maxQueries": 6
     },
     "assignments.assign, 1 at a time": {
       "p95Ms": 120
