@@ -132,6 +132,11 @@ export function createBetterAuthUserAdmin(
       }
     },
 
+    async setImage(userId, url) {
+      await need(userId);
+      await internalAdapter.updateUser(userId, { image: url });
+    },
+
     async setBan(userId, ban: BanDetails | null) {
       await need(userId);
       await internalAdapter.updateUser(userId, {

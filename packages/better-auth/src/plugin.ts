@@ -7,7 +7,9 @@ import {
   type AxedaOptions,
   type AxedaPersistence,
   type Clock,
+  type ImageProcessor,
   type InvitationMessage,
+  type ObjectStorage,
 } from '@teamblind/axeda-core';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { createEndpoints } from './endpoints.js';
@@ -55,6 +57,14 @@ export interface AxedaPluginOptions extends AxedaOptions {
    * Por defecto 30 días; `false` lo desactiva.
    */
   readonly maxSessionAge?: number | false;
+  /**
+   * Dónde se guardan logos, favicons y fotos de perfil (Cloudflare R2, S3, MinIO…; ver
+   * `s3Storage()` de `@teamblind/axeda-storage`). Sin esto los endpoints `/axeda/image/*`
+   * responden `AXEDA_FEATURE_DISABLED`.
+   */
+  readonly storage?: ObjectStorage;
+  /** Recodifica cada imagen al completarla (p. ej. `sharpImageProcessor()`). Opcional. */
+  readonly imageProcessor?: ImageProcessor;
 }
 
 interface BanRow {
@@ -71,6 +81,7 @@ function coreOptions(options: AxedaPluginOptions): AxedaOptions {
     ...(options.retention === undefined ? {} : { retention: options.retention }),
     ...(options.invitations === undefined ? {} : { invitations: options.invitations }),
     ...(options.menus === undefined ? {} : { menus: options.menus }),
+    ...(options.images === undefined ? {} : { images: options.images }),
   };
 }
 
@@ -185,13 +196,15 @@ export function axeda(options: AxedaPluginOptions) {
         ...(options.clock === undefined ? {} : { now: () => options.clock?.now() ?? new Date() }),
       });
       persistence = stores;
-      const { clock, invitationDelivery } = options;
+      const { clock, invitationDelivery, storage, imageProcessor } = options;
       const clockOption = clock === undefined ? {} : { now: () => clock.now() };
       core = createAxeda(coreOptions(options), {
         persistence: stores,
         users: createBetterAuthUserDirectory(ctx.adapter, clockOption),
         userAdmin: createBetterAuthUserAdmin(ctx, clockOption),
         ...(clock === undefined ? {} : { clock }),
+        ...(storage === undefined ? {} : { storage }),
+        ...(imageProcessor === undefined ? {} : { imageProcessor }),
         ...(invitationDelivery === undefined
           ? {}
           : {
@@ -260,6 +273,9 @@ export function axeda(options: AxedaPluginOptions) {
                 // Las claves foráneas ya lo hacen en SQL; MongoDB no las tiene. Se deja constancia.
                 after: async (user: { id: string }) => {
                   await stores.assignments.deleteForUser(user.id);
+                  // Su foto de perfil: el registro y el objeto. Un fallo del almacén no impide el
+                  // borrado del usuario; el objeto queda huérfano, sin nadie que lo enlace.
+                  await core?.images.forgetUser(user.id).catch(() => 0);
                   await stores.audit.append({
                     actorId: null,
                     action: 'user.delete',
