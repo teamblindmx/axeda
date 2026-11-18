@@ -4,7 +4,7 @@
  *   node scripts/release-guard.mjs --tag alpha
  *   node scripts/release-guard.mjs --tag alpha --root <carpeta>      (para las pruebas)
  *
- * Comprueba, en los cuatro paquetes:
+ * Comprueba, en todos los paquetes publicados:
  *   - que ya no son `private` (mientras lo sean, publicar falla; es la señal de que falta la decisión
  *     del nombre y de la organización de npm);
  *   - que la versión no es `0.0.0` y que cuadra con la etiqueta (`alpha` exige `-alpha.N`);
@@ -15,7 +15,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const PACKAGES = ['core', 'better-auth', 'express', 'testing'];
+/** Los paquetes publicados, en orden de compilación (`scripts/packages.json`). */
+const PACKAGES = JSON.parse(readFileSync(new URL('./packages.json', import.meta.url), 'utf8'));
 const args = process.argv.slice(2);
 const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 

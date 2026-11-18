@@ -11,6 +11,7 @@ export default defineConfig({
       '@teamblind/axeda-better-auth': src('better-auth'),
       '@teamblind/axeda-express': src('express'),
       '@teamblind/axeda-testing': src('testing'),
+      '@teamblind/axeda-storage': src('storage'),
     },
   },
   test: {

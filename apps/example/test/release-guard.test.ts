@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,7 +7,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 /** La puerta que se niega a publicar algo que no está listo, probada con paquetes de mentira. */
 const guard = fileURLToPath(new URL('../../../scripts/release-guard.mjs', import.meta.url));
-const NAMES = ['core', 'better-auth', 'express', 'testing'] as const;
+const NAMES: readonly string[] = JSON.parse(
+  readFileSync(new URL('../../../scripts/packages.json', import.meta.url), 'utf8'),
+);
 const folders: string[] = [];
 afterEach(() => {
   for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
@@ -21,9 +23,14 @@ interface Manifest {
   dependencies?: Record<string, string>;
 }
 
-function repository(
-  change: (manifests: Record<(typeof NAMES)[number], Manifest>) => void = () => {},
-) {
+/** El manifiesto de un paquete del repositorio de mentira (siempre existe). */
+function pkg(manifests: Record<string, Manifest>, name: string): Manifest {
+  const found = manifests[name];
+  if (found === undefined) throw new Error(`no package ${name}`);
+  return found;
+}
+
+function repository(change: (manifests: Record<string, Manifest>) => void = () => {}) {
   const manifests = Object.fromEntries(
     NAMES.map((name) => [
       name,
@@ -34,7 +41,7 @@ function repository(
         ...(name === 'core' ? {} : { dependencies: { '@teamblind/axeda-core': '^0.1.0-alpha.0' } }),
       } satisfies Manifest,
     ]),
-  ) as unknown as Record<(typeof NAMES)[number], Manifest>;
+  ) as unknown as Record<string, Manifest>;
   change(manifests);
   const root = mkdtempSync(join(tmpdir(), 'axeda-release-'));
   folders.push(root);
@@ -62,7 +69,7 @@ describe('the release guard', () => {
   it('accepts a later alpha of the same version for the range the packages ask for', () => {
     const { status, text } = run(
       repository((m) => {
-        for (const name of NAMES) m[name].version = '0.1.0-alpha.3';
+        for (const name of NAMES) pkg(m, name).version = '0.1.0-alpha.3';
       }),
     );
     expect(status, text).toBe(0);
@@ -71,7 +78,7 @@ describe('the release guard', () => {
   it('refuses private packages', () => {
     const { status, text } = run(
       repository((m) => {
-        m.core.private = true;
+        pkg(m, 'core').private = true;
       }),
     );
     expect(status).toBe(1);
@@ -81,7 +88,7 @@ describe('the release guard', () => {
   it('refuses version 0.0.0', () => {
     const { status, text } = run(
       repository((m) => {
-        for (const name of NAMES) m[name].version = '0.0.0';
+        for (const name of NAMES) pkg(m, name).version = '0.0.0';
       }),
     );
     expect(status).toBe(1);
@@ -91,8 +98,9 @@ describe('the release guard', () => {
   it('refuses a version that does not match the tag', () => {
     const stable = repository((m) => {
       for (const name of NAMES) {
-        m[name].version = '0.1.0';
-        if (m[name].dependencies) m[name].dependencies = { '@teamblind/axeda-core': '^0.1.0' };
+        pkg(m, name).version = '0.1.0';
+        if (pkg(m, name).dependencies)
+          pkg(m, name).dependencies = { '@teamblind/axeda-core': '^0.1.0' };
       }
     });
     const alpha = run(stable, 'alpha');
@@ -119,7 +127,7 @@ describe('the release guard', () => {
   it('refuses packages with different versions', () => {
     const { status, text } = run(
       repository((m) => {
-        m.express.version = '0.1.0-alpha.1';
+        pkg(m, 'express').version = '0.1.0-alpha.1';
       }),
     );
     expect(status).toBe(1);
@@ -129,7 +137,7 @@ describe('the release guard', () => {
   it('refuses a dependency on @teamblind/axeda-core that the published version does not satisfy', () => {
     const { status, text } = run(
       repository((m) => {
-        for (const name of NAMES) m[name].version = '0.2.0-alpha.0';
+        for (const name of NAMES) pkg(m, name).version = '0.2.0-alpha.0';
       }),
     );
     expect(status).toBe(1);
@@ -139,7 +147,7 @@ describe('the release guard', () => {
   it('refuses a package that would publish privately', () => {
     const { status, text } = run(
       repository((m) => {
-        delete m.testing.publishConfig;
+        delete pkg(m, 'testing').publishConfig;
       }),
     );
     expect(status).toBe(1);
