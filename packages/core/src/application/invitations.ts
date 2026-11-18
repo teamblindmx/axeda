@@ -43,7 +43,7 @@ function inputSchema(maxRoles: number) {
       .pipe(z.email().max(254)),
     scope: z.union([
       z.strictObject({ type: z.literal('global') }),
-      z.strictObject({ type: z.enum(['company', 'business']), id }),
+      z.strictObject({ type: z.enum(['company', 'business', 'site']), id }),
     ]),
     roleIds: z.array(id).min(1).max(maxRoles),
     ttlHours: z.number().int().min(1).max(MAX_TTL_HOURS).optional(),

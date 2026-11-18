@@ -186,6 +186,58 @@ describe('business routes: the company comes from the database, never from the r
   });
 });
 
+describe('site routes: the company and the business come from the database', () => {
+  it('allows a site role on that site, also through the nested routes', async () => {
+    const t = await startApp();
+    const ana = await t.signUp('ana');
+    const acme = await t.company('acme');
+    const shop = await t.business('shop', acme);
+    const north = await t.site('north', acme, shop);
+    await t.give(ana.id, ['invoice:read'], { type: 'site', id: north });
+    for (const path of [
+      `/sites/${north}/invoices`,
+      `/companies/${acme}/sites/${north}/invoices`,
+      `/companies/${acme}/businesses/${shop}/sites/${north}/invoices`,
+    ]) {
+      expect((await t.call(path, { cookie: ana.cookie })).status, path).toBe(200);
+    }
+  });
+
+  it('a site under another company or another business in the path is denied, even to an administrator', async () => {
+    const t = await startApp();
+    const boss = await t.signUp('boss');
+    await t.give(boss.id, ['*'], { type: 'global' });
+    const acme = await t.company('acme');
+    const globex = await t.company('globex');
+    const shop = await t.business('shop', acme);
+    const other = await t.business('other', acme);
+    const north = await t.site('north', acme, shop);
+    const hq = await t.site('hq', acme);
+    for (const path of [
+      `/companies/${globex}/sites/${north}/invoices`,
+      `/companies/${acme}/businesses/${other}/sites/${north}/invoices`,
+      // Una sede que cuelga de la compañía no está en ningún negocio.
+      `/companies/${acme}/businesses/${shop}/sites/${hq}/invoices`,
+    ]) {
+      const reply = await t.call(path, { cookie: boss.cookie });
+      expect([reply.status, reply.body], path).toEqual([403, FORBIDDEN]);
+    }
+  });
+
+  it('a business role reaches the sites of that business only', async () => {
+    const t = await startApp();
+    const bea = await t.signUp('bea');
+    const acme = await t.company('acme');
+    const shop = await t.business('shop', acme);
+    const other = await t.business('other', acme);
+    const north = await t.site('north', acme, shop);
+    const south = await t.site('south', acme, other);
+    await t.give(bea.id, ['invoice:read'], { type: 'business', id: shop });
+    expect((await t.call(`/sites/${north}/invoices`, { cookie: bea.cookie })).status).toBe(200);
+    expect((await t.call(`/sites/${south}/invoices`, { cookie: bea.cookie })).status).toBe(403);
+  });
+});
+
 describe('what a denial reveals', () => {
   it('answers the same whether the company exists or not', async () => {
     const t = await startApp();
@@ -343,7 +395,12 @@ describe('scopeFilter', () => {
     await t.give(ana.id, ['invoice:read'], { type: 'company', id: acme });
     await t.give(ana.id, ['invoice:read'], { type: 'business', id: shop });
     const reply = await t.call('/mine', { cookie: ana.cookie });
-    expect(reply.body).toEqual({ unrestricted: false, companyIds: [acme], businessIds: [shop] });
+    expect(reply.body).toEqual({
+      unrestricted: false,
+      companyIds: [acme],
+      businessIds: [shop],
+      siteIds: [],
+    });
   });
 });
 

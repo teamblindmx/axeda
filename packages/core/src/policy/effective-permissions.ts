@@ -1,7 +1,7 @@
 import { covers, type PermissionKey } from '../domain/permission-key.js';
 import type { Role, RoleAssignment } from '../domain/role.js';
 import { assignmentApplies, scopeKey, type TargetScope } from '../domain/scope.js';
-import { businessKey, companyKey } from '../domain/tenant.js';
+import { businessKey, companyKey, siteKey } from '../domain/tenant.js';
 
 /** Resultado de unir los permisos de todas las funciones aplicables en un alcance. */
 export class PermissionSet {
@@ -41,7 +41,7 @@ export interface PolicyData {
   /** El usuario está bloqueado: no cuenta ninguna asignación. */
   readonly banned?: boolean | undefined;
   /**
-   * Claves (`scopeKey`) de compañías y negocios que no pueden conceder poder: inactivos,
+   * Claves (`scopeKey`) de compañías, negocios y sedes que no pueden conceder poder: inactivos,
    * borrados o inexistentes. Una asignación en uno de ellos no cuenta.
    */
   readonly unusable?: ReadonlySet<string> | undefined;
@@ -57,11 +57,13 @@ export interface EffectivePermissionsInput extends PolicyData {
   readonly ignoreTargetStatus?: boolean | undefined;
 }
 
-/** ¿El destino (o su compañía) está inactivo, borrado o no existe? */
+/** ¿El destino (o su compañía, o el negocio de una sede) está inactivo, borrado o no existe? */
 function targetIsUnusable(target: TargetScope, unusable: ReadonlySet<string> | undefined): boolean {
   if (unusable === undefined || target.type === 'global') return false;
   if (unusable.has(companyKey(target.companyId))) return true;
-  return target.type === 'business' && unusable.has(businessKey(target.businessId));
+  if (target.type === 'company') return false;
+  if (target.businessId !== null && unusable.has(businessKey(target.businessId))) return true;
+  return target.type === 'site' && unusable.has(siteKey(target.siteId));
 }
 
 /**

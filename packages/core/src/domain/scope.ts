@@ -1,25 +1,34 @@
-export type ScopeType = 'global' | 'company' | 'business';
+export type ScopeType = 'global' | 'company' | 'business' | 'site';
 
 /** Alcance con el que se guarda una asignación. */
 export type AssignmentScope =
   | { readonly type: 'global' }
   | { readonly type: 'company'; readonly id: string }
-  | { readonly type: 'business'; readonly id: string };
+  | { readonly type: 'business'; readonly id: string }
+  | { readonly type: 'site'; readonly id: string };
 
 /**
- * Lugar sobre el que se decide un permiso. Para un negocio, la compañía debe haberse
- * leído de la base de datos, nunca de lo que envíe el cliente.
+ * Lugar sobre el que se decide un permiso. Para un negocio o una sede, la compañía (y el negocio
+ * de la sede) deben haberse leído de la base de datos, nunca de lo que envíe el cliente.
  */
 export type TargetScope =
   | { readonly type: 'global' }
   | { readonly type: 'company'; readonly companyId: string }
-  | { readonly type: 'business'; readonly companyId: string; readonly businessId: string };
+  | { readonly type: 'business'; readonly companyId: string; readonly businessId: string }
+  | {
+      readonly type: 'site';
+      readonly companyId: string;
+      /** El negocio del que cuelga la sede, o `null` si cuelga directamente de la compañía. */
+      readonly businessId: string | null;
+      readonly siteId: string;
+    };
 
 export const GLOBAL_SCOPE: AssignmentScope = Object.freeze({ type: 'global' });
 
 /**
  * Herencia hacia abajo: una asignación global vale en todas partes; la de compañía, en esa
- * compañía y en sus negocios; la de negocio, solo en ese negocio.
+ * compañía, en sus negocios y en todas sus sedes; la de negocio, en ese negocio y en sus sedes;
+ * la de sede, solo en esa sede. Una sede sin negocio no hereda de ningún negocio.
  */
 export function assignmentApplies(assignment: AssignmentScope, target: TargetScope): boolean {
   switch (assignment.type) {
@@ -28,7 +37,12 @@ export function assignmentApplies(assignment: AssignmentScope, target: TargetSco
     case 'company':
       return target.type !== 'global' && target.companyId === assignment.id;
     case 'business':
-      return target.type === 'business' && target.businessId === assignment.id;
+      return (
+        (target.type === 'business' || target.type === 'site') &&
+        target.businessId === assignment.id
+      );
+    case 'site':
+      return target.type === 'site' && target.siteId === assignment.id;
   }
 }
 
@@ -46,17 +60,19 @@ export const GLOBAL_TARGET: TargetScope = Object.freeze({ type: 'global' });
 
 /**
  * ¿Contiene `container` a `inner`? (un alcance es la herencia hacia abajo de otro). Un alcance de
- * compañía contiene a los negocios de esa compañía, pero eso exige saber la compañía del negocio;
- * `companyOfInner` la aporta cuando se conoce (si no, solo se compara por igualdad).
+ * compañía contiene a los negocios y a las sedes de esa compañía, y uno de negocio a las sedes de
+ * ese negocio, pero eso exige saber de quién es `inner`: `companyOfInner` y `businessOfInner` lo
+ * aportan cuando se conoce (si no, solo se compara por igualdad).
  */
 export function scopeContains(
   container: AssignmentScope,
   inner: AssignmentScope,
   companyOfInner?: string,
+  businessOfInner?: string | null,
 ): boolean {
   if (container.type === 'global') return true;
   if (scopeKey(container) === scopeKey(inner)) return true;
-  return (
-    container.type === 'company' && inner.type === 'business' && companyOfInner === container.id
-  );
+  if (inner.type !== 'business' && inner.type !== 'site') return false;
+  if (container.type === 'company') return companyOfInner === container.id;
+  return container.type === 'business' && inner.type === 'site' && businessOfInner === container.id;
 }

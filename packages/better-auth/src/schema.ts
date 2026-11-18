@@ -8,6 +8,7 @@ export const MODELS = {
   audit: 'axedaAudit',
   company: 'axedaCompany',
   business: 'axedaBusiness',
+  site: 'axedaSite',
   invitation: 'axedaInvitation',
 } as const;
 
@@ -148,6 +149,39 @@ export const axedaSchema = {
       updatedAt: { type: 'date', required: true, input: false },
     },
     indexes: [{ fields: ['companyId', 'slug'], unique: true }, { fields: ['deletedAt'] }],
+  },
+  [MODELS.site]: {
+    fields: {
+      companyId: {
+        type: 'string',
+        required: true,
+        input: false,
+        references: { model: MODELS.company, field: 'id', onDelete: 'cascade' },
+      },
+      // Opcional: una sede puede colgar directamente de la compañía, sin negocio.
+      businessId: {
+        type: 'string',
+        required: false,
+        input: false,
+        references: { model: MODELS.business, field: 'id', onDelete: 'cascade' },
+      },
+      slug: { type: 'string', required: true, input: false },
+      name: { type: 'string', required: true, input: false },
+      logoUrl: { type: 'string', required: false, input: false },
+      faviconUrl: { type: 'string', required: false, input: false },
+      status: { type: 'string', required: true, defaultValue: 'active', input: false },
+      metadata: { type: 'json', required: true, input: false },
+      version: { type: 'number', required: true, defaultValue: 1, input: false },
+      deletedAt: { type: 'date', required: false, input: false },
+      createdAt: { type: 'date', required: true, input: false },
+      updatedAt: { type: 'date', required: true, input: false },
+    },
+    // El slug es único dentro de la compañía, cuelgue o no de un negocio.
+    indexes: [
+      { fields: ['companyId', 'slug'], unique: true },
+      { fields: ['businessId'] },
+      { fields: ['deletedAt'] },
+    ],
   },
   [MODELS.invitation]: {
     fields: {

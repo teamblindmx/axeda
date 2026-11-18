@@ -30,12 +30,24 @@ export interface Business extends TenantBase {
   readonly companyId: string;
 }
 
+/**
+ * Una sede es un lugar (una ubicación) de una compañía. Pertenece siempre a una compañía y,
+ * opcionalmente, a un negocio de esa misma compañía; no cambia de compañía ni de negocio. Una
+ * compañía puede tener sedes sin tener negocios.
+ */
+export interface Site extends TenantBase {
+  readonly companyId: string;
+  /** El negocio del que cuelga, o `null` si cuelga directamente de la compañía. */
+  readonly businessId: string | null;
+}
+
 /** ¿Puede esta entidad conceder poder? Una inactiva o borrada no concede nada. */
 export const isUsable = (entity: { status: TenantStatus; deletedAt: Date | null }): boolean =>
   entity.status === 'active' && entity.deletedAt === null;
 
 export const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,62}$/;
 
-/** Claves de alcance (`scopeKey`) de una compañía y de un negocio. */
+/** Claves de alcance (`scopeKey`) de una compañía, de un negocio y de una sede. */
 export const companyKey = (companyId: string): string => `company:${companyId}`;
 export const businessKey = (businessId: string): string => `business:${businessId}`;
+export const siteKey = (siteId: string): string => `site:${siteId}`;

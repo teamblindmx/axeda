@@ -64,6 +64,7 @@ export function toScope(row: Pick<AssignmentRow, 'id' | 'scopeType' | 'scopeId'>
       return GLOBAL_SCOPE;
     case 'company':
     case 'business':
+    case 'site':
       if (row.scopeId === GLOBAL_SCOPE_ID) {
         throw corrupt(`Assignment "${row.id}" has a ${row.scopeType} scope without an id.`);
       }

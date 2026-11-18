@@ -16,6 +16,10 @@ export type {
   CompanyUpdate,
   DeleteOptions,
   ListOptions,
+  SiteInput,
+  SiteListOptions,
+  SiteService,
+  SiteUpdate,
 } from './application/tenants.js';
 export type { PublicIdentity, PurgeResult } from './application/tenant-lifecycle.js';
 export type { BootstrapInput, BootstrapResult } from './application/bootstrap.js';
@@ -64,8 +68,10 @@ export {
   businessKey,
   companyKey,
   isUsable,
+  siteKey,
   type Business,
   type Company,
+  type Site,
   type TenantMetadata,
   type TenantStatus,
 } from './domain/tenant.js';

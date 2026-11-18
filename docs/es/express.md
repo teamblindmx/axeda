@@ -53,6 +53,22 @@ Cuando la ruta nombra ambos, el negocio **debe pertenecer a esa compañía** o l
 deniega, incluso a una persona administradora global. Una ruta solo con `{ business: 'businessId' }`
 también sirve: la compañía se lee de la base de datos.
 
+## Patrón 2b — una sede
+
+```ts
+const inSite = resolveScope({ company: 'companyId', site: 'siteId' });
+
+app.get(
+  '/companies/:companyId/sites/:siteId/invoices',
+  x.requirePermission('invoice:read', { scope: inSite }),
+  listInvoices,
+);
+```
+
+La sede debe pertenecer a la compañía de la URL; si además se indica `business: 'businessId'`,
+debe colgar de ese negocio. Solo `{ site: 'siteId' }` también sirve: su compañía y su negocio se
+leen de la base de datos.
+
 ## Patrón 3 — listados
 
 Un listado no pertenece a un alcance concreto. Pregunta dónde tiene quien llama el permiso y filtra

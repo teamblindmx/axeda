@@ -1,6 +1,6 @@
 import { createAuthEndpoint, sessionMiddleware } from 'better-auth/api';
 import { z } from 'zod';
-import { toBusinessDto, toCompanyDto, toInvitationDto, toAssignmentDto } from './dto.js';
+import { toAssignmentDto, toBusinessDto, toCompanyDto, toInvitationDto, toSiteDto } from './dto.js';
 import {
   access,
   cursor,
@@ -23,6 +23,8 @@ const url = z.string().max(2048);
 const slug = z.string().min(1).max(63);
 const name = z.string().min(1).max(200);
 const metadata = z.record(z.string().max(100), z.unknown());
+/** En `site/list`, el valor de `businessId` que pide las sedes que no cuelgan de ningún negocio. */
+export const NO_BUSINESS = 'none';
 
 /** Compañías y negocios. El permiso lo impone el caso de uso (ver `AxedaError` → 403 / 404). */
 export function createTenantEndpoints(core: CoreProvider) {
@@ -304,6 +306,155 @@ export function createTenantEndpoints(core: CoreProvider) {
           ctx.json(
             toBusinessDto(await axeda.businesses.restore(actor, ctx.body.id, ctx.body.version)),
           ),
+        ),
+    ),
+  };
+}
+
+/**
+ * Sedes. Se administran desde la compañía, o desde el negocio del que cuelgan
+ * (`axeda:site:manage`); el caso de uso lo impone (ver `AxedaError` → 403 / 404).
+ */
+export function createSiteEndpoints(core: CoreProvider) {
+  return {
+    axedaSiteList: createAuthEndpoint(
+      '/axeda/site/list',
+      {
+        method: 'GET',
+        use: [sessionMiddleware],
+        query: z.strictObject({
+          companyId: id,
+          /** Las de ese negocio; con `none`, las que cuelgan directamente de la compañía. */
+          businessId: id.optional(),
+          deleted: deleted.optional(),
+          cursor: cursor.optional(),
+          limit: limit.optional(),
+        }),
+        metadata: access('(membership)', 'per-target'),
+      },
+      (ctx) =>
+        run(ctx, core, async (axeda, actor) => {
+          const { businessId } = ctx.query;
+          const page = await axeda.sites.list(
+            actor,
+            ctx.query.companyId,
+            {
+              deleted: ctx.query.deleted,
+              ...(businessId === undefined
+                ? {}
+                : { businessId: businessId === NO_BUSINESS ? null : businessId }),
+            },
+            pageOf(ctx.query),
+          );
+          return ctx.json({ items: page.items.map(toSiteDto), nextCursor: page.nextCursor });
+        }),
+    ),
+
+    axedaSiteGet: createAuthEndpoint(
+      '/axeda/site/get',
+      {
+        method: 'GET',
+        use: [sessionMiddleware],
+        query: z.strictObject({ id }),
+        metadata: access('(membership)', 'per-target'),
+      },
+      (ctx) =>
+        run(ctx, core, async (axeda, actor) =>
+          ctx.json(toSiteDto(await axeda.sites.get(actor, ctx.query.id))),
+        ),
+    ),
+
+    axedaSiteCreate: createAuthEndpoint(
+      '/axeda/site/create',
+      {
+        method: 'POST',
+        use: [sessionMiddleware],
+        body: z.strictObject({
+          companyId: id,
+          businessId: id.nullish(),
+          slug,
+          name,
+          logoUrl: url.nullish(),
+          faviconUrl: url.nullish(),
+          metadata: metadata.optional(),
+        }),
+        metadata: access('axeda:site:manage', 'per-target'),
+      },
+      (ctx) =>
+        run(ctx, core, async (axeda, actor) => {
+          const { companyId, ...input } = ctx.body;
+          return ctx.json(toSiteDto(await axeda.sites.create(actor, companyId, input)));
+        }),
+    ),
+
+    axedaSiteUpdate: createAuthEndpoint(
+      '/axeda/site/update',
+      {
+        method: 'POST',
+        use: [sessionMiddleware],
+        body: z.strictObject({
+          id,
+          version,
+          name: name.optional(),
+          logoUrl: url.nullish(),
+          faviconUrl: url.nullish(),
+          metadata: metadata.optional(),
+        }),
+        metadata: access('axeda:site:manage', 'per-target'),
+      },
+      (ctx) =>
+        run(ctx, core, async (axeda, actor) => {
+          const { id: siteId, version: expected, ...changes } = ctx.body;
+          return ctx.json(toSiteDto(await axeda.sites.update(actor, siteId, expected, changes)));
+        }),
+    ),
+
+    axedaSiteSetStatus: createAuthEndpoint(
+      '/axeda/site/set-status',
+      {
+        method: 'POST',
+        use: [sessionMiddleware],
+        body: z.strictObject({ id, version, status }),
+        metadata: access('axeda:site:manage', 'per-target'),
+      },
+      (ctx) =>
+        run(ctx, core, async (axeda, actor) =>
+          ctx.json(
+            toSiteDto(
+              await axeda.sites.setStatus(actor, ctx.body.id, ctx.body.version, ctx.body.status),
+            ),
+          ),
+        ),
+    ),
+
+    axedaSiteDelete: createAuthEndpoint(
+      '/axeda/site/delete',
+      {
+        method: 'POST',
+        use: [sessionMiddleware],
+        body: z.strictObject({ id, version, immediate: z.boolean().optional() }),
+        metadata: access('axeda:site:manage', 'per-target'),
+      },
+      (ctx) =>
+        run(ctx, core, async (axeda, actor) => {
+          await axeda.sites.delete(actor, ctx.body.id, ctx.body.version, {
+            immediate: ctx.body.immediate,
+          });
+          return ctx.json({ deleted: true as const });
+        }),
+    ),
+
+    axedaSiteRestore: createAuthEndpoint(
+      '/axeda/site/restore',
+      {
+        method: 'POST',
+        use: [sessionMiddleware],
+        body: z.strictObject({ id, version }),
+        metadata: access('axeda:site:manage', 'per-target'),
+      },
+      (ctx) =>
+        run(ctx, core, async (axeda, actor) =>
+          ctx.json(toSiteDto(await axeda.sites.restore(actor, ctx.body.id, ctx.body.version))),
         ),
     ),
   };

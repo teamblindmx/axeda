@@ -3,10 +3,16 @@ import type { AuditAction } from '../domain/audit.js';
 import type { PermissionKey } from '../domain/permission-key.js';
 import type { Actor } from '../domain/role.js';
 import { GLOBAL_TARGET, type AssignmentScope, type TargetScope } from '../domain/scope.js';
-import { isUsable, type Business, type Company, type TenantStatus } from '../domain/tenant.js';
+import {
+  isUsable,
+  type Business,
+  type Company,
+  type Site,
+  type TenantStatus,
+} from '../domain/tenant.js';
 import { AxedaError } from '../errors.js';
 import { effectivePermissions, liveAssignmentScopes } from '../policy/effective-permissions.js';
-import type { AxedaStores, DeletedFilter, Page, PageRequest } from '../ports/index.js';
+import type { AxedaStores, DeletedFilter, Page, PageRequest, SiteFilter } from '../ports/index.js';
 import { auditDenials, markDenied, writeAudit, type AuditDraft } from './audit.js';
 import { loadSnapshot } from './authz-reader.js';
 import {
@@ -16,23 +22,33 @@ import {
   companyInputSchema,
   onlyDefined,
   parseInput,
+  siteChangesSchema,
+  siteInputSchema,
+  siteParentSchema,
 } from './tenant-input.js';
 import { actorPermissions, actorPolicyData, invalidInput, type Services } from './services.js';
 
-/** Qué compañías y negocios puede ver quien pregunta (no confundir con lo que puede hacer en ellos). */
+/**
+ * Qué compañías, negocios y sedes puede ver quien pregunta (no confundir con lo que puede hacer en
+ * ellos).
+ */
 interface Membership {
   /** Administra la plataforma: ve todas las compañías, también las borradas. */
   readonly platform: boolean;
   /** Compañías donde tiene una asignación de alcance de compañía. */
   readonly companyWide: ReadonlySet<string>;
-  /** Compañías donde tiene alguna asignación, incluidas las de sus negocios. */
+  /** Compañías donde tiene alguna asignación, incluidas las de sus negocios y sus sedes. */
   readonly companies: ReadonlySet<string>;
+  /** Negocios donde tiene una asignación de alcance de negocio (ve también sus sedes). */
   readonly businesses: ReadonlySet<string>;
+  /** Sedes donde tiene una asignación de alcance de sede. */
+  readonly sites: ReadonlySet<string>;
 }
 
 const PLATFORM_PERMISSIONS = [
   AXEDA_PERMISSIONS.companyManage,
   AXEDA_PERMISSIONS.businessManage,
+  AXEDA_PERMISSIONS.siteManage,
   AXEDA_PERMISSIONS.assignmentManage,
   AXEDA_PERMISSIONS.invitationManage,
   AXEDA_PERMISSIONS.auditRead,
@@ -68,9 +84,25 @@ export interface BusinessUpdate {
   readonly metadata?: Readonly<Record<string, unknown>> | undefined;
 }
 
+export interface SiteInput {
+  /** El negocio (de la misma compañía) del que cuelga; sin él, cuelga de la compañía. */
+  readonly businessId?: string | null | undefined;
+  readonly slug: string;
+  readonly name: string;
+  readonly logoUrl?: string | null | undefined;
+  readonly faviconUrl?: string | null | undefined;
+  readonly metadata?: Readonly<Record<string, unknown>> | undefined;
+}
+export type SiteUpdate = BusinessUpdate;
+
 export interface ListOptions {
   /** Solo quien administra la plataforma puede pedir borradas. */
   readonly deleted?: DeletedFilter | undefined;
+}
+
+export interface SiteListOptions extends ListOptions {
+  /** Solo las sedes de ese negocio, o con `null` las que cuelgan directamente de la compañía. */
+  readonly businessId?: string | null | undefined;
 }
 
 export interface DeleteOptions {
@@ -104,9 +136,26 @@ export interface BusinessService {
   restore(actor: Actor, id: string, version: number): Promise<Business>;
 }
 
+export interface SiteService {
+  /** Las sedes de una compañía que quien pregunta puede ver, ordenadas por slug. */
+  list(
+    actor: Actor,
+    companyId: string,
+    options: SiteListOptions,
+    page: PageRequest,
+  ): Promise<Page<Site>>;
+  get(actor: Actor, id: string): Promise<Site>;
+  create(actor: Actor, companyId: string, input: SiteInput): Promise<Site>;
+  update(actor: Actor, id: string, version: number, changes: SiteUpdate): Promise<Site>;
+  setStatus(actor: Actor, id: string, version: number, status: TenantStatus): Promise<Site>;
+  delete(actor: Actor, id: string, version: number, options?: DeleteOptions): Promise<void>;
+  restore(actor: Actor, id: string, version: number): Promise<Site>;
+}
+
 export function createTenantServices(services: Services): {
   companies: CompanyService;
   businesses: BusinessService;
+  sites: SiteService;
 } {
   const { persistence } = services;
 
@@ -126,11 +175,17 @@ export function createTenantServices(services: Services): {
         details: { reason: 'not_visible' },
       }),
     );
+  const hiddenSite = (id: string): AxedaError =>
+    markDenied(
+      new AxedaError('AXEDA_SITE_NOT_FOUND', `Site "${id}" does not exist.`, {
+        details: { reason: 'not_visible' },
+      }),
+    );
 
   const draft = (
     actor: Actor,
     action: AuditAction,
-    targetType: 'company' | 'business',
+    targetType: 'company' | 'business' | 'site',
     id: string | null,
     scope: AssignmentScope | null,
     metadata: Record<string, unknown> = {},
@@ -153,23 +208,37 @@ export function createTenantServices(services: Services): {
       ignoreTargetStatus: true,
     });
     const scopes = liveAssignmentScopes(data);
-    const businessIds = scopes.flatMap((scope) => (scope.type === 'business' ? [scope.id] : []));
-    const parents =
-      businessIds.length === 0 ? [] : await persistence.businesses.getMany(businessIds);
-    const companyWide = new Set(
-      scopes.flatMap((scope) => (scope.type === 'company' ? [scope.id] : [])),
-    );
+    const idsOf = (type: 'company' | 'business' | 'site') =>
+      scopes.flatMap((scope) => (scope.type === type ? [scope.id] : []));
+    const businessIds = idsOf('business');
+    const siteIds = idsOf('site');
+    const [parents, siteParents] = await Promise.all([
+      businessIds.length === 0 ? [] : persistence.businesses.getMany(businessIds),
+      siteIds.length === 0 ? [] : persistence.sites.getMany(siteIds),
+    ]);
+    const companyWide = new Set(idsOf('company'));
     return {
       platform: PLATFORM_PERMISSIONS.some((permission) => global.allows(permission)),
       companyWide,
-      companies: new Set([...companyWide, ...parents.map((business) => business.companyId)]),
+      companies: new Set([
+        ...companyWide,
+        ...parents.map((business) => business.companyId),
+        ...siteParents.map((site) => site.companyId),
+      ]),
       businesses: new Set(businessIds),
+      sites: new Set(siteIds),
     };
   }
 
   const canSeeCompany = (m: Membership, id: string) => m.platform || m.companies.has(id);
   const canSeeBusiness = (m: Membership, business: Business) =>
     m.platform || m.companyWide.has(business.companyId) || m.businesses.has(business.id);
+  /** Ve una sede quien ve toda su compañía, quien está en su negocio o quien está en ella. */
+  const canSeeSite = (m: Membership, site: Site) =>
+    m.platform ||
+    m.companyWide.has(site.companyId) ||
+    (site.businessId !== null && m.businesses.has(site.businessId)) ||
+    m.sites.has(site.id);
 
   async function mustHold(
     stores: AxedaStores,
@@ -568,5 +637,193 @@ export function createTenantServices(services: Services): {
       }),
   };
 
-  return { companies, businesses };
+  // ---------------- sedes ----------------
+
+  /** Dónde se administra una sede: en su negocio si cuelga de uno; si no, en su compañía. */
+  const parentOf = (site: Pick<Site, 'companyId' | 'businessId'>): TargetScope =>
+    site.businessId === null
+      ? { type: 'company', companyId: site.companyId }
+      : { type: 'business', companyId: site.companyId, businessId: site.businessId };
+
+  /**
+   * El negocio de una sede nueva, leído de la base de datos: debe existir y ser de esa compañía.
+   * Uno de otra compañía no se distingue de uno que no existe.
+   */
+  async function businessForNewSite(
+    stores: AxedaStores,
+    companyId: string,
+    businessId: string | null,
+  ): Promise<Business | null> {
+    if (businessId === null) return null;
+    const business = await stores.businesses.get(businessId);
+    if (business === null || business.companyId !== companyId) throw hiddenBusiness(businessId);
+    return business;
+  }
+
+  /** El `businessId` de una entrada sin validar (la validación completa viene después). */
+  const businessIdOf = (input: unknown): unknown =>
+    typeof input === 'object' && input !== null
+      ? (input as { businessId?: unknown }).businessId
+      : undefined;
+
+  /** Una operación sobre una sede existente. El permiso se comprueba donde se administra. */
+  async function onSite<T>(
+    actor: Actor,
+    id: string,
+    action: AuditAction,
+    invalidates: boolean,
+    work: (stores: AxedaStores, site: Site) => Promise<T>,
+  ): Promise<T> {
+    await services.ready();
+    return auditDenials(
+      persistence,
+      draft(actor, action, 'site', id, { type: 'site', id }),
+      async () => {
+        const site = await persistence.sites.get(id);
+        if (site === null || !canSeeSite(await membershipOf(actor), site)) throw hiddenSite(id);
+
+        return persistence.transaction(async (stores) => {
+          // El estado de una sede decide los permisos de su gente: sube la versión de política.
+          if (invalidates) await stores.authz.bumpPolicyVersion();
+          // La compañía y el negocio salen de la base de datos (T2); una sede no cambia de ninguno.
+          await mustHold(stores, actor, parentOf(site), AXEDA_PERMISSIONS.siteManage);
+          const fresh = await stores.sites.get(id);
+          if (fresh === null) throw hiddenSite(id);
+          return work(stores, fresh);
+        });
+      },
+    );
+  }
+
+  const siteDraft = (actor: Actor, action: AuditAction, site: Site, extra = {}) =>
+    draft(
+      actor,
+      action,
+      'site',
+      site.id,
+      { type: 'site', id: site.id },
+      { slug: site.slug, ...extra },
+    );
+
+  const sites: SiteService = {
+    async list(actor, companyId, options, page) {
+      await services.ready();
+      const m = await membershipOf(actor);
+      const company = await persistence.companies.get(companyId);
+      if (company === null || !canSeeCompany(m, companyId)) {
+        throw new AxedaError('AXEDA_COMPANY_NOT_FOUND', `Company "${companyId}" does not exist.`);
+      }
+      const filter: SiteFilter = {
+        deleted: deletedFilter(m, options),
+        ...(options.businessId === undefined ? {} : { businessId: options.businessId }),
+      };
+      // Quien no ve toda la compañía ve solo sus sedes y las de sus negocios.
+      const wide = m.platform || m.companyWide.has(companyId);
+      return persistence.sites.listForCompany(
+        companyId,
+        wide
+          ? filter
+          : { ...filter, visible: { siteIds: [...m.sites], businessIds: [...m.businesses] } },
+        page,
+      );
+    },
+
+    async get(actor, id) {
+      await services.ready();
+      const site = await persistence.sites.get(id);
+      if (site === null || !canSeeSite(await membershipOf(actor), site)) {
+        throw new AxedaError('AXEDA_SITE_NOT_FOUND', `Site "${id}" does not exist.`);
+      }
+      return site;
+    },
+
+    async create(actor, companyId, input) {
+      await services.ready();
+      const scope: AssignmentScope = { type: 'company', id: companyId };
+      return auditDenials(
+        persistence,
+        draft(actor, 'site.create', 'site', null, scope),
+        async () => {
+          const company = await persistence.companies.get(companyId);
+          if (company === null || !canSeeCompany(await membershipOf(actor), companyId)) {
+            throw hiddenCompany(companyId);
+          }
+          // Solo el negocio elegido se lee antes de autorizar: decide DÓNDE se autoriza. El resto
+          // se valida después, para que quien no puede crearla no aprenda nada.
+          const chosen = parseInput(siteParentSchema, { businessId: businessIdOf(input) });
+          const businessId = chosen.businessId ?? null;
+          return persistence.transaction(async (stores) => {
+            const business = await businessForNewSite(stores, companyId, businessId);
+            await mustHold(
+              stores,
+              actor,
+              parentOf({ companyId, businessId }),
+              AXEDA_PERMISSIONS.siteManage,
+            );
+            const { businessId: _parent, ...fields } = parseInput(siteInputSchema, input);
+            if (!isUsable(company)) throw invalidInput('The company is not active.');
+            if (business !== null && !isUsable(business)) {
+              throw invalidInput('The business is not active.');
+            }
+            const created = await stores.sites.create({
+              ...(onlyDefined(fields) as typeof fields),
+              companyId,
+              businessId,
+            });
+            await writeAudit(
+              stores,
+              siteDraft(actor, 'site.create', created, { companyId, businessId }),
+              'success',
+            );
+            return created;
+          });
+        },
+      );
+    },
+
+    update: (actor, id, version, changes) =>
+      onSite(actor, id, 'site.update', false, async (stores, site) => {
+        const parsed = parseInput(siteChangesSchema, changes);
+        const updated = await stores.sites.update(id, version, onlyDefined(parsed));
+        await writeAudit(
+          stores,
+          siteDraft(actor, 'site.update', site, { fields: Object.keys(parsed) }),
+          'success',
+        );
+        return updated;
+      }),
+
+    setStatus: (actor, id, version, status) =>
+      onSite(actor, id, 'site.set_status', true, async (stores, site) => {
+        if (status !== 'active' && status !== 'inactive')
+          throw invalidInput('status must be "active" or "inactive".');
+        const updated = await stores.sites.setStatus(id, version, status);
+        await writeAudit(stores, siteDraft(actor, 'site.set_status', site, { status }), 'success');
+        return updated;
+      }),
+
+    delete: async (actor, id, version, options = {}) => {
+      const immediate = options.immediate === true;
+      const action = immediate ? 'site.purge' : 'site.delete';
+      await onSite(actor, id, action, true, async (stores, site) => {
+        if (immediate) {
+          await stores.sites.purge([id]);
+        } else {
+          if (site.deletedAt !== null) throw invalidInput('The site is already deleted.');
+          await stores.sites.setDeleted(id, version, services.clock.now());
+        }
+        await writeAudit(stores, siteDraft(actor, action, site), 'success');
+      });
+    },
+
+    restore: (actor, id, version) =>
+      onSite(actor, id, 'site.restore', true, async (stores, site) => {
+        if (site.deletedAt === null) throw invalidInput('The site is not deleted.');
+        const restored = await stores.sites.setDeleted(id, version, null);
+        await writeAudit(stores, siteDraft(actor, 'site.restore', site), 'success');
+        return restored;
+      }),
+  };
+
+  return { companies, businesses, sites };
 }

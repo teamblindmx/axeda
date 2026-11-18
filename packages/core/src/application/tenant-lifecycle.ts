@@ -49,12 +49,13 @@ export async function publicIdentity(
 export interface PurgeResult {
   readonly companies: number;
   readonly businesses: number;
+  readonly sites: number;
 }
 
 const BATCH = 100;
 
 /**
- * Borra de verdad las compañías y negocios cuyo periodo de gracia terminó (y todo lo suyo).
+ * Borra de verdad las compañías, negocios y sedes cuyo periodo de gracia terminó (y todo lo suyo).
  * Axeda no corre tareas en segundo plano: la aplicación lo llama cuando quiera (p. ej. desde un
  * cron). Es una operación del servidor, igual que `bootstrap`; queda en la auditoría.
  */
@@ -64,19 +65,36 @@ export async function purgeExpiredDeletions(services: Services): Promise<PurgeRe
   const before = new Date(clock.now().getTime() - options.retention.graceDays * 86_400_000);
   let companies = 0;
   let businesses = 0;
+  let sites = 0;
 
   for (;;) {
-    const [oldCompanies, oldBusinesses] = await Promise.all([
+    const [oldCompanies, oldBusinesses, oldSites] = await Promise.all([
       persistence.companies.listDeletedBefore(before, BATCH),
       persistence.businesses.listDeletedBefore(before, BATCH),
+      persistence.sites.listDeletedBefore(before, BATCH),
     ]);
-    if (oldCompanies.length === 0 && oldBusinesses.length === 0) break;
+    if (oldCompanies.length === 0 && oldBusinesses.length === 0 && oldSites.length === 0) break;
 
     const done = await persistence.transaction(async (stores) => {
       await stores.authz.bumpPolicyVersion();
+      // De abajo arriba: purgar un negocio o una compañía ya se lleva sus sedes.
+      const removedSites = await stores.sites.purge(oldSites.map((s) => s.id));
       const removedBusinesses = await stores.businesses.purge(oldBusinesses.map((b) => b.id));
       const removedCompanies = await stores.companies.purge(oldCompanies.map((c) => c.id));
       const system = { actorId: null, scope: null } as const;
+      for (const site of oldSites) {
+        await writeAudit(
+          stores,
+          {
+            ...system,
+            action: 'site.purge',
+            targetType: 'site',
+            targetId: site.id,
+            metadata: { slug: site.slug },
+          },
+          'success',
+        );
+      }
       for (const business of oldBusinesses) {
         await writeAudit(
           stores,
@@ -103,10 +121,11 @@ export async function purgeExpiredDeletions(services: Services): Promise<PurgeRe
           'success',
         );
       }
-      return { companies: removedCompanies, businesses: removedBusinesses };
+      return { companies: removedCompanies, businesses: removedBusinesses, sites: removedSites };
     });
     companies += done.companies;
     businesses += done.businesses;
+    sites += done.sites;
   }
-  return { companies, businesses };
+  return { companies, businesses, sites };
 }

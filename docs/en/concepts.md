@@ -2,21 +2,28 @@
 
 ## The hierarchy
 
-Axeda decides on three levels. A permission is always checked **in a scope**:
+Axeda decides on four levels. A permission is always checked **in a scope**:
 
 ```
 global                         the whole platform
  └─ company  (acme)            the isolation boundary between customers
-     └─ business  (shop-1)     a branch, store or unit inside a company
+     ├─ site  (hq)             a place of the company (a company can have sites without businesses)
+     └─ business  (shop-1)     a line of business or unit inside a company
+         └─ site  (north)      a place of that business
 ```
 
-A role assigned at a level **applies downwards**: global covers every company and business; a
-company covers its businesses; a business covers only itself. Nothing ever applies upwards or
-sideways, so a role in one company says nothing about another.
+A role assigned at a level **applies downwards**: global covers everything; a company covers its
+businesses and all its sites; a business covers itself and its sites; a site covers only itself.
+A site that hangs directly from the company inherits from no business. Nothing ever applies
+upwards or sideways, so a role in one company says nothing about another.
 
-The **company is the isolation limit**. A business always belongs to one company, fixed when it
-is created. When a request names a business, Axeda reads its company from the database and never
-from the request.
+The **company is the isolation limit**. A business belongs to one company, and a site to one
+company and optionally to one of its businesses, fixed when they are created. When a request names
+a business or a site, Axeda reads its company (and the business of a site) from the database and
+never from the request.
+
+The **employees of a site** are the people with a role assigned in it: there is no separate
+employee record. Listing the assignments of the site lists its employees.
 
 ## Permissions
 
@@ -30,15 +37,16 @@ A permission is `resource:action` (`invoice:read`); Axeda's own look like `axeda
 - Axeda's own permissions are only valid at some levels (for example `axeda:role:manage` is
   global-only). Because of that, a role holding `*` can only be assigned globally.
 
-| Axeda permission          | Levels                    | Lets you                                  |
-| ------------------------- | ------------------------- | ----------------------------------------- |
-| `axeda:role:manage`       | global                    | Create, edit, deactivate and delete roles |
-| `axeda:assignment:manage` | global, company, business | Grant and revoke roles in a scope         |
-| `axeda:company:manage`    | global, company           | Manage companies                          |
-| `axeda:business:manage`   | global, company           | Manage businesses                         |
-| `axeda:invitation:manage` | global, company, business | Invite people                             |
-| `axeda:user:manage`       | global                    | List, create, ban and unban users         |
-| `axeda:audit:read`        | global, company           | Read the audit log                        |
+| Axeda permission          | Levels                          | Lets you                                                             |
+| ------------------------- | ------------------------------- | -------------------------------------------------------------------- |
+| `axeda:role:manage`       | global                          | Create, edit, deactivate and delete roles                            |
+| `axeda:assignment:manage` | global, company, business, site | Grant and revoke roles in a scope                                    |
+| `axeda:company:manage`    | global, company                 | Manage companies                                                     |
+| `axeda:business:manage`   | global, company                 | Manage businesses                                                    |
+| `axeda:site:manage`       | global, company, business       | Manage sites (from the company, or from the business they hang from) |
+| `axeda:invitation:manage` | global, company, business, site | Invite people                                                        |
+| `axeda:user:manage`       | global                          | List, create, ban and unban users                                    |
+| `axeda:audit:read`        | global, company                 | Read the audit log                                                   |
 
 ## Roles and assignments
 
@@ -93,6 +101,9 @@ grace period (30 days by default, `retention.graceDays`) during which it can be 
 `purgeDeleted()` removes expired ones for good (you call it, for example from a cron job — Axeda
 runs nothing in the background). An inactive or deleted company, and everything inside it,
 **grants nothing**: assignments there stop counting. A business inherits its company's state.
+Sites work the same way, and a site inherits the state of its company and of its business: while
+a business is inactive or deleted, its sites grant nothing, and purging a business or a company
+purges its sites.
 
 ## Invitations
 

@@ -53,6 +53,22 @@ When the route names both, the business **must belong to that company** or the r
 — even for a global administrator. A route with only `{ business: 'businessId' }` also works: the
 company is read from the database.
 
+## Pattern 2b — a site
+
+```ts
+const inSite = resolveScope({ company: 'companyId', site: 'siteId' });
+
+app.get(
+  '/companies/:companyId/sites/:siteId/invoices',
+  x.requirePermission('invoice:read', { scope: inSite }),
+  listInvoices,
+);
+```
+
+The site must belong to the company in the URL; with `business: 'businessId'` as well, it must
+hang from that business. `{ site: 'siteId' }` alone also works: its company and business are read
+from the database.
+
 ## Pattern 3 — lists
 
 A list belongs to no single scope. Ask where the caller holds the permission and filter your own

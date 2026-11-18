@@ -12,15 +12,17 @@ export type RequestedScope =
   | {
       readonly kind: 'scope';
       readonly scope: AssignmentScope;
-      /** Si la ruta nombra también la compañía, el negocio debe ser de ella (T2). */
+      /** Si la ruta nombra también la compañía, el negocio o la sede deben ser de ella (T2). */
       readonly companyMustBe?: string;
+      /** Si la ruta nombra también el negocio, la sede debe colgar de él (T2). */
+      readonly businessMustBe?: string;
     }
   /** La petición no trae el alcance bien formado: se deniega, no se adivina. */
   | { readonly kind: 'invalid' };
 
 export type ScopeResolver = (request: ScopeRequest) => RequestedScope;
 
-/** La ruta no es de ninguna compañía ni negocio: el permiso se comprueba en global. */
+/** La ruta no es de ninguna compañía, negocio ni sede: el permiso se comprueba en global. */
 export const globalScope: ScopeResolver = () => ({ kind: 'global' });
 
 export interface ScopeSource {
@@ -28,6 +30,8 @@ export interface ScopeSource {
   readonly company?: string;
   /** Nombre del parámetro con el identificador del negocio. */
   readonly business?: string;
+  /** Nombre del parámetro con el identificador de la sede. */
+  readonly site?: string;
   /** Dónde viene: en la ruta (`/companies/:companyId/…`, por defecto) o en la consulta (`?companyId=`). */
   readonly from?: 'params' | 'query';
 }
@@ -51,6 +55,7 @@ function readId(bag: Record<string, unknown>, name: string): string | undefined 
  * resolveScope({ company: 'companyId' })                       // /companies/:companyId/invoices
  * resolveScope({ company: 'companyId', business: 'businessId' }) // el negocio debe ser de esa compañía
  * resolveScope({ company: 'companyId', from: 'query' })        // /invoices?companyId=…
+ * resolveScope({ company: 'companyId', site: 'siteId' })       // la sede debe ser de esa compañía
  * ```
  */
 export function resolveScope(source: ScopeSource): ScopeResolver {
@@ -60,21 +65,52 @@ export function resolveScope(source: ScopeSource): ScopeResolver {
     const company = source.company === undefined ? undefined : readId(bag, source.company);
     const business = source.business === undefined ? undefined : readId(bag, source.business);
 
-    if (source.business !== undefined) {
-      // Si el parámetro no vino o no es un texto válido, se deniega.
-      if (business === undefined) return { kind: 'invalid' };
-      if (source.company !== undefined && company === undefined) return { kind: 'invalid' };
-      return {
-        kind: 'scope',
-        scope: { type: 'business', id: business },
-        ...(company === undefined ? {} : { companyMustBe: company }),
-      };
+    if (source.site !== undefined) {
+      return siteScope(source, readId(bag, source.site), company, business);
     }
+    if (source.business !== undefined) return businessScope(source, company, business);
     if (source.company !== undefined) {
       return company === undefined
         ? { kind: 'invalid' }
         : { kind: 'scope', scope: { type: 'company', id: company } };
     }
     return { kind: 'global' };
+  };
+}
+
+/** Un negocio y, si la ruta la nombra, la compañía de la que debe ser. */
+function businessScope(
+  source: ScopeSource,
+  company: string | undefined,
+  business: string | undefined,
+): RequestedScope {
+  // Si el parámetro no vino o no es un texto válido, se deniega.
+  if (business === undefined) return { kind: 'invalid' };
+  if (source.company !== undefined && company === undefined) return { kind: 'invalid' };
+  return {
+    kind: 'scope',
+    scope: { type: 'business', id: business },
+    ...(company === undefined ? {} : { companyMustBe: company }),
+  };
+}
+
+/**
+ * Una sede, y lo que la ruta diga además de ella: si nombra la compañía o el negocio, la sede debe
+ * colgar de ellos. Cualquier parámetro que falte o no sea válido deniega.
+ */
+function siteScope(
+  source: ScopeSource,
+  site: string | undefined,
+  company: string | undefined,
+  business: string | undefined,
+): RequestedScope {
+  if (site === undefined) return { kind: 'invalid' };
+  if (source.company !== undefined && company === undefined) return { kind: 'invalid' };
+  if (source.business !== undefined && business === undefined) return { kind: 'invalid' };
+  return {
+    kind: 'scope',
+    scope: { type: 'site', id: site },
+    ...(company === undefined ? {} : { companyMustBe: company }),
+    ...(business === undefined ? {} : { businessMustBe: business }),
   };
 }

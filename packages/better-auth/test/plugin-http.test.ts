@@ -127,6 +127,16 @@ describe('every endpoint requires a session and a permission', () => {
     '/axeda/business/set-status': { method: 'POST', body: { ...NOPE, status: 'inactive' } },
     '/axeda/business/delete': { method: 'POST', body: NOPE },
     '/axeda/business/restore': { method: 'POST', body: NOPE },
+    '/axeda/site/list': { method: 'GET', query: { companyId: 'x' } },
+    '/axeda/site/get': { method: 'GET', query: { id: 'x' } },
+    '/axeda/site/create': {
+      method: 'POST',
+      body: { companyId: 'x', slug: 'walker', name: 'W' },
+    },
+    '/axeda/site/update': { method: 'POST', body: { ...NOPE, name: 'n' } },
+    '/axeda/site/set-status': { method: 'POST', body: { ...NOPE, status: 'inactive' } },
+    '/axeda/site/delete': { method: 'POST', body: NOPE },
+    '/axeda/site/restore': { method: 'POST', body: NOPE },
     '/axeda/invitation/list': { method: 'GET', query: { scopeType: 'global' } },
     '/axeda/invitation/create': {
       method: 'POST',

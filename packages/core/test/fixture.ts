@@ -14,6 +14,7 @@ import {
   type InvitationDelivery,
   type InvitationMessage,
   type Role,
+  type Site,
 } from '../src/index.js';
 
 export const BASE_OPTIONS = {
@@ -47,6 +48,8 @@ export interface Fixture {
   company(id: string): Promise<Company>;
   /** Crea un negocio con ESE identificador dentro de la compañía indicada. */
   business(id: string, companyId: string): Promise<Business>;
+  /** Crea una sede con ESE identificador en la compañía y, si se indica, en ese negocio. */
+  site(id: string, companyId: string, businessId?: string): Promise<Site>;
 }
 
 /**
@@ -176,6 +179,14 @@ export async function createFixture(
       return axeda.businesses.create(admin, companyId, {
         slug: id.toLowerCase(),
         name: `Business ${id}`,
+      });
+    },
+    async site(id, companyId, businessId) {
+      forcedIds.push(id);
+      return axeda.sites.create(admin, companyId, {
+        slug: id.toLowerCase(),
+        name: `Site ${id}`,
+        ...(businessId === undefined ? {} : { businessId }),
       });
     },
   };
