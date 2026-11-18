@@ -9,8 +9,11 @@ on:
 permissions:
   contents: read
 
+# Un PR y un push nunca comparten grupo: una ejecución atrasada de un PR ya fusionado caía en el
+# grupo de `develop` y cancelaba el CI del merge (PR #46). Dentro de cada PR o rama, la nueva
+# ejecución sigue cancelando a la anterior.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
