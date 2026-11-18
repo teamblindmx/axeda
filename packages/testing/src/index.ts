@@ -8,3 +8,4 @@ export {
   runPersistenceContract,
   type PersistenceFactory,
 } from './persistence-contract.js';
+export { runObjectStorageContract, type StorageUnderTest } from './storage-contract.js';
