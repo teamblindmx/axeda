@@ -2,5 +2,6 @@
   "core": { "packedKB": 92, "unpackedKB": 345 },
   "better-auth": { "packedKB": 72, "unpackedKB": 490 },
   "express": { "packedKB": 14, "unpackedKB": 42 },
-  "testing": { "packedKB": 34, "unpackedKB": 160 }
+  "testing": { "packedKB": 34, "unpackedKB": 160 },
+  "storage": { "packedKB": 16, "unpackedKB": 48 }
 }

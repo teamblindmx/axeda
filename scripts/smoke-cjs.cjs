@@ -8,6 +8,7 @@ const ENTRIES = [
   ['@teamblind/axeda-better-auth/client', 'axedaClient'],
   ['@teamblind/axeda-express', 'createAxedaExpress'],
   ['@teamblind/axeda-testing', 'createMemoryPersistence'],
+  ['@teamblind/axeda-storage', 'presignUrl'],
 ];
 
 async function main() {

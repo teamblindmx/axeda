@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
+const PACKAGES: readonly string[] = JSON.parse(
+  readFileSync(new URL('../../../scripts/packages.json', import.meta.url), 'utf8'),
+);
 const out = mkdtempSync(join(tmpdir(), 'axeda-sbom-'));
 afterAll(() => rmSync(out, { recursive: true, force: true }));
 
@@ -36,7 +39,7 @@ const installed = (name: string) =>
 
 describe('the SBOM of each published package', () => {
   it('is a CycloneDX document that names the package', () => {
-    for (const name of ['core', 'better-auth', 'express', 'testing']) {
+    for (const name of PACKAGES) {
       const sbom = read(name);
       expect(sbom.bomFormat).toBe('CycloneDX');
       expect(sbom.specVersion).toBe('1.5');
@@ -64,7 +67,7 @@ describe('the SBOM of each published package', () => {
   });
 
   it('leaves out development tools, the packages themselves and anything without a licence', () => {
-    for (const name of ['core', 'better-auth', 'express', 'testing']) {
+    for (const name of PACKAGES) {
       for (const component of read(name).components) {
         expect(component.name).not.toMatch(
           /^(@teamblind\/axeda-|vitest|typescript|eslint|prettier|tsx)/,

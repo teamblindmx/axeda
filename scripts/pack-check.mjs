@@ -13,7 +13,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const PACKAGES = ['core', 'better-auth', 'express', 'testing'];
+/** Los paquetes publicados, en orden de compilación (`scripts/packages.json`). */
+const PACKAGES = JSON.parse(readFileSync(new URL('./packages.json', import.meta.url), 'utf8'));
 const budgets = JSON.parse(readFileSync(`${root}scripts/pack-budgets.json`, 'utf8'));
 
 const FORBIDDEN = [

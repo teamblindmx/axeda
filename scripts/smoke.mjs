@@ -1,5 +1,5 @@
 /**
- * Prueba de humo del paquete publicado: empaqueta los cuatro paquetes, los instala en un
+ * Prueba de humo del paquete publicado: empaqueta los paquetes publicados, los instala en un
  * proyecto VACÍO (como lo haría quien los use) y comprueba que funcionan de verdad:
  *
  *   1. en ejecución: un servidor Express + Better Auth + Axeda real, con una persona que se
@@ -26,7 +26,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const PACKAGES = ['core', 'better-auth', 'express', 'testing'];
+/** Los paquetes publicados, en orden de compilación (`scripts/packages.json`). */
+const PACKAGES = JSON.parse(readFileSync(new URL('./packages.json', import.meta.url), 'utf8'));
 const run = (command, cwd) => execSync(command, { cwd, stdio: 'inherit' });
 
 /**
