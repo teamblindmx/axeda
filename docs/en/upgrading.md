@@ -2,16 +2,19 @@
 
 ## From `0.1.0-alpha.1` to `0.1.0-alpha.2`
 
-Nothing you use today changes its behaviour: sites are new and additive. You have to run the database
-migration, and two cases need a look.
+Nothing you use today changes its behaviour: sites and access by phone are new and additive. You have to
+run the database migration, and a few cases need a look.
 
-| What changed                                                           | Do you need to act?                                                     |
-| ---------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Sites, a new scope under the company                                   | Only if you want them ([below](#sites))                                 |
-| A new table, `axedaSite`                                               | **Yes**: run the migration ([below](#the-migration-for-sites))          |
-| `AxedaPersistence` needs a `sites` store                               | Only if you wrote your own persistence ([below](#your-own-persistence)) |
-| `scopeFilter` returns `siteIds` and `purgeDeleted()` returns `sites`   | Only if your code compares those objects field by field                 |
-| `GET /axeda/me` takes an optional place and then returns `permissions` | No; see [Reference](reference.md#endpoints)                             |
+| What changed                                                                            | Do you need to act?                                                                                                 |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Sites, a new scope under the company                                                    | Only if you want them ([below](#sites))                                                                             |
+| Access by phone number, and invitations by phone                                        | Only if you want them ([below](#access-by-phone))                                                                   |
+| New tables `axedaSite` and `axedaThrottle`, a new column `channel` in `axedaInvitation` | **Yes**: run the migration ([below](#the-migration))                                                                |
+| Invitations and users have new fields (`channel`, `phoneNumber`, `phoneNumberVerified`) | Only if your code compares those objects field by field, or implements `UserAdmin` ([below](#your-own-persistence)) |
+| `invitationDelivery.send` receives `channel` and `phoneNumber`                          | No, unless you send invitations by phone                                                                            |
+| `AxedaPersistence` needs a `sites` store                                                | Only if you wrote your own persistence ([below](#your-own-persistence))                                             |
+| `scopeFilter` returns `siteIds` and `purgeDeleted()` returns `sites`                    | Only if your code compares those objects field by field                                                             |
+| `GET /axeda/me` takes an optional place and then returns `permissions`                  | No; see [Reference](reference.md#endpoints)                                                                         |
 
 ### Sites
 
@@ -39,16 +42,40 @@ app.get(
 );
 ```
 
-### The migration for sites
+### Access by phone
 
-Run Better Auth's migration as usual. It creates the table `axedaSite` and changes no existing
-table. MongoDB has no migrations: the collection is created on first use.
+People can sign up and sign in with a phone number and a code, and you can invite them by number. Add
+Better Auth's `phoneNumber` plugin with `securePhoneNumberOptions`, and send phone invitations from
+`invitationDelivery.send` when `channel` is `phone`. See
+[Configuration](configuration.md#access-by-phone-number-securephonenumberoptions).
+
+```ts
+await axeda.invitations.create(actor, {
+  phoneNumber: '+5215512345678',
+  scope: { type: 'site', id: siteId },
+  roleIds: [cashierRoleId],
+});
+```
+
+The phone plugin adds `phoneNumber` and `phoneNumberVerified` to Better Auth's `user` table; run its
+migration after adding it.
+
+### The migration
+
+Run Better Auth's migration as usual. It creates the tables `axedaSite` and `axedaThrottle` and adds
+the optional column `channel` to `axedaInvitation`; existing invitations keep working as invitations by
+email. MongoDB has no migrations: the collections are created on first use.
 
 ### Your own persistence
 
 If you implemented `AxedaPersistence` yourself, add a `sites` store (`SiteStore`), and make purging
-a company or a business also purge its sites with their assignments and invitations.
+a company or a business also purge its sites with their assignments and invitations. Invitations
+now have a `channel`: store `phoneNumber` for phone invitations, and look up `findPending` by the
+contact (the email, or the number for a phone invitation; `invitationContact` gives it).
 `runPersistenceContract` from `@teamblind/axeda-testing` checks all of it.
+
+If you implemented `UserAdmin`, return `phoneNumber` (or `null`) and `phoneNumberVerified` in each
+`ManagedUser`. A `UserDirectory` may return them too; without them no phone invitation can be accepted.
 
 ## From `0.1.0-alpha.0` to `0.1.0-alpha.1`
 

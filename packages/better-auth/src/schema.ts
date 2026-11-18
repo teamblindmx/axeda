@@ -10,6 +10,7 @@ export const MODELS = {
   business: 'axedaBusiness',
   site: 'axedaSite',
   invitation: 'axedaInvitation',
+  throttle: 'axedaThrottle',
 } as const;
 
 /** Fila única de `axedaState` que guarda la versión de política. */
@@ -201,6 +202,11 @@ export const axedaSchema = {
        * depender de índices parciales que no todas las bases tienen.
        */
       pendingKey: { type: 'string', required: true, input: false },
+      /**
+       * `phone` si la invitación va a un número (que se guarda en `email`); `email` o vacío
+       * (filas anteriores a alpha.2) si va a un correo.
+       */
+      channel: { type: 'string', required: false, input: false },
       /** 0 mientras está pendiente. Se sube con `incrementOne`: solo un cierre lo consigue. */
       consumed: { type: 'number', required: true, defaultValue: 0, input: false },
       createdAt: { type: 'date', required: true, input: false },
@@ -210,5 +216,17 @@ export const axedaSchema = {
       { fields: ['scopeType', 'scopeId'] },
       { fields: ['email'] },
     ],
+  },
+  /**
+   * Contadores por clave en una ventana de tiempo (p. ej. los códigos SMS enviados a un número), para
+   * límites que Better Auth no puede aplicar: los suyos van por IP y ruta, no por destinatario.
+   */
+  [MODELS.throttle]: {
+    fields: {
+      key: { type: 'string', required: true, input: false },
+      count: { type: 'number', required: true, defaultValue: 0, input: false },
+      windowStartsAt: { type: 'date', required: true, input: false },
+    },
+    indexes: [{ fields: ['key'], unique: true }],
   },
 } satisfies BetterAuthPluginDBSchema;

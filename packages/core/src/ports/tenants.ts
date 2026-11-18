@@ -1,5 +1,5 @@
 import type { Business, Company, Site, TenantMetadata, TenantStatus } from '../domain/tenant.js';
-import type { Invitation, StoredInvitation } from '../domain/invitation.js';
+import type { Invitation, InvitationChannel, StoredInvitation } from '../domain/invitation.js';
 import type { AssignmentScope } from '../domain/scope.js';
 import type { Page, PageRequest } from './paging.js';
 
@@ -131,7 +131,12 @@ export interface SiteStore extends TenantStore<Site, SiteChanges> {
 }
 
 export interface NewInvitation {
+  /** Por omisión `email`. */
+  readonly channel?: InvitationChannel | undefined;
+  /** En minúsculas; vacío en una invitación por teléfono. */
   readonly email: string;
+  /** E.164; solo en una invitación por teléfono. */
+  readonly phoneNumber?: string | null | undefined;
   readonly scope: AssignmentScope;
   readonly roleIds: readonly string[];
   readonly invitedBy: string;
@@ -142,9 +147,12 @@ export interface NewInvitation {
 
 export interface InvitationStore {
   get(id: string): Promise<StoredInvitation | null>;
-  /** La invitación pendiente (no aceptada, no revocada) de ese correo en ese alcance. */
-  findPending(email: string, scope: AssignmentScope): Promise<StoredInvitation | null>;
-  /** Lanza `AXEDA_INVITATION_EXISTS` si ya hay una pendiente para ese correo y alcance. */
+  /**
+   * La invitación pendiente (no aceptada, no revocada) de ese contacto en ese alcance. El contacto
+   * es el correo o, en una invitación por teléfono, el número (ver `invitationContact`).
+   */
+  findPending(contact: string, scope: AssignmentScope): Promise<StoredInvitation | null>;
+  /** Lanza `AXEDA_INVITATION_EXISTS` si ya hay una pendiente para ese contacto y alcance. */
   create(input: NewInvitation): Promise<StoredInvitation>;
   /**
    * Cierra una invitación pendiente de forma **atómica**: de dos llamadas simultáneas solo una

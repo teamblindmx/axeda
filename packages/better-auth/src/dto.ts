@@ -123,7 +123,10 @@ export interface SiteDto extends TenantDto {
 
 export interface InvitationDto {
   id: string;
+  channel: 'email' | 'phone';
+  /** Vacío en una invitación por teléfono. */
   email: string;
+  phoneNumber: string | null;
   scope: AssignmentScope;
   roleIds: string[];
   invitedBy: string;
@@ -165,7 +168,9 @@ export const toSiteDto = (site: Site): SiteDto => ({
 
 export const toInvitationDto = (invitation: Invitation): InvitationDto => ({
   id: invitation.id,
+  channel: invitation.channel,
   email: invitation.email,
+  phoneNumber: invitation.phoneNumber,
   scope: invitation.scope,
   roleIds: [...invitation.roleIds],
   invitedBy: invitation.invitedBy,
@@ -182,6 +187,9 @@ export interface ManagedUserDto {
   email: string;
   name: string;
   emailVerified: boolean;
+  /** Con el acceso por teléfono; si no, `null`. */
+  phoneNumber: string | null;
+  phoneNumberVerified: boolean;
   twoFactorEnabled: boolean;
   banned: boolean;
   banReason: string | null;
@@ -194,6 +202,8 @@ export const toManagedUserDto = (user: ManagedUser): ManagedUserDto => ({
   email: user.email,
   name: user.name,
   emailVerified: user.emailVerified,
+  phoneNumber: user.phoneNumber,
+  phoneNumberVerified: user.phoneNumberVerified,
   twoFactorEnabled: user.twoFactorEnabled,
   banned: user.banned,
   banReason: user.banReason,

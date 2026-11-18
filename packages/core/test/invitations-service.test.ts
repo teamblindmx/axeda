@@ -33,10 +33,7 @@ async function world() {
   await f.give('boss', 'company-admin', acme);
   const roleId = async (key: string) => (await f.persistence.roles.getByKey(key))?.id ?? '';
   /** Quien recibe la invitación: una cuenta con el correo verificado. */
-  const guest = (
-    id = 'guest',
-    extra: { twoFactorEnabled?: boolean; emailVerified?: boolean } = {},
-  ) => f.user(id, extra);
+  const guest = (id = 'guest', extra: Parameters<typeof f.user>[1] = {}) => f.user(id, extra);
   const invite = async (input: Partial<Parameters<typeof f.axeda.invitations.create>[1]> = {}) => {
     const invitation = await f.axeda.invitations.create(boss, {
       email: 'guest@test.dev',
@@ -582,5 +579,109 @@ describe('listing and revoking', () => {
       'invitation.revoke:denied',
       'invitation.revoke:success',
     ]);
+  });
+});
+
+describe('invitations by phone number', () => {
+  const PHONE = '+5215512345678';
+  const byPhone = async (
+    w: Awaited<ReturnType<typeof world>>,
+    input: Record<string, unknown> = {},
+  ) => {
+    const invitation = await w.axeda.invitations.create(w.boss, {
+      phoneNumber: PHONE,
+      scope: acme,
+      roleIds: [await w.roleId('cashier')],
+      ...input,
+    });
+    return { invitation, token: w.sent.at(-1)?.token ?? '' };
+  };
+
+  it('sends to the number through the same delivery callback, saying which channel', async () => {
+    const w = await world();
+    const { invitation } = await byPhone(w);
+    expect(invitation).toMatchObject({ channel: 'phone', phoneNumber: PHONE, email: '' });
+    expect(w.sent.at(-1)).toMatchObject({ channel: 'phone', phoneNumber: PHONE, email: '' });
+    // Una por correo sigue diciendo que es por correo.
+    await w.invite();
+    expect(w.sent.at(-1)).toMatchObject({
+      channel: 'email',
+      email: 'guest@test.dev',
+      phoneNumber: null,
+    });
+  });
+
+  it('takes exactly one of email or phone number, and only E.164 numbers', async () => {
+    const w = await world();
+    const roleIds = [await w.roleId('cashier')];
+    const bad = (input: unknown) => w.axeda.invitations.create(w.boss, input as never);
+    await rejectsWith(bad({ scope: acme, roleIds }), 'AXEDA_INVALID_INPUT');
+    await rejectsWith(
+      bad({ email: 'a@test.dev', phoneNumber: PHONE, scope: acme, roleIds }),
+      'AXEDA_INVALID_INPUT',
+    );
+    for (const number of ['5512345678', '+52 55 1234 5678', '+0123456789', '+52-55-1234-5678']) {
+      await rejectsWith(bad({ phoneNumber: number, scope: acme, roleIds }), 'AXEDA_INVALID_INPUT');
+    }
+    expect(w.sent).toHaveLength(0);
+  });
+
+  it('keeps one pending invitation per number and scope, apart from email invitations', async () => {
+    const w = await world();
+    const first = await byPhone(w);
+    const second = await byPhone(w);
+    expect(second.invitation.id).not.toBe(first.invitation.id);
+    expect((await w.persistence.invitations.get(first.invitation.id))?.revokedAt).not.toBeNull();
+    const byMail = await w.invite();
+    expect((await w.persistence.invitations.get(second.invitation.id))?.revokedAt).toBeNull();
+    expect(byMail.invitation.channel).toBe('email');
+  });
+
+  it('is accepted by the account that owns the verified number', async () => {
+    const w = await world();
+    const { token } = await byPhone(w);
+    w.guest('mobile', { phoneNumber: PHONE, phoneNumberVerified: true, emailVerified: false });
+    const created = await w.axeda.invitations.accept({ userId: 'mobile' }, token);
+    expect(created).toHaveLength(1);
+    expect(
+      await w.axeda.can({ userId: 'mobile' }, 'invoice:create', {
+        type: 'company',
+        companyId: 'A',
+      }),
+    ).toBe(true);
+  });
+
+  it('refuses an unverified number, another number, and an email-only account', async () => {
+    const w = await world();
+    const { token } = await byPhone(w);
+    w.guest('unverified', { phoneNumber: PHONE, phoneNumberVerified: false });
+    w.guest('other', { phoneNumber: '+5215587654321', phoneNumberVerified: true });
+    // Su correo coincide con el «correo» vacío de la invitación… no debe bastar.
+    w.guest('mail', { emailVerified: true });
+    for (const userId of ['unverified', 'other', 'mail']) {
+      await rejectsWith(w.axeda.invitations.accept({ userId }, token), 'AXEDA_INVITATION_INVALID');
+    }
+    w.guest('owner', { phoneNumber: PHONE, phoneNumberVerified: true });
+    expect(await w.axeda.invitations.accept({ userId: 'owner' }, token)).toHaveLength(1);
+  });
+
+  it('a verified phone does not accept an email invitation either', async () => {
+    const w = await world();
+    const { token } = await w.invite();
+    w.guest('mobile', { phoneNumber: PHONE, phoneNumberVerified: true, emailVerified: false });
+    await rejectsWith(
+      w.axeda.invitations.accept({ userId: 'mobile' }, token),
+      'AXEDA_INVITATION_INVALID',
+    );
+  });
+
+  it('audits the channel and, on revoke, the number', async () => {
+    const w = await world();
+    const { invitation } = await byPhone(w);
+    await w.axeda.invitations.revoke(w.boss, invitation.id);
+    const created = await w.axeda.listAudit(w.admin, { action: 'invitation.create' }, { limit: 1 });
+    expect(created.items[0]?.metadata).toMatchObject({ channel: 'phone' });
+    const revoked = await w.axeda.listAudit(w.admin, { action: 'invitation.revoke' }, { limit: 1 });
+    expect(revoked.items[0]?.metadata).toEqual({ phoneNumber: PHONE });
   });
 });

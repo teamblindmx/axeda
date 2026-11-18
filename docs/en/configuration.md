@@ -67,13 +67,13 @@ const options = {
 
 ### What it sets for you
 
-| Area          | Value                                                                                                                                                                                                                                                |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Passwords     | 12 to 128 characters; sessions are revoked on password reset                                                                                                                                                                                         |
-| Sessions      | `expiresIn` 7 days (idle time), `updateAge` 1 day, `freshAge` 15 minutes, **cookie cache off**                                                                                                                                                       |
-| Cookies       | `HttpOnly`, `SameSite=Lax`, `Secure` in production                                                                                                                                                                                                   |
-| Origin checks | `disableCSRFCheck: false`, `disableOriginCheck: false`                                                                                                                                                                                               |
-| Rate limits   | 100 requests per minute per address, and stricter on sign-in (5 per minute), sign-up (5 per 5 minutes), password reset request (3 per 5 minutes), reset (5 per 5 minutes), verification email (3 per 5 minutes) and TOTP verification (5 per minute) |
+| Area          | Value                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Passwords     | 12 to 128 characters; sessions are revoked on password reset                                                                                                                                                                                                                                                                                                                                                                     |
+| Sessions      | `expiresIn` 7 days (idle time), `updateAge` 1 day, `freshAge` 15 minutes, **cookie cache off**                                                                                                                                                                                                                                                                                                                                   |
+| Cookies       | `HttpOnly`, `SameSite=Lax`, `Secure` in production                                                                                                                                                                                                                                                                                                                                                                               |
+| Origin checks | `disableCSRFCheck: false`, `disableOriginCheck: false`                                                                                                                                                                                                                                                                                                                                                                           |
+| Rate limits   | 100 requests per minute per address, and stricter on sign-in (5 per minute), sign-up (5 per 5 minutes), password reset request (3 per 5 minutes), reset (5 per 5 minutes), verification email (3 per 5 minutes), TOTP verification (5 per minute), and the phone routes: send a code (3 per minute), verify it (10 per minute), sign in with a number (5 per minute), request a reset (3 per 5 minutes), reset (5 per 5 minutes) |
 
 You can override any of these by placing your own value **after** the spread. The spread is shallow:
 your `session` (or `advanced`, `rateLimit`, `emailAndPassword`) replaces the whole preset object, so
@@ -82,7 +82,8 @@ copy the values you still want. Axeda only refuses the four options below.
 ### What you add yourself
 
 - `database`: see [Databases](reference.md#databases) for what each one needs.
-- `plugins: [axedaPlugin]`, plus Better Auth's `twoFactor` plugin if any role uses `requireMfa`.
+- `plugins: [axedaPlugin]`, plus Better Auth's `twoFactor` plugin if any role uses `requireMfa`, and its
+  `phoneNumber` plugin for access by phone ([below](#access-by-phone-number-securephonenumberoptions)).
 - `emailVerification.sendVerificationEmail`, required by the default `requireEmailVerification: true`.
 - `secondaryStorage`, if you use one. With it, Axeda reads the user from the database on every request (one
   more query), because Better Auth refreshes the user copy inside cached sessions but Axeda's permission
@@ -102,6 +103,53 @@ says why. They remove a protection every `/axeda/*` endpoint relies on.
 
 Axeda also adds its own limit to its endpoints, per IP address: **120 requests per minute** for `/axeda/*`
 and **30 per minute** for the one endpoint that needs no session (`/axeda/public/identity`).
+
+### Access by phone number: `securePhoneNumberOptions`
+
+People can sign up and sign in with their phone number and a one-time code, with no email. Add Better
+Auth's `phoneNumber` plugin with the options `securePhoneNumberOptions` returns:
+
+```ts
+import { betterAuth } from 'better-auth';
+import { phoneNumber } from 'better-auth/plugins';
+import { secureAuthOptions, securePhoneNumberOptions } from '@teamblind/axeda-better-auth';
+
+const auth = betterAuth({
+  ...secureAuthOptions({ baseURL, secret, trustedOrigins }),
+  database, // yours
+  plugins: [
+    axedaPlugin,
+    phoneNumber(
+      securePhoneNumberOptions({
+        sendOTP: async ({ phoneNumber, code }) => sms.send(phoneNumber, `Your code: ${code}`),
+      }),
+    ),
+  ],
+});
+```
+
+| Option                 | Type                                               | Default      | What it does                                                                                |
+| ---------------------- | -------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------- |
+| `sendOTP`              | `({ phoneNumber, code }) => void \| Promise<void>` | — (required) | Sends the code by SMS (or WhatsApp). Never log the code                                     |
+| `maxSendsPerNumber`    | `number`                                           | `5`          | Codes sent to **one number** per window, whatever the address asking. Then `429`            |
+| `sendWindowSeconds`    | `number`                                           | `3600`       | Length of that window                                                                       |
+| `signUpOnVerification` | `boolean`                                          | `true`       | A code for an unknown number creates the account. With `false` it creates nobody: you do it |
+
+What you get:
+
+- Codes of 6 digits, valid 5 minutes; after 3 wrong attempts the code is void.
+- Numbers only in E.164 format (`+5215512345678`): anything else is refused before sending.
+- The cap per number lives in the database (table `axedaThrottle`), so it holds across instances. Better
+  Auth's own limit counts per address, which does not stop someone sending codes to a victim's number
+  from many addresses. `secureAuthOptions` also limits the phone routes per address.
+- Verifying a code signs the person in. `requireEmailVerification` does not apply to it: it governs email
+  sign-in only.
+- An account Axeda suspended cannot get back in with a code (`403 AXEDA_USER_BANNED`).
+- A person who signs up by phone gets a placeholder email, `<digits>@phone.invalid`, because Better Auth
+  needs one. Use `isPhoneOnlyEmail(email)` to hide it. `/axeda/user/list` shows `phoneNumber` and
+  `phoneNumberVerified`.
+- `/axeda/user/create` still needs an email. To bring in someone who only has a phone, invite them by
+  number ([below](#delivering-invitations)) or let them sign up.
 
 ---
 
@@ -184,11 +232,17 @@ axeda({
   permissions: ['invoice:read'],
   invitationDelivery: {
     acceptUrl: (token) => `https://app.example.com/accept?token=${encodeURIComponent(token)}`,
-    send: async ({ email, link }) => mailer.send({ to: email, subject: 'You are invited', link }),
+    send: async ({ channel, email, phoneNumber, link }) =>
+      channel === 'phone'
+        ? sms.send(phoneNumber ?? '', `You are invited: ${link}`)
+        : mailer.send({ to: email, subject: 'You are invited', link }),
   },
 });
 ```
 
+- An invitation goes to an `email` or to a `phoneNumber` (E.164), never both; `channel` says which.
+  One by email is accepted only by an account with that email verified; one by phone only by an account
+  with that number verified.
 - Build `acceptUrl` from **your configured base URL**, never from a request's `Host` header.
 - `send` receives data, not HTML: escape whatever you put in a message. If it throws, the caller gets
   `AXEDA_DELIVERY_FAILED` (502).

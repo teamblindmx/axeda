@@ -353,11 +353,13 @@ describe('invitations over HTTP', () => {
     expect(text).not.toContain(message?.token.split('.')[1] ?? 'impossible');
     expect(Object.keys(list.json.items[0]).sort()).toEqual([
       'acceptedAt',
+      'channel',
       'createdAt',
       'email',
       'expiresAt',
       'id',
       'invitedBy',
+      'phoneNumber',
       'revokedAt',
       'roleIds',
       'scope',

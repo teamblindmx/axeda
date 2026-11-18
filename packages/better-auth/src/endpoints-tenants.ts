@@ -497,8 +497,10 @@ export function createInvitationEndpoints(core: CoreProvider) {
       {
         method: 'POST',
         use: [sessionMiddleware],
+        // Exactamente uno de los dos; el núcleo lo comprueba y valida el formato.
         body: z.strictObject({
-          email: z.string().min(3).max(254),
+          email: z.string().min(3).max(254).optional(),
+          phoneNumber: z.string().min(8).max(16).optional(),
           scope: scopeBody,
           roleIds: z.array(id).min(1).max(50),
           ttlHours: z
@@ -522,7 +524,10 @@ export function createInvitationEndpoints(core: CoreProvider) {
         method: 'POST',
         use: [sessionMiddleware],
         body: z.strictObject({ token: z.string().min(1).max(512) }),
-        metadata: access('(authenticated; the secret and the verified email authorize)', 'own'),
+        metadata: access(
+          '(authenticated; the secret and the verified email or phone number authorize)',
+          'own',
+        ),
       },
       (ctx) =>
         run(ctx, core, async (axeda, actor) => {

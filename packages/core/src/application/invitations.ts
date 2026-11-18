@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { AXEDA_PERMISSIONS } from '../domain/axeda-permissions.js';
-import { withoutSecret, type Invitation, type StoredInvitation } from '../domain/invitation.js';
+import {
+  E164_PATTERN,
+  invitationContact,
+  withoutSecret,
+  type Invitation,
+  type InvitationChannel,
+  type StoredInvitation,
+} from '../domain/invitation.js';
 import type { Actor, Role, RoleAssignment } from '../domain/role.js';
 import { scopeKey, type AssignmentScope, type TargetScope } from '../domain/scope.js';
 import { AxedaError } from '../errors.js';
@@ -23,8 +30,11 @@ import {
   type Services,
 } from './services.js';
 
+/** Exactamente uno de `email` o `phoneNumber`: decide por dónde se manda la invitación. */
 export interface InvitationInput {
-  readonly email: string;
+  readonly email?: string | undefined;
+  /** En formato E.164 (`+5215512345678`). */
+  readonly phoneNumber?: string | undefined;
   readonly scope: AssignmentScope;
   readonly roleIds: readonly string[];
   /** Vigencia en horas; por defecto, la configurada. */
@@ -35,19 +45,49 @@ const MAX_TTL_HOURS = 24 * 30;
 const id = z.string().min(1).max(255);
 
 function inputSchema(maxRoles: number) {
-  return z.strictObject({
-    // Se normaliza ANTES de validar: un correo con espacios o mayúsculas es el mismo correo.
-    email: z
-      .string()
-      .transform((value) => value.trim().toLowerCase())
-      .pipe(z.email().max(254)),
-    scope: z.union([
-      z.strictObject({ type: z.literal('global') }),
-      z.strictObject({ type: z.enum(['company', 'business', 'site']), id }),
-    ]),
-    roleIds: z.array(id).min(1).max(maxRoles),
-    ttlHours: z.number().int().min(1).max(MAX_TTL_HOURS).optional(),
-  });
+  return z
+    .strictObject({
+      // Se normaliza ANTES de validar: un correo con espacios o mayúsculas es el mismo correo.
+      email: z
+        .string()
+        .transform((value) => value.trim().toLowerCase())
+        .pipe(z.email().max(254))
+        .optional(),
+      // Un número no se normaliza: o viene ya en E.164 o se rechaza (como hace el acceso por teléfono).
+      phoneNumber: z.string().regex(E164_PATTERN, 'must be in E.164 format').optional(),
+      scope: z.union([
+        z.strictObject({ type: z.literal('global') }),
+        z.strictObject({ type: z.enum(['company', 'business', 'site']), id }),
+      ]),
+      roleIds: z.array(id).min(1).max(maxRoles),
+      ttlHours: z.number().int().min(1).max(MAX_TTL_HOURS).optional(),
+    })
+    .refine((value) => (value.email === undefined) !== (value.phoneNumber === undefined), {
+      message: 'give exactly one of email or phoneNumber',
+    });
+}
+
+/** El canal y el contacto de una entrada ya validada. */
+function recipientOf(parsed: { email?: string | undefined; phoneNumber?: string | undefined }): {
+  channel: InvitationChannel;
+  email: string;
+  phoneNumber: string | null;
+} {
+  return parsed.phoneNumber === undefined
+    ? { channel: 'email', email: parsed.email ?? '', phoneNumber: null }
+    : { channel: 'phone', email: '', phoneNumber: parsed.phoneNumber };
+}
+
+/** Que el usuario sea el dueño verificado del correo o del número al que fue la invitación. */
+function ownsContact(user: DirectoryUser, stored: StoredInvitation): boolean {
+  if (stored.channel === 'phone') {
+    return (
+      user.phoneNumberVerified === true &&
+      stored.phoneNumber !== null &&
+      user.phoneNumber === stored.phoneNumber
+    );
+  }
+  return user.emailVerified && user.email.toLowerCase() === stored.email;
 }
 
 export interface InvitationService {
@@ -123,16 +163,12 @@ export function createInvitationService(services: Services): InvitationService {
   }
 
   /**
-   * Quien acepta debe ser el dueño del correo, con el correo verificado (si no, cualquiera que se
-   * registre con ese correo podría aceptarla); y quien invitó debe seguir existiendo y activo.
+   * Quien acepta debe ser el dueño del correo o del número, verificado (si no, cualquiera que se
+   * registre con ese contacto podría aceptarla); y quien invitó debe seguir existiendo y activo.
    */
   async function loadParties(actor: Actor, stored: StoredInvitation) {
     const user = await services.users.find(actor.userId);
-    const owner =
-      user !== null &&
-      !user.banned &&
-      user.emailVerified &&
-      user.email.toLowerCase() === stored.email;
+    const owner = user !== null && !user.banned && ownsContact(user, stored);
     const inviter = await services.users.find(stored.invitedBy);
     if (!owner || inviter === null || inviter.banned) throw invalid();
     return { user, inviter };
@@ -218,7 +254,8 @@ export function createInvitationService(services: Services): InvitationService {
       }
       const delivery = services.delivery;
       const parsed = parseInput(inputSchema(options.invitations.maxRoles), input);
-      const { email } = parsed;
+      const recipient = recipientOf(parsed);
+      const contact = invitationContact(recipient);
       const roleIds = [...new Set(parsed.roleIds)];
       const { scope } = parsed;
       const ttlMs = (parsed.ttlHours ?? options.invitations.ttlHours) * 3_600_000;
@@ -252,13 +289,13 @@ export function createInvitationService(services: Services): InvitationService {
             if (!decision.allowed) throw forbid(decision.reason);
           }
 
-          // Una sola pendiente por correo y alcance: reenviar sustituye a la anterior.
-          const previous = await stores.invitations.findPending(email, scope);
+          // Una sola pendiente por contacto y alcance: reenviar sustituye a la anterior.
+          const previous = await stores.invitations.findPending(contact, scope);
           if (previous !== null)
             await stores.invitations.close(previous.id, 'revoked', services.clock.now());
           const expiresAt = new Date(services.clock.now().getTime() + ttlMs);
           const created = await stores.invitations.create({
-            email,
+            ...recipient,
             scope,
             roleIds,
             invitedBy: actor.userId,
@@ -268,6 +305,7 @@ export function createInvitationService(services: Services): InvitationService {
           await writeAudit(
             stores,
             draft(actor, 'invitation.create', created.id, scope, {
+              channel: recipient.channel,
               roleIds,
               replaced: previous?.id ?? null,
               expiresAt: expiresAt.toISOString(),
@@ -281,7 +319,7 @@ export function createInvitationService(services: Services): InvitationService {
       // Después de confirmar: el envío es un efecto externo y no puede ir dentro de la transacción.
       try {
         await delivery.send({
-          email,
+          ...recipient,
           token: buildToken(outcome.id, secret),
           expiresAt: outcome.expiresAt,
           scope,
@@ -364,9 +402,15 @@ export function createInvitationService(services: Services): InvitationService {
             }
             await writeAudit(
               stores,
-              draft(actor, 'invitation.revoke', invitationId, stored.scope, {
-                email: stored.email,
-              }),
+              draft(
+                actor,
+                'invitation.revoke',
+                invitationId,
+                stored.scope,
+                stored.channel === 'phone'
+                  ? { phoneNumber: stored.phoneNumber }
+                  : { email: stored.email },
+              ),
               'success',
             );
           });

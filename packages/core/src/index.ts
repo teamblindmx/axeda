@@ -56,9 +56,12 @@ export {
   type PermissionKey,
 } from './domain/permission-key.js';
 export {
+  E164_PATTERN,
+  invitationContact,
   invitationState,
   withoutSecret,
   type Invitation,
+  type InvitationChannel,
   type InvitationState,
   type StoredInvitation,
 } from './domain/invitation.js';

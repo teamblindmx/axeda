@@ -11,5 +11,5 @@ Add sites: a fourth scope under the company. A site always belongs to a company 
 - Assignments, invitations, the menu and the audit log accept the scope `{ type: 'site', id }`. `scopeFilter` returns `siteIds`, `purgeDeleted()` returns `sites`, and `axeda:assignment:manage` and `axeda:invitation:manage` are valid in a site.
 - `GET /axeda/me` takes an optional place (`?scopeType=site&scopeId=…`, also a company or a business) and then returns `permissions`: what the caller may do there, for a front end. Without it the answer is the same as before.
 - Express: `resolveScope({ site: 'siteId' })`, also with the company and the business in the URL, which must match the database.
-- Better Auth's migration creates the new table `axedaSite`; nothing else changes in existing tables.
+- Better Auth's migration creates the new table `axedaSite`.
 - If you wrote your own persistence (instead of the Better Auth or the memory one), `AxedaPersistence` now needs a `sites` store, and purging a company or a business must purge its sites; `runPersistenceContract` checks it.

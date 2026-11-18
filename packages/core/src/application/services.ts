@@ -1,3 +1,4 @@
+import type { InvitationChannel } from '../domain/invitation.js';
 import type { ResolvedOptions } from '../config/options.js';
 import type { PermissionKey } from '../domain/permission-key.js';
 import type { Principal } from '../domain/role.js';
@@ -20,7 +21,12 @@ export const SUPER_ADMIN_ROLE_KEY = 'super-admin';
 
 /** Envío de invitaciones: Axeda genera el secreto; la aplicación decide cómo hacerlo llegar. */
 export interface InvitationMessage {
+  /** Por dónde hay que mandarla: `email` a `email`, `phone` a `phoneNumber`. */
+  readonly channel: InvitationChannel;
+  /** Vacío en una invitación por teléfono. */
   readonly email: string;
+  /** E.164; `null` en una invitación por correo. */
+  readonly phoneNumber: string | null;
   /** El secreto de un solo uso. Es lo único que permite aceptar la invitación. */
   readonly token: string;
   readonly expiresAt: Date;

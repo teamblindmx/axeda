@@ -53,6 +53,8 @@ describe('user administration over HTTP', () => {
       'emailVerified',
       'id',
       'name',
+      'phoneNumber',
+      'phoneNumberVerified',
       'twoFactorEnabled',
     ]);
     // sin contraseña ni cuenta de credenciales: no puede iniciar sesión
