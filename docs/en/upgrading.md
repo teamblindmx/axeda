@@ -1,5 +1,55 @@
 # Upgrading
 
+## From `0.1.0-alpha.1` to `0.1.0-alpha.2`
+
+Nothing you use today changes its behaviour: sites are new and additive. You have to run the database
+migration, and two cases need a look.
+
+| What changed                                                           | Do you need to act?                                                     |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Sites, a new scope under the company                                   | Only if you want them ([below](#sites))                                 |
+| A new table, `axedaSite`                                               | **Yes**: run the migration ([below](#the-migration-for-sites))          |
+| `AxedaPersistence` needs a `sites` store                               | Only if you wrote your own persistence ([below](#your-own-persistence)) |
+| `scopeFilter` returns `siteIds` and `purgeDeleted()` returns `sites`   | Only if your code compares those objects field by field                 |
+| `GET /axeda/me` takes an optional place and then returns `permissions` | No; see [Reference](reference.md#endpoints)                             |
+
+### Sites
+
+A site is a place of a company. It always belongs to a company and, optionally, to one of its
+businesses, so a company can have sites without businesses. A role assigned in the company applies
+to all its sites, one in a business to the sites of that business, and one in a site only there. The
+employees of a site are the people with a role assigned in it. You manage sites with the new
+permission `axeda:site:manage`, from the company or from the business they hang from.
+
+```ts
+// A site directly under the company, and one under a business of that company
+await axeda.sites.create(actor, companyId, { slug: 'hq', name: 'Headquarters' });
+await axeda.sites.create(actor, companyId, { slug: 'north', name: 'North', businessId });
+
+// An employee: a role assigned in the site
+await axeda.assignments.assign(actor, { userId, roleId, scope: { type: 'site', id: siteId } });
+
+// An Express route of a site; its company and business come from the database
+app.get(
+  '/companies/:companyId/sites/:siteId/invoices',
+  x.requirePermission('invoice:read', {
+    scope: resolveScope({ company: 'companyId', site: 'siteId' }),
+  }),
+  listInvoices,
+);
+```
+
+### The migration for sites
+
+Run Better Auth's migration as usual. It creates the table `axedaSite` and changes no existing
+table. MongoDB has no migrations: the collection is created on first use.
+
+### Your own persistence
+
+If you implemented `AxedaPersistence` yourself, add a `sites` store (`SiteStore`), and make purging
+a company or a business also purge its sites with their assignments and invitations.
+`runPersistenceContract` from `@teamblind/axeda-testing` checks all of it.
+
 ## From `0.1.0-alpha.0` to `0.1.0-alpha.1`
 
 No exported function, type or option was removed or renamed: the only addition to the API is the
