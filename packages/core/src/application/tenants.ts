@@ -247,7 +247,7 @@ export function createTenantServices(services: Services): {
   });
 
   async function membershipOf(actor: Actor): Promise<Membership> {
-    const snapshot = await loadSnapshot(persistence, actor.userId);
+    const snapshot = await loadSnapshot(persistence, actor.userId, services.options.features);
     const data = actorPolicyData(services, actor, snapshot);
     const global = effectivePermissions({
       ...data,

@@ -1,3 +1,4 @@
+import type { PermissionKey } from '../domain/permission-key.js';
 import type { Role, RoleAssignment } from '../domain/role.js';
 
 /** Lo que se necesita para decidir los permisos de un usuario en cualquier alcance. */
@@ -8,6 +9,8 @@ export interface AuthzSnapshot {
   readonly unusable: ReadonlySet<string>;
   /** Es una cuenta de personal (usuario y PIN): sus funciones ya vienen sin permisos de Axeda. */
   readonly pinAccount: boolean;
+  /** Por alcance de asignación: los permisos de las funcionalidades que su compañía no tiene. */
+  readonly gated: ReadonlyMap<string, readonly PermissionKey[]>;
 }
 
 interface Entry {

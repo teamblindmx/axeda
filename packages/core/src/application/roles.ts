@@ -115,7 +115,7 @@ export function createRoleService(services: Services): RoleService {
   /** Quien lista o consulta funciones debe poder gestionarlas o asignarlas en algún alcance. */
   async function assertCanRead(actor: Actor): Promise<void> {
     await services.ready();
-    const snapshot = await loadSnapshot(persistence, actor.userId);
+    const snapshot = await loadSnapshot(persistence, actor.userId, services.options.features);
     const held = permissionsHeldAnywhere(actorPolicyData(services, actor, snapshot));
     if (
       !held.allows(AXEDA_PERMISSIONS.roleManage) &&

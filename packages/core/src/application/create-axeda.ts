@@ -184,7 +184,11 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
   const { persistence } = dependencies;
   const clock = dependencies.clock ?? systemClock;
   const catalogSet: ReadonlySet<PermissionKey> = new Set(resolved.catalog);
-  const reader = new AuthzReader(persistence, new AuthzCache(resolved.limits.maxCachedUsers));
+  const reader = new AuthzReader(
+    persistence,
+    new AuthzCache(resolved.limits.maxCachedUsers),
+    resolved.features,
+  );
 
   let started: Promise<void> | undefined;
   const services: Services = {
@@ -226,6 +230,8 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
       assignments: snapshot.assignments,
       roles: snapshot.roles,
       unusable,
+      // Las funcionalidades que la compañía de cada asignación no tiene.
+      gated: snapshot.gated,
       now: clock.now(),
       mfaEnabled: principal.twoFactorEnabled,
       banned: principal.banned,

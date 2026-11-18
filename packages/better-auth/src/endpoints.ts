@@ -63,7 +63,9 @@ async function permissionsIn(
 ): Promise<string[]> {
   const target = await axeda.resolveTarget(scope);
   if (target === null) return [];
-  return [...(await axeda.effectivePermissions(actor, target)).keys];
+  // Los permisos concretos del catálogo: un comodín con excepciones (funcionalidades que la
+  // compañía no tiene) no diría la verdad, y al frontend le basta `includes`.
+  return (await axeda.effectivePermissions(actor, target)).concrete(axeda.catalog);
 }
 
 export const pageOf = (query: { cursor?: string | undefined; limit?: number | undefined }) => ({

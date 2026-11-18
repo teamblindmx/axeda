@@ -167,7 +167,7 @@ export async function actorPermissions(
   target: TargetScope,
 ): Promise<PermissionSet> {
   assertPrincipal(actor);
-  const snapshot = await loadSnapshot(stores, actor.userId);
+  const snapshot = await loadSnapshot(stores, actor.userId, services.options.features);
   return effectivePermissions({
     ...actorPolicyData(services, actor, snapshot),
     target,
