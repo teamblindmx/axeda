@@ -143,6 +143,7 @@ may change, so branch on `code`.
 | `AXEDA_COMPANY_NOT_FOUND`    | 404    |                                                                                         |
 | `AXEDA_BUSINESS_NOT_FOUND`   | 404    |                                                                                         |
 | `AXEDA_SITE_NOT_FOUND`       | 404    |                                                                                         |
+| `AXEDA_STAFF_NOT_FOUND`      | 404    |                                                                                         |
 | `AXEDA_EMAIL_TAKEN`          | 409    | An account with that email exists                                                       |
 | `AXEDA_ROLE_KEY_TAKEN`       | 409    |                                                                                         |
 | `AXEDA_ROLE_MANAGED`         | 409    | The role is declared in code and cannot be changed here                                 |
@@ -151,6 +152,7 @@ may change, so branch on `code`.
 | `AXEDA_LIMIT_EXCEEDED`       | 409    | A configured limit was reached                                                          |
 | `AXEDA_ALREADY_BOOTSTRAPPED` | 409    | A global administrator already exists                                                   |
 | `AXEDA_SLUG_TAKEN`           | 409    |                                                                                         |
+| `AXEDA_USERNAME_TAKEN`       | 409    | That username is already used in this company                                           |
 | `AXEDA_INVITATION_EXISTS`    | 409    | There is already a pending invitation for that email or phone and scope                 |
 | `AXEDA_FEATURE_DISABLED`     | 501    | Invitations or user administration are not configured                                   |
 | `AXEDA_DELIVERY_FAILED`      | 502    | Your `invitationDelivery.send` threw                                                    |

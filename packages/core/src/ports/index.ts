@@ -25,6 +25,14 @@ export type {
   SignedUpload,
 } from './images.js';
 export type {
+  AttemptPolicy,
+  NewStaffAccount,
+  PinHasher,
+  StaffFilter,
+  StaffOwners,
+  StaffStore,
+} from './staff.js';
+export type {
   BanDetails,
   DirectoryUser,
   NewUser,

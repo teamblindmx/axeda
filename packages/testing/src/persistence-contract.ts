@@ -10,13 +10,14 @@ import {
 } from '@teamblind/axeda-core';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { defineImageContract } from './image-contract.js';
+import { defineStaffContract } from './staff-contract.js';
 import { defineTenantContract } from './tenant-contract.js';
 
 /**
  * Usuarios que la suite usa. Las persistencias respaldadas por una base con claves foráneas
  * (Better Auth) deben tenerlos creados antes de empezar; la de memoria los ignora.
  */
-export const CONTRACT_USERS: readonly string[] = ['u1', 'u2'];
+export const CONTRACT_USERS: readonly string[] = ['u1', 'u2', 's1', 's2', 's3'];
 
 export type PersistenceFactory = (
   users: readonly string[],
@@ -52,6 +53,7 @@ export function runPersistenceContract(name: string, create: PersistenceFactory)
 
     defineTenantContract(() => db);
     defineImageContract(() => db);
+    defineStaffContract(() => db);
 
     describe('roles', () => {
       it('creates a role with defaults and reads it back by id and by key', async () => {

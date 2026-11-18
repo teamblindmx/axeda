@@ -22,6 +22,7 @@ import {
 } from '@teamblind/axeda-core';
 import { isForeignKeyViolation, isUniqueViolation } from './errors.js';
 import { createImageStore } from './image-store.js';
+import { createStaffStore } from './staff-store.js';
 import {
   scopeColumns,
   toAssignment,
@@ -471,6 +472,7 @@ export function createBetterAuthPersistence<Options extends BetterAuthOptions>(
     sites: createSiteStore(target, atomic, now),
     invitations: createInvitationStore(target, now),
     images: createImageStore(target, now),
+    staff: createStaffStore(target, now),
   });
 
   const root = storesFor(

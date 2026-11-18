@@ -144,6 +144,7 @@ inglés y pueden cambiar, así que decide por `code`.
 | `AXEDA_COMPANY_NOT_FOUND`    | 404    |                                                                                                   |
 | `AXEDA_BUSINESS_NOT_FOUND`   | 404    |                                                                                                   |
 | `AXEDA_SITE_NOT_FOUND`       | 404    |                                                                                                   |
+| `AXEDA_STAFF_NOT_FOUND`      | 404    |                                                                                                   |
 | `AXEDA_EMAIL_TAKEN`          | 409    | Ya existe una cuenta con ese correo                                                               |
 | `AXEDA_ROLE_KEY_TAKEN`       | 409    |                                                                                                   |
 | `AXEDA_ROLE_MANAGED`         | 409    | La función está declarada en el código y no se cambia aquí                                        |
@@ -152,6 +153,7 @@ inglés y pueden cambiar, así que decide por `code`.
 | `AXEDA_LIMIT_EXCEEDED`       | 409    | Se alcanzó un límite configurado                                                                  |
 | `AXEDA_ALREADY_BOOTSTRAPPED` | 409    | Ya existe una administración global                                                               |
 | `AXEDA_SLUG_TAKEN`           | 409    |                                                                                                   |
+| `AXEDA_USERNAME_TAKEN`       | 409    | Ese usuario ya existe en esta compañía                                                            |
 | `AXEDA_INVITATION_EXISTS`    | 409    | Ya hay una invitación pendiente para ese correo o teléfono y alcance                              |
 | `AXEDA_FEATURE_DISABLED`     | 501    | Las invitaciones o la administración de usuarios no están configuradas                            |
 | `AXEDA_DELIVERY_FAILED`      | 502    | Tu `invitationDelivery.send` lanzó un error                                                       |
