@@ -145,6 +145,14 @@ describe('every endpoint requires a session and a permission', () => {
     // Aceptar solo pide sesión: lo autoriza el secreto, y uno inventado no sirve.
     '/axeda/invitation/accept': { method: 'POST', body: { token: 'x.y' }, unprivileged: [400] },
     '/axeda/invitation/revoke': { method: 'POST', body: { id: 'x' }, unprivileged: [400] },
+    // Imágenes: sin almacén configurado, subir y completar responden 501 a todos.
+    '/axeda/image/upload': {
+      method: 'POST',
+      body: { purpose: 'company.logo', targetId: 'x', contentType: 'image/png', size: 10 },
+      unprivileged: [501],
+    },
+    '/axeda/image/complete': { method: 'POST', body: { uploadId: 'x' }, unprivileged: [501] },
+    '/axeda/image/remove': { method: 'POST', body: { purpose: 'company.logo', targetId: 'x' } },
     // Usuarios (solo global) y menú (cada persona ve el suyo).
     '/axeda/user/list': { method: 'GET' },
     '/axeda/user/create': { method: 'POST', body: { email: 'walker@test.dev', name: 'W' } },

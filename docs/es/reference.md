@@ -4,20 +4,27 @@
 
 Valores aceptados, rangos y qué pasa cuando uno es incorrecto: [Configuración](configuration.md#2-el-plugin-axeda).
 
-| Opción                         | Tipo                                                                           | Por omisión | Significado                                                         |
-| ------------------------------ | ------------------------------------------------------------------------------ | ----------- | ------------------------------------------------------------------- |
-| `permissions`                  | `string[]`                                                                     | —           | Tu catálogo de permisos (concretos, sin comodines). **Obligatoria** |
-| `roles`                        | `Record<clave, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`        | Funciones declaradas, sincronizadas al arrancar                     |
-| `menus`                        | `MenuDefinition[]`                                                             | `[]`        | El menú, declarado en el código                                     |
-| `retention.graceDays`          | `number` (0–3650)                                                              | `30`        | Días que una compañía o negocio borrado puede restaurarse           |
-| `invitations.ttlHours`         | `number`                                                                       | `72`        | Vigencia por defecto de una invitación                              |
-| `invitations.maxRoles`         | `number` (1–50)                                                                | `10`        | Funciones por invitación                                            |
-| `limits.maxAssignmentsPerUser` | `number`                                                                       | `50`        | Asignaciones que puede tener un usuario                             |
-| `limits.maxPermissionsPerRole` | `number`                                                                       | `100`       | Permisos en una función                                             |
-| `limits.maxCachedUsers`        | `number`                                                                       | `10000`     | Usuarios cuyos permisos guarda en caché cada proceso                |
-| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                          | apagado     | Cómo se entregan las invitaciones. Sin esto están desactivadas      |
-| `publicIdentity`               | `boolean`                                                                      | `false`     | Expone `GET /axeda/public/identity` (el único endpoint sin sesión)  |
-| `maxSessionAge`                | `number` (segundos) o `false`                                                  | 30 días     | Lo máximo que vive una sesión desde el inicio, por mucho que se use |
+| Opción                         | Tipo                                                                           | Por omisión | Significado                                                                                  |
+| ------------------------------ | ------------------------------------------------------------------------------ | ----------- | -------------------------------------------------------------------------------------------- |
+| `permissions`                  | `string[]`                                                                     | —           | Tu catálogo de permisos (concretos, sin comodines). **Obligatoria**                          |
+| `roles`                        | `Record<clave, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`        | Funciones declaradas, sincronizadas al arrancar                                              |
+| `menus`                        | `MenuDefinition[]`                                                             | `[]`        | El menú, declarado en el código                                                              |
+| `retention.graceDays`          | `number` (0–3650)                                                              | `30`        | Días que una compañía o negocio borrado puede restaurarse                                    |
+| `invitations.ttlHours`         | `number`                                                                       | `72`        | Vigencia por defecto de una invitación                                                       |
+| `invitations.maxRoles`         | `number` (1–50)                                                                | `10`        | Funciones por invitación                                                                     |
+| `limits.maxAssignmentsPerUser` | `number`                                                                       | `50`        | Asignaciones que puede tener un usuario                                                      |
+| `limits.maxPermissionsPerRole` | `number`                                                                       | `100`       | Permisos en una función                                                                      |
+| `limits.maxCachedUsers`        | `number`                                                                       | `10000`     | Usuarios cuyos permisos guarda en caché cada proceso                                         |
+| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                          | apagado     | Cómo se entregan las invitaciones. Sin esto están desactivadas                               |
+| `publicIdentity`               | `boolean`                                                                      | `false`     | Expone `GET /axeda/public/identity` (el único endpoint sin sesión)                           |
+| `maxSessionAge`                | `number` (segundos) o `false`                                                  | 30 días     | Lo máximo que vive una sesión desde el inicio, por mucho que se use                          |
+| `storage`                      | `ObjectStorage` (p. ej. `s3Storage()` de `@teamblind/axeda-storage`)           | apagado     | Dónde se guardan logos, favicons y fotos de perfil. Sin esto las imágenes están desactivadas |
+| `imageProcessor`               | `ImageProcessor` (p. ej. `sharpImageProcessor()`)                              | ninguno     | Recodifica cada imagen al completar su subida                                                |
+| `images.maxBytes`              | `number` (1 KiB–20 MiB)                                                        | 2 MiB       | La imagen más grande                                                                         |
+| `images.maxDimension`          | `number` (16–8192)                                                             | `4096`      | Píxeles por lado de un logo o una foto de perfil                                             |
+| `images.faviconMaxDimension`   | `number` (16–8192)                                                             | `1024`      | Píxeles por lado de un favicon                                                               |
+| `images.uploadTtlMinutes`      | `number` (1–60)                                                                | `10`        | Minutos para completar una subida                                                            |
+| `images.maxPendingPerUser`     | `number` (1–100)                                                               | `10`        | Subidas que una persona puede dejar abiertas                                                 |
 
 `acceptUrl` debe construirse con tu URL base configurada, nunca con la cabecera `Host` de una petición.
 
@@ -41,52 +48,55 @@ Máximo 200 elementos y 3 niveles. La etiqueta se elige por idioma exacto, luego
 Todos cuelgan de la ruta base de Better Auth (`/api/auth`). Todos exigen sesión salvo el último.
 «Por objetivo» significa que el permiso se comprueba en el alcance de lo que se modifica.
 
-| Método | Ruta                          | Requiere                                                         | Se comprueba en      |
-| ------ | ----------------------------- | ---------------------------------------------------------------- | -------------------- |
-| GET    | `/axeda/me`                   | (sesión)                                                         | propio               |
-| GET    | `/axeda/permission/list`      | `axeda:role:manage` o `axeda:assignment:manage`                  | cualquiera           |
-| GET    | `/axeda/role/list`            | `axeda:role:manage` o `axeda:assignment:manage`                  | cualquiera           |
-| GET    | `/axeda/role/get`             | `axeda:role:manage` o `axeda:assignment:manage`                  | cualquiera           |
-| POST   | `/axeda/role/create`          | `axeda:role:manage`                                              | global               |
-| POST   | `/axeda/role/update`          | `axeda:role:manage`                                              | global               |
-| POST   | `/axeda/role/set-status`      | `axeda:role:manage`                                              | global               |
-| POST   | `/axeda/role/delete`          | `axeda:role:manage`                                              | global               |
-| GET    | `/axeda/assignment/list`      | `axeda:assignment:manage`                                        | por objetivo         |
-| POST   | `/axeda/assignment/create`    | `axeda:assignment:manage`                                        | parámetro de alcance |
-| POST   | `/axeda/assignment/revoke`    | `axeda:assignment:manage`                                        | por objetivo         |
-| GET    | `/axeda/audit/list`           | `axeda:audit:read`                                               | parámetro de alcance |
-| GET    | `/axeda/company/list`         | pertenencia                                                      | por objetivo         |
-| GET    | `/axeda/company/get`          | pertenencia                                                      | por objetivo         |
-| POST   | `/axeda/company/create`       | `axeda:company:manage`                                           | global               |
-| POST   | `/axeda/company/update`       | `axeda:company:manage`                                           | por objetivo         |
-| POST   | `/axeda/company/set-status`   | `axeda:company:manage`                                           | global               |
-| POST   | `/axeda/company/delete`       | `axeda:company:manage`                                           | global               |
-| POST   | `/axeda/company/restore`      | `axeda:company:manage`                                           | global               |
-| GET    | `/axeda/business/list`        | pertenencia                                                      | por objetivo         |
-| GET    | `/axeda/business/get`         | pertenencia                                                      | por objetivo         |
-| POST   | `/axeda/business/create`      | `axeda:business:manage`                                          | por objetivo         |
-| POST   | `/axeda/business/update`      | `axeda:business:manage`                                          | por objetivo         |
-| POST   | `/axeda/business/set-status`  | `axeda:business:manage`                                          | por objetivo         |
-| POST   | `/axeda/business/delete`      | `axeda:business:manage`                                          | por objetivo         |
-| POST   | `/axeda/business/restore`     | `axeda:business:manage`                                          | por objetivo         |
-| GET    | `/axeda/site/list`            | pertenencia                                                      | por objetivo         |
-| GET    | `/axeda/site/get`             | pertenencia                                                      | por objetivo         |
-| POST   | `/axeda/site/create`          | `axeda:site:manage`                                              | por objetivo         |
-| POST   | `/axeda/site/update`          | `axeda:site:manage`                                              | por objetivo         |
-| POST   | `/axeda/site/set-status`      | `axeda:site:manage`                                              | por objetivo         |
-| POST   | `/axeda/site/delete`          | `axeda:site:manage`                                              | por objetivo         |
-| POST   | `/axeda/site/restore`         | `axeda:site:manage`                                              | por objetivo         |
-| GET    | `/axeda/invitation/list`      | `axeda:invitation:manage`                                        | parámetro de alcance |
-| POST   | `/axeda/invitation/create`    | `axeda:invitation:manage`                                        | parámetro de alcance |
-| POST   | `/axeda/invitation/accept`    | (sesión; autorizan el secreto y un correo o teléfono verificado) | propio               |
-| POST   | `/axeda/invitation/revoke`    | `axeda:invitation:manage`                                        | por objetivo         |
-| GET    | `/axeda/user/list`            | `axeda:user:manage`                                              | global               |
-| POST   | `/axeda/user/create`          | `axeda:user:manage`                                              | global               |
-| POST   | `/axeda/user/ban`             | `axeda:user:manage`                                              | global               |
-| POST   | `/axeda/user/unban`           | `axeda:user:manage`                                              | global               |
-| POST   | `/axeda/user/revoke-sessions` | `axeda:user:manage`                                              | global               |
-| GET    | `/axeda/menu`                 | (sesión; solo lista lo que puedes usar)                          | propio               |
-| GET    | `/axeda/public/identity`      | (pública, apagada salvo `publicIdentity`)                        | —                    |
+| Método | Ruta                          | Requiere                                                                                   | Se comprueba en      |
+| ------ | ----------------------------- | ------------------------------------------------------------------------------------------ | -------------------- |
+| GET    | `/axeda/me`                   | (sesión)                                                                                   | propio               |
+| GET    | `/axeda/permission/list`      | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
+| GET    | `/axeda/role/list`            | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
+| GET    | `/axeda/role/get`             | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
+| POST   | `/axeda/role/create`          | `axeda:role:manage`                                                                        | global               |
+| POST   | `/axeda/role/update`          | `axeda:role:manage`                                                                        | global               |
+| POST   | `/axeda/role/set-status`      | `axeda:role:manage`                                                                        | global               |
+| POST   | `/axeda/role/delete`          | `axeda:role:manage`                                                                        | global               |
+| GET    | `/axeda/assignment/list`      | `axeda:assignment:manage`                                                                  | por objetivo         |
+| POST   | `/axeda/assignment/create`    | `axeda:assignment:manage`                                                                  | parámetro de alcance |
+| POST   | `/axeda/assignment/revoke`    | `axeda:assignment:manage`                                                                  | por objetivo         |
+| GET    | `/axeda/audit/list`           | `axeda:audit:read`                                                                         | parámetro de alcance |
+| GET    | `/axeda/company/list`         | pertenencia                                                                                | por objetivo         |
+| GET    | `/axeda/company/get`          | pertenencia                                                                                | por objetivo         |
+| POST   | `/axeda/company/create`       | `axeda:company:manage`                                                                     | global               |
+| POST   | `/axeda/company/update`       | `axeda:company:manage`                                                                     | por objetivo         |
+| POST   | `/axeda/company/set-status`   | `axeda:company:manage`                                                                     | global               |
+| POST   | `/axeda/company/delete`       | `axeda:company:manage`                                                                     | global               |
+| POST   | `/axeda/company/restore`      | `axeda:company:manage`                                                                     | global               |
+| GET    | `/axeda/business/list`        | pertenencia                                                                                | por objetivo         |
+| GET    | `/axeda/business/get`         | pertenencia                                                                                | por objetivo         |
+| POST   | `/axeda/business/create`      | `axeda:business:manage`                                                                    | por objetivo         |
+| POST   | `/axeda/business/update`      | `axeda:business:manage`                                                                    | por objetivo         |
+| POST   | `/axeda/business/set-status`  | `axeda:business:manage`                                                                    | por objetivo         |
+| POST   | `/axeda/business/delete`      | `axeda:business:manage`                                                                    | por objetivo         |
+| POST   | `/axeda/business/restore`     | `axeda:business:manage`                                                                    | por objetivo         |
+| GET    | `/axeda/site/list`            | pertenencia                                                                                | por objetivo         |
+| GET    | `/axeda/site/get`             | pertenencia                                                                                | por objetivo         |
+| POST   | `/axeda/site/create`          | `axeda:site:manage`                                                                        | por objetivo         |
+| POST   | `/axeda/site/update`          | `axeda:site:manage`                                                                        | por objetivo         |
+| POST   | `/axeda/site/set-status`      | `axeda:site:manage`                                                                        | por objetivo         |
+| POST   | `/axeda/site/delete`          | `axeda:site:manage`                                                                        | por objetivo         |
+| POST   | `/axeda/site/restore`         | `axeda:site:manage`                                                                        | por objetivo         |
+| GET    | `/axeda/invitation/list`      | `axeda:invitation:manage`                                                                  | parámetro de alcance |
+| POST   | `/axeda/invitation/create`    | `axeda:invitation:manage`                                                                  | parámetro de alcance |
+| POST   | `/axeda/invitation/accept`    | (sesión; autorizan el secreto y un correo o teléfono verificado)                           | propio               |
+| POST   | `/axeda/invitation/revoke`    | `axeda:invitation:manage`                                                                  | por objetivo         |
+| POST   | `/axeda/image/upload`         | El permiso que edita la entidad; en `user.avatar`, la propia persona o `axeda:user:manage` | por objetivo         |
+| POST   | `/axeda/image/complete`       | (sesión; solo quien pidió la subida)                                                       | propio               |
+| POST   | `/axeda/image/remove`         | Igual que `image/upload`                                                                   | por objetivo         |
+| GET    | `/axeda/user/list`            | `axeda:user:manage`                                                                        | global               |
+| POST   | `/axeda/user/create`          | `axeda:user:manage`                                                                        | global               |
+| POST   | `/axeda/user/ban`             | `axeda:user:manage`                                                                        | global               |
+| POST   | `/axeda/user/unban`           | `axeda:user:manage`                                                                        | global               |
+| POST   | `/axeda/user/revoke-sessions` | `axeda:user:manage`                                                                        | global               |
+| GET    | `/axeda/menu`                 | (sesión; solo lista lo que puedes usar)                                                    | propio               |
+| GET    | `/axeda/public/identity`      | (pública, apagada salvo `publicIdentity`)                                                  | —                    |
 
 Los endpoints de Better Auth solo admiten `GET` y `POST`, por eso las modificaciones y los borrados
 son `POST`. Los endpoints de Axeda tienen límite de peticiones por dirección: 120 por minuto, y 30
@@ -99,6 +109,13 @@ oculte cosas. Un lugar que no existe, que no es suyo o que está inactivo da una
 distinguir un caso de otro. Las sedes se administran desde la compañía, o desde el negocio del que
 cuelgan, con `axeda:site:manage`; `site/list` acepta `businessId` para listar las sedes de un negocio,
 o `businessId=none` para las que cuelgan directamente de la compañía.
+
+`image/upload` recibe `{ purpose, targetId, contentType, size }`. `purpose` es `company.logo`,
+`company.favicon`, `business.logo`, `business.favicon`, `site.logo`, `site.favicon` o `user.avatar`;
+`contentType` es `image/png`, `image/jpeg` o `image/webp`. Responde `{ uploadId, url, method, headers,
+expiresAt }`: el navegador manda el archivo con ese método, URL y cabeceras, y luego llama a
+`image/complete` con el `uploadId`. `image/complete` e `image/remove` responden `{ purpose, targetId,
+url }`. Los usuarios llevan `image`, su foto de perfil.
 
 `invitation/create` acepta exactamente uno de `email` o `phoneNumber` (E.164). Las invitaciones
 llevan `channel` (`email` o `phone`), `email` (vacío en una por teléfono) y `phoneNumber` (`null` en
@@ -181,20 +198,21 @@ Los códigos tienen 6 dígitos, duran 5 minutos y admiten 3 intentos; los númer
 
 Obtén la instancia con `axedaPlugin.instance()` una vez creado Better Auth.
 
-| Llamada                                                                            | Devuelve                                                                                               |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `can(principal, permission, target?)`                                              | `boolean`; global si no hay objetivo                                                                   |
-| `canAnywhere(principal, permission)`                                               | ¿Lo tiene en algún alcance?                                                                            |
-| `effectivePermissions(principal, target?)`                                         | El conjunto de permisos que tiene ahí                                                                  |
-| `scopesFor(principal, permission)`                                                 | Los alcances donde lo tiene                                                                            |
-| `scopeFilter(principal, permission)`                                               | `{ unrestricted, companyIds, businessIds, siteIds }` para tus consultas                                |
-| `resolveTarget(scope)`                                                             | El objetivo comprobable de un id de compañía o negocio, leído de la base de datos; `null` si no existe |
-| `menu(principal, { scope?, locale? })`                                             | El árbol de menú filtrado                                                                              |
-| `roles`, `assignments`, `companies`, `businesses`, `sites`, `invitations`, `users` | Las mismas operaciones que exponen los endpoints, recibiendo un `actor`                                |
-| `publicIdentity({ company, business? })`                                           | Nombre y logos públicos de una compañía o negocio activo                                               |
-| `listAudit(actor, filter, page)`                                                   | Una página de eventos de auditoría                                                                     |
-| `purgeDeleted()`                                                                   | Elimina para siempre lo que pasó su periodo de gracia                                                  |
-| `bootstrap({ userId })`                                                            | Crea la primera administración global (una vez)                                                        |
+| Llamada                                                                            | Devuelve                                                                                                  |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `can(principal, permission, target?)`                                              | `boolean`; global si no hay objetivo                                                                      |
+| `canAnywhere(principal, permission)`                                               | ¿Lo tiene en algún alcance?                                                                               |
+| `effectivePermissions(principal, target?)`                                         | El conjunto de permisos que tiene ahí                                                                     |
+| `scopesFor(principal, permission)`                                                 | Los alcances donde lo tiene                                                                               |
+| `scopeFilter(principal, permission)`                                               | `{ unrestricted, companyIds, businessIds, siteIds }` para tus consultas                                   |
+| `resolveTarget(scope)`                                                             | El objetivo comprobable de un id de compañía o negocio, leído de la base de datos; `null` si no existe    |
+| `menu(principal, { scope?, locale? })`                                             | El árbol de menú filtrado                                                                                 |
+| `roles`, `assignments`, `companies`, `businesses`, `sites`, `invitations`, `users` | Las mismas operaciones que exponen los endpoints, recibiendo un `actor`                                   |
+| `images.createUpload`, `images.completeUpload`, `images.remove`                    | Los endpoints de imágenes; `images.forgetUser(userId)` borra la foto de un usuario borrado                |
+| `publicIdentity({ company, business? })`                                           | Nombre y logos públicos de una compañía o negocio activo                                                  |
+| `listAudit(actor, filter, page)`                                                   | Una página de eventos de auditoría                                                                        |
+| `purgeDeleted()`                                                                   | Elimina para siempre lo que pasó su periodo de gracia, con sus imágenes, y las subidas que nadie completó |
+| `bootstrap({ userId })`                                                            | Crea la primera administración global (una vez)                                                           |
 
 Un `Principal` es `{ userId, authzVersion?, twoFactorEnabled?, banned? }`. Constrúyelo siempre con
 `sessionPrincipal(auth)` o `principalFromUser(row)` a partir de la fila de usuario que Better Auth
