@@ -89,6 +89,21 @@ export {
 } from './domain/invitation.js';
 export { isBanned, type ManagedUser } from './domain/user.js';
 export {
+  MAX_PIN_LENGTH,
+  MIN_PIN_LENGTH,
+  PIN_PATTERN,
+  STAFF_EMAIL_DOMAIN,
+  USERNAME_PATTERN,
+  generatePin,
+  homeScopeOf,
+  isStaffEmail,
+  isWeakPin,
+  normalizeUsername,
+  withoutPin,
+  type StaffAccount,
+  type StoredStaffAccount,
+} from './domain/staff.js';
+export {
   SLUG_PATTERN,
   businessKey,
   companyKey,
