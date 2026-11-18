@@ -1,5 +1,25 @@
 # Upgrading
 
+## From `0.1.0-alpha.2` to `0.1.0-alpha.3`
+
+Images are new and additive: nothing you use today changes its behaviour. You have to run the database
+migration.
+
+| What changed                                                               | Do you need to act?                                                                                  |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Logos, favicons and profile pictures, uploaded straight to R2, S3 or MinIO | Only if you want them ([Configuration](configuration.md#images-logos-favicons-and-profile-pictures)) |
+| A new table, `axedaImage`                                                  | **Yes**: run the migration                                                                           |
+| A new package, `@teamblind/axeda-storage`                                  | Only for images                                                                                      |
+| `AxedaPersistence` needs an `images` store                                 | Only if you wrote your own persistence ([below](#your-own-persistence-and-storage))                  |
+| Users carry `image`, and `purgeDeleted()` returns `images`                 | Only if your code compares those objects field by field                                              |
+
+### Your own persistence and storage
+
+Add an `images` store (`ImageStore`): one ready image per purpose and entity, completing an upload only
+once, and deleting the images of what is purged. `runPersistenceContract` checks it. A custom `UserAdmin`
+returns `image` in each `ManagedUser` and may implement `setImage`; without it there are no profile
+pictures. An `ObjectStorage` of your own can be checked with `runObjectStorageContract`.
+
 ## From `0.1.0-alpha.1` to `0.1.0-alpha.2`
 
 Nothing you use today changes its behaviour: sites and access by phone are new and additive. You have to

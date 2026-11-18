@@ -26,6 +26,7 @@ export interface MemoryUserDirectory extends UserDirectory, UserAdmin {
   /** Simula `count` sesiones abiertas del usuario. */
   addSessions(userId: string, count: number): void;
   sessionsOf(userId: string): number;
+  setImage(userId: string, url: string | null): Promise<void>;
 }
 
 export interface MemoryUsersOptions {
@@ -45,6 +46,7 @@ export function createMemoryUserDirectory(
       email: `${user.id}@test.dev`,
       name: user.id,
       emailVerified: true,
+      image: null,
       phoneNumber: null,
       phoneNumberVerified: false,
       twoFactorEnabled: false,
@@ -65,6 +67,7 @@ export function createMemoryUserDirectory(
     id: user.id,
     email: user.email,
     name: user.name,
+    image: user.image,
     emailVerified: user.emailVerified,
     phoneNumber: user.phoneNumber,
     phoneNumberVerified: user.phoneNumberVerified,
@@ -138,6 +141,9 @@ export function createMemoryUserDirectory(
           emailVerified: false,
         }) as StoredUser,
       );
+    },
+    setImage: async (userId, url) => {
+      Object.assign(need(userId), { image: url });
     },
     setBan: async (userId, ban: BanDetails | null) => {
       const user = need(userId);

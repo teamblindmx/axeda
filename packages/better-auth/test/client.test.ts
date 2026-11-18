@@ -1,5 +1,6 @@
 import { createAuthClient } from 'better-auth/client';
 import { describe, expect, it } from 'vitest';
+import { createMemoryStorage } from '@teamblind/axeda-testing';
 import { axedaClient } from '../src/client.js';
 import { createHttpApp, BASE_URL, type HttpApp } from './support/http.js';
 
@@ -49,6 +50,32 @@ describe('the typed client', () => {
     expect(list.data?.items.map((role) => role.key)).toContain('cashier');
   });
 
+  it('uploads a profile picture the way a front end would', async () => {
+    const storage = createMemoryStorage();
+    const app = await createHttpApp({ plugin: { storage } });
+    const alice = await app.signUp('alice');
+    const client = clientFor(app, alice.cookie);
+    const bytes = new Uint8Array(64);
+    bytes.set([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52,
+    ]);
+    new DataView(bytes.buffer).setUint32(16, 96);
+    new DataView(bytes.buffer).setUint32(20, 96);
+
+    const ticket = await client.axeda.image.upload({
+      purpose: 'user.avatar',
+      targetId: alice.id,
+      contentType: 'image/png',
+      size: bytes.length,
+    });
+    expect(ticket.error).toBeNull();
+    const signed = ticket.data;
+    if (signed === null) throw new Error('no ticket');
+    await storage.upload(signed, bytes);
+    const done = await client.axeda.image.complete({ uploadId: signed.uploadId });
+    expect(done.data?.url).toMatch(/^https:\/\/images\.test\/images\/[0-9a-f]{32}\.png$/);
+  });
+
   it('returns the stable error code on failure', async () => {
     const app = await createHttpApp();
     const alice = await app.signUp('alice');
@@ -94,6 +121,18 @@ export async function typeChecks(app: HttpApp) {
   await client.axeda.user.create({ email: 'a@test.dev', name: 'A', password: 'secret123' });
   // @ts-expect-error la fecha de fin viaja como texto ISO
   await client.axeda.user.ban({ id: 'u', expiresAt: new Date() });
+  // Imágenes: el propósito y el tipo son listas cerradas.
+  await client.axeda.image.remove({ purpose: 'company.logo', targetId: 'c' });
+  // @ts-expect-error un propósito que no existe
+  await client.axeda.image.remove({ purpose: 'company.banner', targetId: 'c' });
+  await client.axeda.image.upload({
+    purpose: 'site.favicon',
+    targetId: 's',
+    // @ts-expect-error SVG no se acepta
+    contentType: 'image/svg+xml',
+    size: 10,
+  });
+
   const menu = await client.axeda.menu({ query: { locale: 'es' } });
   const firstLabel: string | undefined = menu.data?.items[0]?.label;
   void firstLabel;

@@ -13,7 +13,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const PACKAGES = ['core', 'better-auth', 'express', 'testing'];
+/** Los paquetes publicados, en orden de compilación (`scripts/packages.json`). */
+const PACKAGES = JSON.parse(readFileSync(new URL('./packages.json', import.meta.url), 'utf8'));
 const lock = JSON.parse(readFileSync(`${root}package-lock.json`, 'utf8'));
 
 /** Resuelve un paquete como lo hace Node: subiendo por las carpetas `node_modules`. */

@@ -1,6 +1,6 @@
 name: Release (manual)
 
-# Publica los cuatro paquetes en npm con procedencia verificable. Solo se lanza a mano y por
+# Publica los paquetes en npm con procedencia verificable. Solo se lanza a mano y por
 # omisión NO publica: hace todo el recorrido con `--dry-run`. Antes de la primera publicación real
 # hace falta (lo decide la persona dueña): el nombre y la organización de npm, el secreto NPM_TOKEN
 # y un entorno `npm-release` con aprobación manual. Ver «Publicar una versión» en CONTRIBUTING.md.
@@ -67,6 +67,10 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Publish @teamblind/axeda-testing
         run: npm publish --workspace @teamblind/axeda-testing --provenance --access public --tag "$TAG" $DRY_RUN
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish @teamblind/axeda-storage
+        run: npm publish --workspace @teamblind/axeda-storage --provenance --access public --tag "$TAG" $DRY_RUN
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Keep the inventory with the release

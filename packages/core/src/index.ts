@@ -8,6 +8,27 @@ export {
 export type { AssignInput, AssignmentService } from './application/assignments.js';
 export type { InvitationInput, InvitationService } from './application/invitations.js';
 export type {
+  ImageResult,
+  ImageService,
+  ImageTarget,
+  ImageUploadInput,
+  ImageUploadTicket,
+} from './application/images.js';
+export {
+  IMAGE_CONTENT_TYPES,
+  IMAGE_FORMATS,
+  IMAGE_PURPOSES,
+  detectImage,
+  ownerTypeOf,
+  type DetectedImage,
+  type ImageContentType,
+  type ImageFormat,
+  type ImageOwnerType,
+  type ImagePurpose,
+  type ImageRecord,
+  type ImageStatus,
+} from './domain/image.js';
+export type {
   BusinessInput,
   BusinessService,
   BusinessUpdate,
@@ -34,6 +55,7 @@ export { MAX_MENU_DEPTH, type MenuDefinition, type ResolvedMenu } from './config
 export { pickLabel, type MenuNode } from './application/menu.js';
 export type { BanInput, UserInput, UserService } from './application/users.js';
 export {
+  DEFAULT_IMAGES,
   DEFAULT_LIMITS,
   resolveOptions,
   type AxedaOptions,

@@ -247,6 +247,61 @@ axeda({
 - `send` receives data, not HTML: escape whatever you put in a message. If it throws, the caller gets
   `AXEDA_DELIVERY_FAILED` (502).
 
+### Images: logos, favicons and profile pictures
+
+Axeda can keep the logos and favicons of companies, businesses and sites, and profile pictures, in an
+object storage (Cloudflare R2, S3, MinIO…). The browser uploads the file **straight to the storage** with a
+signed URL; your server never receives the bytes.
+
+```ts
+import { axeda } from '@teamblind/axeda-better-auth';
+import { s3Storage, sharpImageProcessor } from '@teamblind/axeda-storage';
+
+const axedaPlugin = axeda({
+  permissions: ['invoice:read'],
+  storage: s3Storage({
+    endpoint: 'https://<account-id>.r2.cloudflarestorage.com',
+    bucket: 'acme-images',
+    accessKeyId: process.env.R2_ACCESS_KEY_ID ?? '',
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
+    publicBaseUrl: 'https://images.acme.com',
+  }),
+  imageProcessor: sharpImageProcessor(), // optional: npm install sharp
+  images: { maxBytes: 2 * 1024 * 1024 },
+});
+```
+
+In the front end it takes three calls:
+
+```ts
+const file = input.files[0];
+const ticket = await client.axeda.image.upload({
+  purpose: 'company.logo',
+  targetId: companyId,
+  contentType: file.type,
+  size: file.size,
+});
+await fetch(ticket.data.url, {
+  method: ticket.data.method,
+  headers: ticket.data.headers,
+  body: file,
+});
+const { data } = await client.axeda.image.complete({ uploadId: ticket.data.uploadId });
+// data.url is now the company's logoUrl
+```
+
+- **Who can.** The logo or favicon of a company, business or site needs the same permission as editing it.
+  A profile picture is changed by the person, or by someone with `axeda:user:manage` over them.
+- **What is accepted.** PNG, JPEG and WebP, never SVG. The type is decided by the bytes of the file, not by
+  what the browser declares. Up to 2 MiB and 4096 pixels per side (1024 for a favicon); with an
+  `imageProcessor` a larger image is shrunk instead. A file that does not pass is deleted.
+- **What is stored.** Each image under a random key (`images/<random>.png`), with no company or user in it,
+  cached for a year. Setting a new one deletes the old one; purging or deleting the entity deletes its images;
+  deleting a user deletes their picture.
+- **Uploads in progress** live under `uploads/` for 10 minutes. `purgeDeleted()` removes the ones nobody
+  completed. Block `/uploads/*` on your public domain and add a lifecycle rule (see the
+  [storage package](https://github.com/teamblindmx/axeda/tree/main/packages/storage#setting-up-cloudflare-r2)).
+
 ### Session lifetime
 
 Two limits apply, and the shorter one wins:

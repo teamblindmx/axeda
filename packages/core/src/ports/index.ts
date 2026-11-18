@@ -14,6 +14,17 @@ export type {
 } from './persistence.js';
 export { systemClock, type Clock } from './platform.js';
 export type {
+  ImageOwners,
+  ImageProcessor,
+  ImageStore,
+  NewImageUpload,
+  ObjectInfo,
+  ObjectStorage,
+  ProcessedImage,
+  ReadyImage,
+  SignedUpload,
+} from './images.js';
+export type {
   BanDetails,
   DirectoryUser,
   NewUser,

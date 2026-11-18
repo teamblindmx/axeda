@@ -272,7 +272,12 @@ describe('the grace period and purging', () => {
   it('purges only what has been deleted for longer than the grace period, with everything that belongs to it', async () => {
     const w = await world();
     await w.axeda.companies.delete(w.admin, 'A', 1);
-    expect(await w.axeda.purgeDeleted()).toEqual({ companies: 0, businesses: 0, sites: 0 });
+    expect(await w.axeda.purgeDeleted()).toEqual({
+      companies: 0,
+      businesses: 0,
+      sites: 0,
+      images: 0,
+    });
     expect(await w.persistence.companies.get('A')).not.toBeNull();
 
     w.clock.current = new Date(w.clock.current.getTime() + 29 * DAY);

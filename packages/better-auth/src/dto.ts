@@ -3,6 +3,8 @@ import type {
   AuditEvent,
   Business,
   Company,
+  ImageResult,
+  ImageUploadTicket,
   Invitation,
   ManagedUser,
   Role,
@@ -186,6 +188,8 @@ export interface ManagedUserDto {
   id: string;
   email: string;
   name: string;
+  /** La foto de perfil (URL), o `null`. */
+  image: string | null;
   emailVerified: boolean;
   /** Con el acceso por teléfono; si no, `null`. */
   phoneNumber: string | null;
@@ -201,6 +205,7 @@ export const toManagedUserDto = (user: ManagedUser): ManagedUserDto => ({
   id: user.id,
   email: user.email,
   name: user.name,
+  image: user.image,
   emailVerified: user.emailVerified,
   phoneNumber: user.phoneNumber,
   phoneNumberVerified: user.phoneNumberVerified,
@@ -209,4 +214,37 @@ export const toManagedUserDto = (user: ManagedUser): ManagedUserDto => ({
   banReason: user.banReason,
   banExpires: user.banExpires?.toISOString() ?? null,
   createdAt: user.createdAt.toISOString(),
+});
+
+// ---------- imágenes ----------
+
+/** Lo que el navegador necesita para subir el archivo directamente al almacén. */
+export interface ImageUploadDto {
+  uploadId: string;
+  url: string;
+  method: 'PUT';
+  /** Cabeceras que hay que enviar tal cual con el PUT (al menos `content-type`). */
+  headers: Record<string, string>;
+  expiresAt: string;
+}
+
+export interface ImageDto {
+  purpose: string;
+  targetId: string;
+  /** La URL pública de la imagen; `null` si se quitó. */
+  url: string | null;
+}
+
+export const toImageUploadDto = (ticket: ImageUploadTicket): ImageUploadDto => ({
+  uploadId: ticket.uploadId,
+  url: ticket.url,
+  method: ticket.method,
+  headers: { ...ticket.headers },
+  expiresAt: ticket.expiresAt.toISOString(),
+});
+
+export const toImageDto = (image: ImageResult): ImageDto => ({
+  purpose: image.purpose,
+  targetId: image.targetId,
+  url: image.url,
 });

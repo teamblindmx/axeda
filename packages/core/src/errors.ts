@@ -25,6 +25,8 @@ export type AxedaErrorCode =
   | 'AXEDA_INVITATION_INVALID'
   | 'AXEDA_FEATURE_DISABLED'
   | 'AXEDA_DELIVERY_FAILED'
+  | 'AXEDA_IMAGE_INVALID'
+  | 'AXEDA_UPLOAD_INVALID'
   | 'AXEDA_DATA_CORRUPT';
 
 export interface AxedaErrorOptions {

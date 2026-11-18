@@ -1,5 +1,25 @@
 # Actualizar
 
+## De `0.1.0-alpha.2` a `0.1.0-alpha.3`
+
+Las imágenes son nuevas y solo se suman: nada de lo que ya usas cambia su comportamiento. Tienes que
+ejecutar la migración de la base de datos.
+
+| Qué cambió                                                          | ¿Tienes que hacer algo?                                                                           |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Logos, favicons y fotos de perfil, subidos directo a R2, S3 o MinIO | Solo si los quieres ([Configuración](configuration.md#imágenes-logos-favicons-y-fotos-de-perfil)) |
+| Una tabla nueva, `axedaImage`                                       | **Sí**: ejecuta la migración                                                                      |
+| Un paquete nuevo, `@teamblind/axeda-storage`                        | Solo para las imágenes                                                                            |
+| `AxedaPersistence` necesita un almacén `images`                     | Solo si escribiste tu propia persistencia ([abajo](#tu-propia-persistencia-y-almacén))            |
+| Los usuarios llevan `image`, y `purgeDeleted()` devuelve `images`   | Solo si tu código compara esos objetos campo a campo                                              |
+
+### Tu propia persistencia y almacén
+
+Añade un almacén `images` (`ImageStore`): una sola imagen lista por propósito y entidad, completar una
+subida una sola vez, y borrar las imágenes de lo que se purga. `runPersistenceContract` lo comprueba. Un
+`UserAdmin` propio devuelve `image` en cada `ManagedUser` y puede implementar `setImage`; sin él no hay
+fotos de perfil. Un `ObjectStorage` propio se comprueba con `runObjectStorageContract`.
+
 ## De `0.1.0-alpha.1` a `0.1.0-alpha.2`
 
 Nada de lo que ya usas cambia su comportamiento: las sedes y el acceso por teléfono son nuevos y solo se

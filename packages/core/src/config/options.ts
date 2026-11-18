@@ -38,6 +38,19 @@ export interface AxedaOptions {
     /** Usuarios cuyos permisos se guardan en la caché en memoria de cada proceso. */
     readonly maxCachedUsers?: number;
   };
+  /** Logos, favicons y avatares (necesitan un almacén de objetos). */
+  readonly images?: {
+    /** Bytes máximos de una imagen. Por omisión 2 MiB. */
+    readonly maxBytes?: number;
+    /** Píxeles máximos por lado de un logo o avatar. Por omisión 4096. */
+    readonly maxDimension?: number;
+    /** Píxeles máximos por lado de un favicon. Por omisión 1024. */
+    readonly faviconMaxDimension?: number;
+    /** Minutos para completar una subida. Por omisión 10. */
+    readonly uploadTtlMinutes?: number;
+    /** Subidas sin completar que una persona puede tener a la vez. Por omisión 10. */
+    readonly maxPendingPerUser?: number;
+  };
 }
 
 export interface ResolvedRoleDefinition {
@@ -60,10 +73,25 @@ export interface ResolvedOptions {
     readonly maxPermissionsPerRole: number;
     readonly maxCachedUsers: number;
   };
+  readonly images: {
+    readonly maxBytes: number;
+    readonly maxDimension: number;
+    readonly faviconMaxDimension: number;
+    readonly uploadTtlMinutes: number;
+    readonly maxPendingPerUser: number;
+  };
 }
 
 export const DEFAULT_RETENTION = Object.freeze({ graceDays: 30 });
 export const DEFAULT_INVITATIONS = Object.freeze({ ttlHours: 72, maxRoles: 10 });
+
+export const DEFAULT_IMAGES = Object.freeze({
+  maxBytes: 2 * 1024 * 1024,
+  maxDimension: 4096,
+  faviconMaxDimension: 1024,
+  uploadTtlMinutes: 10,
+  maxPendingPerUser: 10,
+});
 
 export const DEFAULT_LIMITS = Object.freeze({
   maxAssignmentsPerUser: 50,
@@ -109,6 +137,21 @@ const optionsSchema = z.strictObject({
       maxAssignmentsPerUser: limitSchema.optional(),
       maxPermissionsPerRole: limitSchema.optional(),
       maxCachedUsers: limitSchema.optional(),
+    })
+    .optional(),
+  images: z
+    .strictObject({
+      // Hasta 20 MiB: más que eso no es un logo ni un avatar.
+      maxBytes: z
+        .number()
+        .int()
+        .min(1024)
+        .max(20 * 1024 * 1024)
+        .optional(),
+      maxDimension: z.number().int().min(16).max(8192).optional(),
+      faviconMaxDimension: z.number().int().min(16).max(8192).optional(),
+      uploadTtlMinutes: z.number().int().min(1).max(60).optional(),
+      maxPendingPerUser: z.number().int().min(1).max(100).optional(),
     })
     .optional(),
 });
@@ -186,6 +229,12 @@ const retentionOf = (retention: Shape['retention']): ResolvedOptions['retention'
   graceDays: retention?.graceDays ?? DEFAULT_RETENTION.graceDays,
 });
 
+/** Los valores por omisión, con lo que se haya indicado encima (un `undefined` no cuenta). */
+const imagesOf = (images: Shape['images']): ResolvedOptions['images'] => ({
+  ...DEFAULT_IMAGES,
+  ...Object.fromEntries(Object.entries(images ?? {}).filter(([, value]) => value !== undefined)),
+});
+
 const invitationsOf = (invitations: Shape['invitations']): ResolvedOptions['invitations'] => ({
   ttlHours: invitations?.ttlHours ?? DEFAULT_INVITATIONS.ttlHours,
   maxRoles: invitations?.maxRoles ?? DEFAULT_INVITATIONS.maxRoles,
@@ -207,5 +256,6 @@ export function resolveOptions(options: AxedaOptions): ResolvedOptions {
     menus: resolveMenus(shape.menus, new Set(catalog)),
     retention: retentionOf(shape.retention),
     invitations: invitationsOf(shape.invitations),
+    images: imagesOf(shape.images),
   };
 }

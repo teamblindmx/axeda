@@ -10,6 +10,8 @@ export type {
   AuditEventDto,
   BusinessDto,
   CompanyDto,
+  ImageDto,
+  ImageUploadDto,
   InvitationDto,
   ManagedUserDto,
   RoleDto,
