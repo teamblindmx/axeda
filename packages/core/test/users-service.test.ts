@@ -163,6 +163,7 @@ describe('user administration', () => {
       'email',
       'emailVerified',
       'id',
+      'image',
       'name',
       'phoneNumber',
       'phoneNumberVerified',

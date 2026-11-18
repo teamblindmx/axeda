@@ -3,6 +3,8 @@ export interface ManagedUser {
   readonly id: string;
   readonly email: string;
   readonly name: string;
+  /** La foto de perfil (URL), o `null`. */
+  readonly image: string | null;
   readonly emailVerified: boolean;
   /** El teléfono (E.164), si la aplicación usa el acceso por teléfono; si no, `null`. */
   readonly phoneNumber: string | null;

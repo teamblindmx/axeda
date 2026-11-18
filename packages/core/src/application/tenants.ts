@@ -27,6 +27,15 @@ import {
   siteParentSchema,
 } from './tenant-input.js';
 import { actorPermissions, actorPolicyData, invalidInput, type Services } from './services.js';
+import type { ImageRecord } from '../domain/image.js';
+import { deleteImageObjects } from './image-objects.js';
+
+/** Imágenes de lo que se purga ahora mismo: los registros dentro de la transacción. */
+const imagesOf = (
+  stores: AxedaStores,
+  owners: Parameters<AxedaStores['images']['deleteOwnedBy']>[0],
+) => stores.images.deleteOwnedBy(owners);
+const noImages: readonly ImageRecord[] = [];
 
 /**
  * Qué compañías, negocios y sedes puede ver quien pregunta (no confundir con lo que puede hacer en
@@ -152,10 +161,29 @@ export interface SiteService {
   restore(actor: Actor, id: string, version: number): Promise<Site>;
 }
 
+/** Una compañía, negocio o sede, según `type`. */
+export type TenantEntity =
+  | { readonly type: 'company'; readonly entity: Company }
+  | { readonly type: 'business'; readonly entity: Business }
+  | { readonly type: 'site'; readonly entity: Site };
+
+/**
+ * Trabajo sobre una compañía, negocio o sede con **las mismas reglas que `update`**: 404 si no se
+ * ve, después el permiso dentro de la transacción, y la entidad recién leída. Para las imágenes.
+ */
+export type OnTenant = <T>(
+  actor: Actor,
+  type: 'company' | 'business' | 'site',
+  id: string,
+  action: AuditAction,
+  work: (stores: AxedaStores, tenant: TenantEntity) => Promise<T>,
+) => Promise<T>;
+
 export function createTenantServices(services: Services): {
   companies: CompanyService;
   businesses: BusinessService;
   sites: SiteService;
+  onTenant: OnTenant;
 } {
   const { persistence } = services;
 
@@ -390,13 +418,15 @@ export function createTenantServices(services: Services): {
 
     delete: async (actor, id, version, options = {}) => {
       const immediate = options.immediate === true;
-      await onCompany(
+      const removed = await onCompany(
         actor,
         id,
         immediate ? 'company.purge' : 'company.delete',
         { global: true, invalidates: true },
         async (stores, company) => {
+          let images = noImages;
           if (immediate) {
+            images = await imagesOf(stores, { companyIds: [id], businessIds: [], siteIds: [] });
             await stores.companies.purge([id]);
           } else {
             if (company.deletedAt !== null) throw invalidInput('The company is already deleted.');
@@ -414,8 +444,10 @@ export function createTenantServices(services: Services): {
             ),
             'success',
           );
+          return images;
         },
       );
+      await deleteImageObjects(services, removed);
     },
 
     restore: (actor, id, version) =>
@@ -589,13 +621,15 @@ export function createTenantServices(services: Services): {
 
     delete: async (actor, id, version, options = {}) => {
       const immediate = options.immediate === true;
-      await onBusiness(
+      const removed = await onBusiness(
         actor,
         id,
         immediate ? 'business.purge' : 'business.delete',
         true,
         async (stores, business) => {
+          let images = noImages;
           if (immediate) {
+            images = await imagesOf(stores, { companyIds: [], businessIds: [id], siteIds: [] });
             await stores.businesses.purge([id]);
           } else {
             if (business.deletedAt !== null) throw invalidInput('The business is already deleted.');
@@ -613,8 +647,10 @@ export function createTenantServices(services: Services): {
             ),
             'success',
           );
+          return images;
         },
       );
+      await deleteImageObjects(services, removed);
     },
 
     restore: (actor, id, version) =>
@@ -805,15 +841,19 @@ export function createTenantServices(services: Services): {
     delete: async (actor, id, version, options = {}) => {
       const immediate = options.immediate === true;
       const action = immediate ? 'site.purge' : 'site.delete';
-      await onSite(actor, id, action, true, async (stores, site) => {
+      const removed = await onSite(actor, id, action, true, async (stores, site) => {
+        let images = noImages;
         if (immediate) {
+          images = await imagesOf(stores, { companyIds: [], businessIds: [], siteIds: [id] });
           await stores.sites.purge([id]);
         } else {
           if (site.deletedAt !== null) throw invalidInput('The site is already deleted.');
           await stores.sites.setDeleted(id, version, services.clock.now());
         }
         await writeAudit(stores, siteDraft(actor, action, site), 'success');
+        return images;
       });
+      await deleteImageObjects(services, removed);
     },
 
     restore: (actor, id, version) =>
@@ -825,5 +865,19 @@ export function createTenantServices(services: Services): {
       }),
   };
 
-  return { companies, businesses, sites };
+  const onTenant: OnTenant = (actor, type, id, action, work) => {
+    if (type === 'company') {
+      return onCompany(actor, id, action, { global: false, invalidates: false }, (stores, entity) =>
+        work(stores, { type, entity }),
+      );
+    }
+    if (type === 'business') {
+      return onBusiness(actor, id, action, false, (stores, entity) =>
+        work(stores, { type, entity }),
+      );
+    }
+    return onSite(actor, id, action, false, (stores, entity) => work(stores, { type, entity }));
+  };
+
+  return { companies, businesses, sites, onTenant };
 }

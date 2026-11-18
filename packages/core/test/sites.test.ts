@@ -382,9 +382,19 @@ describe('sites: deleting and purging', () => {
     const f = await world();
     const sa = await f.axeda.sites.get(f.admin, 'sa');
     await f.axeda.sites.delete(f.admin, 'sa', sa.version);
-    expect(await f.axeda.purgeDeleted()).toEqual({ companies: 0, businesses: 0, sites: 0 });
+    expect(await f.axeda.purgeDeleted()).toEqual({
+      companies: 0,
+      businesses: 0,
+      sites: 0,
+      images: 0,
+    });
     f.clock.current = new Date(f.clock.current.getTime() + 31 * DAY);
-    expect(await f.axeda.purgeDeleted()).toEqual({ companies: 0, businesses: 0, sites: 1 });
+    expect(await f.axeda.purgeDeleted()).toEqual({
+      companies: 0,
+      businesses: 0,
+      sites: 1,
+      images: 0,
+    });
     expect(await f.persistence.sites.get('sa')).toBeNull();
     const [event] = (await f.axeda.listAudit(f.admin, { action: 'site.purge' }, { limit: 1 }))
       .items;

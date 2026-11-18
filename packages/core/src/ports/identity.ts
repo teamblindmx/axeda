@@ -54,4 +54,6 @@ export interface UserAdmin {
   setBan(userId: string, ban: BanDetails | null): Promise<ManagedUser>;
   /** Cierra todas sus sesiones. Devuelve cuántas había. */
   revokeSessions(userId: string): Promise<number>;
+  /** Cambia la foto de perfil (`null` la quita). Sin esto no hay avatares. */
+  setImage?(userId: string, url: string | null): Promise<void>;
 }

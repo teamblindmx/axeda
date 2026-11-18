@@ -556,6 +556,7 @@ describe('purging deleted companies', () => {
       companies: 0,
       businesses: 0,
       sites: 0,
+      images: 0,
     });
     // Se simula que pasó el plazo moviendo la fecha de borrado al pasado.
     const context = await app.auth.$context;

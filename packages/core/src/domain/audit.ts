@@ -35,6 +35,8 @@ export type AuditAction =
   | 'invitation.create'
   | 'invitation.accept'
   | 'invitation.revoke'
+  | 'image.set'
+  | 'image.remove'
   | 'bootstrap';
 
 export type AuditOutcome = 'success' | 'denied';

@@ -13,6 +13,7 @@ import {
 import type { UserAdmin, UserDirectory } from '../ports/identity.js';
 import type { AxedaPersistence, AxedaStores } from '../ports/persistence.js';
 import type { Clock } from '../ports/platform.js';
+import type { ImageProcessor, ObjectStorage } from '../ports/images.js';
 import type { AuthzSnapshot } from './authz-cache.js';
 import { assertPrincipal, loadSnapshot } from './authz-reader.js';
 
@@ -51,6 +52,9 @@ export interface Services {
   readonly userAdmin: UserAdmin | undefined;
   /** Sin esto las invitaciones están desactivadas. */
   readonly delivery: InvitationDelivery | undefined;
+  /** Sin esto no se suben imágenes. */
+  readonly storage: ObjectStorage | undefined;
+  readonly imageProcessor: ImageProcessor | undefined;
   /** Espera a que el arranque (transacciones, funciones declaradas) haya terminado bien. */
   readonly ready: () => Promise<void>;
 }
