@@ -11,12 +11,26 @@ import {
 import { axedaClient } from '@teamblind/axeda-better-auth/client';
 import { createAxedaExpress, resolveScope, type AxedaExpress } from '@teamblind/axeda-express';
 import { createMemoryPersistence, createMemoryUserDirectory } from '@teamblind/axeda-testing';
+import { s3Storage, sharpImageProcessor } from '@teamblind/axeda-storage';
 
 const plugin: AxedaPlugin = axeda({ permissions: ['invoice:read'] });
 const users = createMemoryUserDirectory([]);
+const storage = s3Storage({
+  endpoint: 'https://account.r2.cloudflarestorage.com',
+  bucket: 'acme-images',
+  accessKeyId: 'key',
+  secretAccessKey: 'secret',
+  publicBaseUrl: 'https://images.example.com',
+});
 const core: Axeda = createAxeda(
   { permissions: ['invoice:read'] },
-  { persistence: createMemoryPersistence(), users, userAdmin: users },
+  {
+    persistence: createMemoryPersistence(),
+    users,
+    userAdmin: users,
+    storage,
+    imageProcessor: sharpImageProcessor(),
+  },
 );
 const principal: Principal = principalFromUser({ id: 'u1', twoFactorEnabled: true });
 const options = secureAuthOptions({

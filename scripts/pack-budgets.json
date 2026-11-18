@@ -3,5 +3,5 @@
   "better-auth": { "packedKB": 58, "unpackedKB": 405 },
   "express": { "packedKB": 14, "unpackedKB": 42 },
   "testing": { "packedKB": 30, "unpackedKB": 142 },
-  "storage": { "packedKB": 12, "unpackedKB": 40 }
+  "storage": { "packedKB": 16, "unpackedKB": 48 }
 }
