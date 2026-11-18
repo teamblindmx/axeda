@@ -27,6 +27,7 @@ import { createImageService, type ImageService } from './images.js';
 import type { ImageProcessor, ObjectStorage } from '../ports/images.js';
 import type { PinHasher } from '../ports/staff.js';
 import { createStaffService, type StaffService } from './staff.js';
+import { createFeatureService, hasFeature, type FeatureService } from './features.js';
 import {
   actorPermissions,
   resolveTarget,
@@ -128,6 +129,13 @@ export interface Axeda {
   readonly images: ImageService;
   /** Personal con usuario y PIN (meseros, cocineros…), creado por quien administra su lugar. */
   readonly staff: StaffService;
+  /** Funcionalidades por compañía: verlas (quien ve la compañía) y cambiarlas (la plataforma). */
+  readonly features: FeatureService;
+  /**
+   * ¿Tiene esa compañía la funcionalidad? Para el servidor; no comprueba a nadie. Sus permisos ya
+   * no valen dentro de una compañía que no la tiene: esto es para lo demás (mostrar, cobrar…).
+   */
+  hasFeature(companyId: string, feature: string): Promise<boolean>;
   /**
    * El menú de la persona en un alcance (global por defecto): solo lo que tiene permiso de ver.
    * Un alcance que no existe o está inactivo da un menú vacío, sin revelar nada.
@@ -318,6 +326,8 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     users: createUserService(services),
     images: createImageService(services, tenants.onTenant),
     staff: createStaffService(services),
+    features: createFeatureService(services, tenants.companies),
+    hasFeature: (companyId, feature) => hasFeature(services, companyId, feature),
     async menu(principal, menuOptions = {}) {
       const target = await targetOf(menuOptions.scope);
       if (target === null) return [];

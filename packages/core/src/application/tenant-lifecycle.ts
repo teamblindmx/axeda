@@ -92,6 +92,7 @@ export async function purgeExpiredDeletions(services: Services): Promise<PurgeRe
       };
       const ownedImages: readonly ImageRecord[] = await stores.images.deleteOwnedBy(owners);
       const staff = await stores.staff.deleteOwnedBy(owners);
+      await stores.features.deleteForCompanies(owners.companyIds);
       // De abajo arriba: purgar un negocio o una compañía ya se lleva sus sedes.
       const removedSites = await stores.sites.purge(oldSites.map((s) => s.id));
       const removedBusinesses = await stores.businesses.purge(oldBusinesses.map((b) => b.id));

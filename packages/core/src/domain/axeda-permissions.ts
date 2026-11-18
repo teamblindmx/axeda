@@ -12,6 +12,7 @@ export const AXEDA_PERMISSIONS = Object.freeze({
   siteManage: key('axeda:site:manage'),
   invitationManage: key('axeda:invitation:manage'),
   staffManage: key('axeda:staff:manage'),
+  featureManage: key('axeda:feature:manage'),
   userManage: key('axeda:user:manage'),
   auditRead: key('axeda:audit:read'),
 });
@@ -28,6 +29,8 @@ export const AXEDA_PERMISSION_SCOPES: Readonly<Record<string, readonly ScopeType
     [AXEDA_PERMISSIONS.invitationManage]: ['global', 'company', 'business', 'site'],
     // El personal se crea en una compañía, un negocio o una sede, por quien lo administra ahí.
     [AXEDA_PERMISSIONS.staffManage]: ['global', 'company', 'business', 'site'],
+    // Las funcionalidades son de la plataforma (planes, contratos): una compañía no se las enciende.
+    [AXEDA_PERMISSIONS.featureManage]: ['global'],
     [AXEDA_PERMISSIONS.userManage]: ['global'],
     [AXEDA_PERMISSIONS.auditRead]: ['global', 'company'],
   });

@@ -46,6 +46,7 @@ export type AuditAction =
   | 'staff.reactivate'
   | 'staff.remove'
   | 'staff.sign_in'
+  | 'feature.set'
   | 'bootstrap';
 
 export type AuditOutcome = 'success' | 'denied';

@@ -1,5 +1,7 @@
 # Conceptos
 
+| `axeda:feature:manage` | global | Encender o apagar las funcionalidades de una compañía (solo la plataforma) |
+
 ## La jerarquía
 
 Axeda decide en cuatro niveles. Un permiso siempre se comprueba **en un alcance**:
