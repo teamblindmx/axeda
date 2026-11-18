@@ -44,6 +44,7 @@ A permission is `resource:action` (`invoice:read`); Axeda's own look like `axeda
 | `axeda:company:manage`    | global, company                 | Manage companies                                                     |
 | `axeda:business:manage`   | global, company                 | Manage businesses                                                    |
 | `axeda:site:manage`       | global, company, business       | Manage sites (from the company, or from the business they hang from) |
+| `axeda:staff:manage`      | global, company, business, site | Create and manage staff accounts (username and PIN) there and below  |
 | `axeda:invitation:manage` | global, company, business, site | Invite people                                                        |
 | `axeda:user:manage`       | global                          | List, create, ban and unban users                                    |
 | `axeda:audit:read`        | global, company                 | Read the audit log                                                   |

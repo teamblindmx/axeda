@@ -126,37 +126,38 @@ unless you use access by phone.
 Errors have the shape `{ code, message }`. The codes are stable; the messages are in English and
 may change, so branch on `code`.
 
-| Code                         | Status | Meaning                                                                                 |
-| ---------------------------- | ------ | --------------------------------------------------------------------------------------- |
-| `AXEDA_INVALID_INPUT`        | 400    | The input failed validation                                                             |
-| `AXEDA_INVALID_PERMISSION`   | 400    | Not a well-formed permission                                                            |
-| `AXEDA_UNKNOWN_PERMISSION`   | 400    | A permission that is not in the catalog                                                 |
-| `AXEDA_INVITATION_INVALID`   | 400    | Wrong, expired, used or revoked invitation, or the email or phone differs               |
-| `AXEDA_IMAGE_INVALID`        | 400    | The uploaded file is not an accepted image, or is too large (`details.reason` says why) |
-| `AXEDA_UPLOAD_INVALID`       | 400    | Unknown, expired, already used or someone else's upload, or nothing uploaded yet        |
-| `AXEDA_FORBIDDEN`            | 403    | You may not do this                                                                     |
-| `AXEDA_MFA_REQUIRED`         | 403    | The role needs two-factor authentication the user has not enabled                       |
-| `AXEDA_USER_BANNED`          | 403    | The account is suspended (on sign-in)                                                   |
-| `AXEDA_ROLE_NOT_FOUND`       | 404    |                                                                                         |
-| `AXEDA_ASSIGNMENT_NOT_FOUND` | 404    |                                                                                         |
-| `AXEDA_USER_NOT_FOUND`       | 404    |                                                                                         |
-| `AXEDA_COMPANY_NOT_FOUND`    | 404    |                                                                                         |
-| `AXEDA_BUSINESS_NOT_FOUND`   | 404    |                                                                                         |
-| `AXEDA_SITE_NOT_FOUND`       | 404    |                                                                                         |
-| `AXEDA_STAFF_NOT_FOUND`      | 404    |                                                                                         |
-| `AXEDA_EMAIL_TAKEN`          | 409    | An account with that email exists                                                       |
-| `AXEDA_ROLE_KEY_TAKEN`       | 409    |                                                                                         |
-| `AXEDA_ROLE_MANAGED`         | 409    | The role is declared in code and cannot be changed here                                 |
-| `AXEDA_VERSION_CONFLICT`     | 409    | Someone else changed it first; reload and retry                                         |
-| `AXEDA_ASSIGNMENT_EXISTS`    | 409    |                                                                                         |
-| `AXEDA_LIMIT_EXCEEDED`       | 409    | A configured limit was reached                                                          |
-| `AXEDA_ALREADY_BOOTSTRAPPED` | 409    | A global administrator already exists                                                   |
-| `AXEDA_SLUG_TAKEN`           | 409    |                                                                                         |
-| `AXEDA_USERNAME_TAKEN`       | 409    | That username is already used in this company                                           |
-| `AXEDA_INVITATION_EXISTS`    | 409    | There is already a pending invitation for that email or phone and scope                 |
-| `AXEDA_FEATURE_DISABLED`     | 501    | Invitations or user administration are not configured                                   |
-| `AXEDA_DELIVERY_FAILED`      | 502    | Your `invitationDelivery.send` threw                                                    |
-| `AXEDA_INTERNAL_ERROR`       | 500    | Anything unexpected; details stay in your server logs                                   |
+| Code                         | Status | Meaning                                                                                                      |
+| ---------------------------- | ------ | ------------------------------------------------------------------------------------------------------------ |
+| `AXEDA_INVALID_INPUT`        | 400    | The input failed validation                                                                                  |
+| `AXEDA_INVALID_PERMISSION`   | 400    | Not a well-formed permission                                                                                 |
+| `AXEDA_UNKNOWN_PERMISSION`   | 400    | A permission that is not in the catalog                                                                      |
+| `AXEDA_INVITATION_INVALID`   | 400    | Wrong, expired, used or revoked invitation, or the email or phone differs                                    |
+| `AXEDA_IMAGE_INVALID`        | 400    | The uploaded file is not an accepted image, or is too large (`details.reason` says why)                      |
+| `AXEDA_UPLOAD_INVALID`       | 400    | Unknown, expired, already used or someone else's upload, or nothing uploaded yet                             |
+| `AXEDA_FORBIDDEN`            | 403    | You may not do this                                                                                          |
+| `AXEDA_MFA_REQUIRED`         | 403    | The role needs two-factor authentication the user has not enabled                                            |
+| `AXEDA_USER_BANNED`          | 403    | The account is suspended (on sign-in)                                                                        |
+| `AXEDA_ROLE_NOT_FOUND`       | 404    |                                                                                                              |
+| `AXEDA_ASSIGNMENT_NOT_FOUND` | 404    |                                                                                                              |
+| `AXEDA_USER_NOT_FOUND`       | 404    |                                                                                                              |
+| `AXEDA_COMPANY_NOT_FOUND`    | 404    |                                                                                                              |
+| `AXEDA_BUSINESS_NOT_FOUND`   | 404    |                                                                                                              |
+| `AXEDA_SITE_NOT_FOUND`       | 404    |                                                                                                              |
+| `AXEDA_STAFF_NOT_FOUND`      | 404    |                                                                                                              |
+| `AXEDA_STAFF_SIGN_IN_FAILED` | 401    | Wrong company, username or PIN, or the account is locked, suspended or its place inactive (never says which) |
+| `AXEDA_EMAIL_TAKEN`          | 409    | An account with that email exists                                                                            |
+| `AXEDA_ROLE_KEY_TAKEN`       | 409    |                                                                                                              |
+| `AXEDA_ROLE_MANAGED`         | 409    | The role is declared in code and cannot be changed here                                                      |
+| `AXEDA_VERSION_CONFLICT`     | 409    | Someone else changed it first; reload and retry                                                              |
+| `AXEDA_ASSIGNMENT_EXISTS`    | 409    |                                                                                                              |
+| `AXEDA_LIMIT_EXCEEDED`       | 409    | A configured limit was reached                                                                               |
+| `AXEDA_ALREADY_BOOTSTRAPPED` | 409    | A global administrator already exists                                                                        |
+| `AXEDA_SLUG_TAKEN`           | 409    |                                                                                                              |
+| `AXEDA_USERNAME_TAKEN`       | 409    | That username is already used in this company                                                                |
+| `AXEDA_INVITATION_EXISTS`    | 409    | There is already a pending invitation for that email or phone and scope                                      |
+| `AXEDA_FEATURE_DISABLED`     | 501    | Invitations or user administration are not configured                                                        |
+| `AXEDA_DELIVERY_FAILED`      | 502    | Your `invitationDelivery.send` threw                                                                         |
+| `AXEDA_INTERNAL_ERROR`       | 500    | Anything unexpected; details stay in your server logs                                                        |
 
 Configuration problems (`AXEDA_INVALID_CONFIG`, `AXEDA_TRANSACTIONS_UNSUPPORTED`,
 `AXEDA_DATA_CORRUPT`) never reach the client as such: they appear as `AXEDA_INTERNAL_ERROR`.

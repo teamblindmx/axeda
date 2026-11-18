@@ -8,3 +8,4 @@ export {
   runPersistenceContract,
   type PersistenceFactory,
 } from './persistence-contract.js';
+export { createTestPinHasher } from './test-pin-hasher.js';

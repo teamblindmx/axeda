@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import {
   createMemoryPersistence,
   createMemoryStorage,
+  createTestPinHasher,
   createMemoryUserDirectory,
   type MemoryStorage,
 } from '@teamblind/axeda-testing';
@@ -112,6 +113,7 @@ function guardAgainstQueriesInsideTransactions(persistence: AxedaPersistence): {
     'businesses',
     'invitations',
     'images',
+    'staff',
   ] as const) {
     wrap(persistence[label], label);
   }
@@ -120,7 +122,12 @@ function guardAgainstQueriesInsideTransactions(persistence: AxedaPersistence): {
 
 export async function createFixture(
   options: AxedaOptions = BASE_OPTIONS,
-  extra: { invitations?: boolean; images?: boolean; imageProcessor?: ImageProcessor } = {},
+  extra: {
+    invitations?: boolean;
+    images?: boolean;
+    imageProcessor?: ImageProcessor;
+    staff?: boolean;
+  } = {},
 ): Promise<Fixture> {
   const forcedIds: string[] = [];
   const persistence = createMemoryPersistence({
@@ -149,6 +156,7 @@ export async function createFixture(
     setBan: outside('UserAdmin.setBan', directory.setBan),
     revokeSessions: outside('UserAdmin.revokeSessions', directory.revokeSessions),
     setImage: outside('UserAdmin.setImage', directory.setImage),
+    delete: outside('UserAdmin.delete', directory.delete),
   };
   // El almacén de objetos es un efecto externo: nunca dentro de una transacción.
   const memoryStorage = createMemoryStorage();
@@ -160,6 +168,7 @@ export async function createFixture(
     write: outside('ObjectStorage.write', memoryStorage.write),
     delete: outside('ObjectStorage.delete', memoryStorage.delete),
   };
+  const pinHasher = createTestPinHasher();
   const axeda = createAxeda(options, {
     persistence,
     users,
@@ -167,6 +176,7 @@ export async function createFixture(
     clock: fakeClock,
     ...(extra.invitations === false ? {} : { invitations: delivery }),
     ...(extra.images === false ? {} : { storage }),
+    ...(extra.staff === false ? {} : { pinHasher }),
     ...(extra.imageProcessor === undefined ? {} : { imageProcessor: extra.imageProcessor }),
   });
 

@@ -27,6 +27,7 @@ export interface MemoryUserDirectory extends UserDirectory, UserAdmin {
   addSessions(userId: string, count: number): void;
   sessionsOf(userId: string): number;
   setImage(userId: string, url: string | null): Promise<void>;
+  delete(userId: string): Promise<void>;
 }
 
 export interface MemoryUsersOptions {
@@ -141,6 +142,9 @@ export function createMemoryUserDirectory(
           emailVerified: false,
         }) as StoredUser,
       );
+    },
+    delete: async (userId) => {
+      users.delete(userId);
     },
     setImage: async (userId, url) => {
       Object.assign(need(userId), { image: url });

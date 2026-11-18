@@ -7,6 +7,7 @@ export {
 } from './application/create-axeda.js';
 export type { AssignInput, AssignmentService } from './application/assignments.js';
 export type { InvitationInput, InvitationService } from './application/invitations.js';
+export type { StaffInput, StaffMember, StaffService, StaffSignIn } from './application/staff.js';
 export type {
   ImageResult,
   ImageService,
@@ -56,6 +57,7 @@ export { pickLabel, type MenuNode } from './application/menu.js';
 export type { BanInput, UserInput, UserService } from './application/users.js';
 export {
   DEFAULT_IMAGES,
+  DEFAULT_STAFF,
   DEFAULT_LIMITS,
   resolveOptions,
   type AxedaOptions,

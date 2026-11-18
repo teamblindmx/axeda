@@ -37,6 +37,15 @@ export type AuditAction =
   | 'invitation.revoke'
   | 'image.set'
   | 'image.remove'
+  | 'staff.create'
+  | 'staff.update'
+  | 'staff.reset_pin'
+  | 'staff.change_pin'
+  | 'staff.unlock'
+  | 'staff.suspend'
+  | 'staff.reactivate'
+  | 'staff.remove'
+  | 'staff.sign_in'
   | 'bootstrap';
 
 export type AuditOutcome = 'success' | 'denied';

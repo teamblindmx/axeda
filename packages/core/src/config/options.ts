@@ -38,6 +38,15 @@ export interface AxedaOptions {
     /** Usuarios cuyos permisos se guardan en la caché en memoria de cada proceso. */
     readonly maxCachedUsers?: number;
   };
+  /** Personal con usuario y PIN. */
+  readonly staff?: {
+    /** Dígitos de los PIN que se generan, de 6 a 8. Por omisión 6. */
+    readonly pinLength?: number;
+    /** Intentos fallidos seguidos antes de bloquear la cuenta. Por omisión 5. */
+    readonly maxAttempts?: number;
+    /** Minutos que dura el bloqueo. Por omisión 15. */
+    readonly lockMinutes?: number;
+  };
   /** Logos, favicons y avatares (necesitan un almacén de objetos). */
   readonly images?: {
     /** Bytes máximos de una imagen. Por omisión 2 MiB. */
@@ -73,6 +82,11 @@ export interface ResolvedOptions {
     readonly maxPermissionsPerRole: number;
     readonly maxCachedUsers: number;
   };
+  readonly staff: {
+    readonly pinLength: number;
+    readonly maxAttempts: number;
+    readonly lockMinutes: number;
+  };
   readonly images: {
     readonly maxBytes: number;
     readonly maxDimension: number;
@@ -84,6 +98,8 @@ export interface ResolvedOptions {
 
 export const DEFAULT_RETENTION = Object.freeze({ graceDays: 30 });
 export const DEFAULT_INVITATIONS = Object.freeze({ ttlHours: 72, maxRoles: 10 });
+
+export const DEFAULT_STAFF = Object.freeze({ pinLength: 6, maxAttempts: 5, lockMinutes: 15 });
 
 export const DEFAULT_IMAGES = Object.freeze({
   maxBytes: 2 * 1024 * 1024,
@@ -137,6 +153,13 @@ const optionsSchema = z.strictObject({
       maxAssignmentsPerUser: limitSchema.optional(),
       maxPermissionsPerRole: limitSchema.optional(),
       maxCachedUsers: limitSchema.optional(),
+    })
+    .optional(),
+  staff: z
+    .strictObject({
+      pinLength: z.number().int().min(6).max(8).optional(),
+      maxAttempts: z.number().int().min(3).max(10).optional(),
+      lockMinutes: z.number().int().min(1).max(1440).optional(),
     })
     .optional(),
   images: z
@@ -229,6 +252,14 @@ const retentionOf = (retention: Shape['retention']): ResolvedOptions['retention'
   graceDays: retention?.graceDays ?? DEFAULT_RETENTION.graceDays,
 });
 
+const definedOnly = (value: object | undefined) =>
+  Object.fromEntries(Object.entries(value ?? {}).filter(([, item]) => item !== undefined));
+
+const staffOf = (staff: Shape['staff']): ResolvedOptions['staff'] => ({
+  ...DEFAULT_STAFF,
+  ...definedOnly(staff),
+});
+
 /** Los valores por omisión, con lo que se haya indicado encima (un `undefined` no cuenta). */
 const imagesOf = (images: Shape['images']): ResolvedOptions['images'] => ({
   ...DEFAULT_IMAGES,
@@ -257,5 +288,6 @@ export function resolveOptions(options: AxedaOptions): ResolvedOptions {
     retention: retentionOf(shape.retention),
     invitations: invitationsOf(shape.invitations),
     images: imagesOf(shape.images),
+    staff: staffOf(shape.staff),
   };
 }

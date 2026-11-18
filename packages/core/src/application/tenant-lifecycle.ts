@@ -3,6 +3,7 @@ import { isUsable } from '../domain/tenant.js';
 import { writeAudit } from './audit.js';
 import { deleteImageObjects } from './image-objects.js';
 import { sweepExpiredUploads } from './images.js';
+import { deleteStaffUsers } from './staff-cleanup.js';
 import type { Services } from './services.js';
 
 /** Lo único que se publica de una compañía o negocio sin iniciar sesión. */
@@ -84,11 +85,13 @@ export async function purgeExpiredDeletions(services: Services): Promise<PurgeRe
     const done = await persistence.transaction(async (stores) => {
       await stores.authz.bumpPolicyVersion();
       // Sus imágenes salen con ellas; los objetos se borran después de confirmar.
-      const ownedImages: readonly ImageRecord[] = await stores.images.deleteOwnedBy({
+      const owners = {
         companyIds: oldCompanies.map((c) => c.id),
         businessIds: oldBusinesses.map((b) => b.id),
         siteIds: oldSites.map((s) => s.id),
-      });
+      };
+      const ownedImages: readonly ImageRecord[] = await stores.images.deleteOwnedBy(owners);
+      const staff = await stores.staff.deleteOwnedBy(owners);
       // De abajo arriba: purgar un negocio o una compañía ya se lleva sus sedes.
       const removedSites = await stores.sites.purge(oldSites.map((s) => s.id));
       const removedBusinesses = await stores.businesses.purge(oldBusinesses.map((b) => b.id));
@@ -138,9 +141,11 @@ export async function purgeExpiredDeletions(services: Services): Promise<PurgeRe
         businesses: removedBusinesses,
         sites: removedSites,
         images: ownedImages,
+        staff,
       };
     });
     await deleteImageObjects(services, done.images);
+    await deleteStaffUsers(services, done.staff);
     companies += done.companies;
     businesses += done.businesses;
     sites += done.sites;

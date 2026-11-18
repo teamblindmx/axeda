@@ -29,13 +29,32 @@ import {
 import { actorPermissions, actorPolicyData, invalidInput, type Services } from './services.js';
 import type { ImageRecord } from '../domain/image.js';
 import { deleteImageObjects } from './image-objects.js';
+import { deleteStaffUsers } from './staff-cleanup.js';
+import type { StaffAccount } from '../domain/staff.js';
 
-/** Imágenes de lo que se purga ahora mismo: los registros dentro de la transacción. */
-const imagesOf = (
+/** Lo que sale con una compañía, negocio o sede purgada ahora mismo. */
+interface Purged {
+  readonly images: readonly ImageRecord[];
+  readonly staff: readonly StaffAccount[];
+}
+const NOTHING_PURGED: Purged = { images: [], staff: [] };
+
+/** Las imágenes y el personal de lo que se purga: los registros, dentro de la transacción. */
+async function purgeOwned(
   stores: AxedaStores,
   owners: Parameters<AxedaStores['images']['deleteOwnedBy']>[0],
-) => stores.images.deleteOwnedBy(owners);
-const noImages: readonly ImageRecord[] = [];
+): Promise<Purged> {
+  // Una tras otra: en SQLite la transacción tiene una sola conexión.
+  const images = await stores.images.deleteOwnedBy(owners);
+  const staff = await stores.staff.deleteOwnedBy(owners);
+  return { images, staff };
+}
+
+/** Después de confirmar: los objetos de las imágenes y los usuarios del personal. */
+async function cleanUpPurged(services: Services, purged: Purged): Promise<void> {
+  await deleteImageObjects(services, purged.images);
+  await deleteStaffUsers(services, purged.staff);
+}
 
 /**
  * Qué compañías, negocios y sedes puede ver quien pregunta (no confundir con lo que puede hacer en
@@ -424,9 +443,9 @@ export function createTenantServices(services: Services): {
         immediate ? 'company.purge' : 'company.delete',
         { global: true, invalidates: true },
         async (stores, company) => {
-          let images = noImages;
+          let purged = NOTHING_PURGED;
           if (immediate) {
-            images = await imagesOf(stores, { companyIds: [id], businessIds: [], siteIds: [] });
+            purged = await purgeOwned(stores, { companyIds: [id], businessIds: [], siteIds: [] });
             await stores.companies.purge([id]);
           } else {
             if (company.deletedAt !== null) throw invalidInput('The company is already deleted.');
@@ -444,10 +463,10 @@ export function createTenantServices(services: Services): {
             ),
             'success',
           );
-          return images;
+          return purged;
         },
       );
-      await deleteImageObjects(services, removed);
+      await cleanUpPurged(services, removed);
     },
 
     restore: (actor, id, version) =>
@@ -627,9 +646,9 @@ export function createTenantServices(services: Services): {
         immediate ? 'business.purge' : 'business.delete',
         true,
         async (stores, business) => {
-          let images = noImages;
+          let purged = NOTHING_PURGED;
           if (immediate) {
-            images = await imagesOf(stores, { companyIds: [], businessIds: [id], siteIds: [] });
+            purged = await purgeOwned(stores, { companyIds: [], businessIds: [id], siteIds: [] });
             await stores.businesses.purge([id]);
           } else {
             if (business.deletedAt !== null) throw invalidInput('The business is already deleted.');
@@ -647,10 +666,10 @@ export function createTenantServices(services: Services): {
             ),
             'success',
           );
-          return images;
+          return purged;
         },
       );
-      await deleteImageObjects(services, removed);
+      await cleanUpPurged(services, removed);
     },
 
     restore: (actor, id, version) =>
@@ -842,18 +861,18 @@ export function createTenantServices(services: Services): {
       const immediate = options.immediate === true;
       const action = immediate ? 'site.purge' : 'site.delete';
       const removed = await onSite(actor, id, action, true, async (stores, site) => {
-        let images = noImages;
+        let purged = NOTHING_PURGED;
         if (immediate) {
-          images = await imagesOf(stores, { companyIds: [], businessIds: [], siteIds: [id] });
+          purged = await purgeOwned(stores, { companyIds: [], businessIds: [], siteIds: [id] });
           await stores.sites.purge([id]);
         } else {
           if (site.deletedAt !== null) throw invalidInput('The site is already deleted.');
           await stores.sites.setDeleted(id, version, services.clock.now());
         }
         await writeAudit(stores, siteDraft(actor, action, site), 'success');
-        return images;
+        return purged;
       });
-      await deleteImageObjects(services, removed);
+      await cleanUpPurged(services, removed);
     },
 
     restore: (actor, id, version) =>
