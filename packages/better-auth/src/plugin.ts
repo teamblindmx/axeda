@@ -17,6 +17,7 @@ import { createEndpoints } from './endpoints.js';
 import { createUserEndpoints } from './endpoints-users.js';
 import { createImageEndpoints } from './endpoints-images.js';
 import { createStaffEndpoints } from './endpoints-staff.js';
+import { createFeatureEndpoints } from './endpoints-features.js';
 import {
   createInvitationEndpoints,
   createSiteEndpoints,
@@ -216,6 +217,7 @@ export function axeda(options: AxedaPluginOptions) {
       ...createUserEndpoints(instance),
       ...createImageEndpoints(instance),
       ...createStaffEndpoints(instance),
+      ...createFeatureEndpoints(instance),
       // Siempre registrado (los tipos del cliente no dependen de la configuración); si está
       // desactivado responde 404, igual que una compañía que no existe.
       ...createPublicEndpoints(instance, () => options.publicIdentity === true),

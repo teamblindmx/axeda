@@ -104,6 +104,8 @@ Todos cuelgan de la ruta base de Better Auth (`/api/auth`). Todos exigen sesión
 | POST   | `/axeda/staff/reactivate`     | `axeda:staff:manage`                                                                       | por objetivo         |
 | POST   | `/axeda/staff/remove`         | `axeda:staff:manage`                                                                       | por objetivo         |
 | POST   | `/axeda/staff/change-pin`     | (sesión; tu propio PIN, dando el actual)                                                   | propio               |
+| GET    | `/axeda/feature/list`         | (sesión; quien ve la compañía)                                                             | por objetivo         |
+| POST   | `/axeda/feature/set`          | `axeda:feature:manage`                                                                     | global               |
 | GET    | `/axeda/user/list`            | `axeda:user:manage`                                                                        | global               |
 | POST   | `/axeda/user/create`          | `axeda:user:manage`                                                                        | global               |
 | POST   | `/axeda/user/ban`             | `axeda:user:manage`                                                                        | global               |

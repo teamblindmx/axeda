@@ -104,6 +104,8 @@ All live under Better Auth's base path (`/api/auth`). Every one needs a session 
 | POST   | `/axeda/staff/reactivate`     | `axeda:staff:manage`                                                                       | per target      |
 | POST   | `/axeda/staff/remove`         | `axeda:staff:manage`                                                                       | per target      |
 | POST   | `/axeda/staff/change-pin`     | (authenticated; your own PIN, giving the current one)                                      | own             |
+| GET    | `/axeda/feature/list`         | (authenticated; whoever sees the company)                                                  | per target      |
+| POST   | `/axeda/feature/set`          | `axeda:feature:manage`                                                                     | global          |
 | GET    | `/axeda/user/list`            | `axeda:user:manage`                                                                        | global          |
 | POST   | `/axeda/user/create`          | `axeda:user:manage`                                                                        | global          |
 | POST   | `/axeda/user/ban`             | `axeda:user:manage`                                                                        | global          |
