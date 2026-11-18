@@ -46,5 +46,13 @@
   },
   "dependencies": {
     "@teamblind/axeda-core": "^0.1.0-alpha.2"
+  },
+  "peerDependencies": {
+    "sharp": ">=0.33.0"
+  },
+  "peerDependenciesMeta": {
+    "sharp": {
+      "optional": true
+    }
   }
 }
