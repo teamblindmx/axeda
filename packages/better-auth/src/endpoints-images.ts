@@ -23,7 +23,7 @@ export function createImageEndpoints(core: CoreProvider) {
         use: [sessionMiddleware],
         body: z.strictObject({
           ...target,
-          contentType: z.enum(IMAGE_CONTENT_TYPES as [string, ...string[]]),
+          contentType: z.enum(IMAGE_CONTENT_TYPES),
           size: z.number().int().min(1),
         }),
         metadata: access(REQUIRES, 'per-target'),

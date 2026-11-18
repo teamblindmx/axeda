@@ -33,9 +33,14 @@ export const IMAGE_FORMATS = Object.freeze({
 
 export type ImageFormat = keyof typeof IMAGE_FORMATS;
 
-export const IMAGE_CONTENT_TYPES: readonly string[] = Object.freeze(
-  Object.values(IMAGE_FORMATS).map((format) => format.contentType),
-);
+/** Los tipos aceptados, como lista cerrada (para validar y para los tipos del cliente). */
+export const IMAGE_CONTENT_TYPES = Object.freeze([
+  IMAGE_FORMATS.png.contentType,
+  IMAGE_FORMATS.jpeg.contentType,
+  IMAGE_FORMATS.webp.contentType,
+] as const);
+
+export type ImageContentType = (typeof IMAGE_CONTENT_TYPES)[number];
 
 export const formatOfContentType = (contentType: string): ImageFormat | null => {
   const entry = Object.entries(IMAGE_FORMATS).find(([, f]) => f.contentType === contentType);

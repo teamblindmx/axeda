@@ -89,7 +89,7 @@ function uploadSchema(maxBytes: number) {
   return z.strictObject({
     purpose: z.enum(IMAGE_PURPOSES),
     targetId: id,
-    contentType: z.enum(IMAGE_CONTENT_TYPES as [string, ...string[]]),
+    contentType: z.enum(IMAGE_CONTENT_TYPES),
     size: z.number().int().min(1).max(maxBytes),
   });
 }

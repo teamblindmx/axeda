@@ -21,6 +21,7 @@ export {
   detectImage,
   ownerTypeOf,
   type DetectedImage,
+  type ImageContentType,
   type ImageFormat,
   type ImageOwnerType,
   type ImagePurpose,
