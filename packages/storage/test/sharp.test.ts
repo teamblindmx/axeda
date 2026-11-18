@@ -69,6 +69,10 @@ describe('the sharp image processor', () => {
     expect(attempts).toBe(2);
   });
 
+  it('refuses a misspelled option', () => {
+    expect(() => sharpImageProcessor({ qualty: 80 } as never)).toThrow(/Did you mean "quality"/);
+  });
+
   it('refuses a quality out of range', () => {
     for (const quality of [0, 101, 50.5]) {
       expect(() => sharpImageProcessor({ quality })).toThrow(/quality/);

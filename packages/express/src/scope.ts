@@ -1,3 +1,4 @@
+import { rejectUnknownOptions } from '@teamblind/axeda-core';
 import type { AssignmentScope } from '@teamblind/axeda-core';
 
 /** Lo que se necesita de la petición para leer el alcance (`req.params` y `req.query`). */
@@ -58,7 +59,16 @@ function readId(bag: Record<string, unknown>, name: string): string | undefined 
  * resolveScope({ company: 'companyId', site: 'siteId' })       // la sede debe ser de esa compañía
  * ```
  */
+const SCOPE_SOURCE = Object.keys({
+  company: true,
+  business: true,
+  site: true,
+  from: true,
+} satisfies Record<keyof ScopeSource, true>);
+
 export function resolveScope(source: ScopeSource): ScopeResolver {
+  // `resolveScope({ compnay: 'companyId' })` no leería ningún alcance: es un error, no global.
+  rejectUnknownOptions('resolveScope()', source, SCOPE_SOURCE);
   const from = source.from ?? 'params';
   return (request) => {
     const bag = request[from];

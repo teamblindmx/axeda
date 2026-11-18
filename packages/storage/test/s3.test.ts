@@ -80,6 +80,10 @@ describe('the S3 storage', () => {
         /Invalid storage options/,
       );
     }
+    // Una opción mal escrita es un error, no se ignora.
+    expect(() => s3Storage({ ...OPTIONS, publicBaseURL: 'x' } as never)).toThrow(
+      /s3Storage\(\): unknown option "publicBaseURL"\. Did you mean "publicBaseUrl"/,
+    );
     // http solo en esta máquina, p. ej. MinIO para desarrollo.
     expect(() => s3Storage({ ...OPTIONS, endpoint: 'http://localhost:9000' })).not.toThrow();
   });
