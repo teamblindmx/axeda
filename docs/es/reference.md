@@ -4,20 +4,27 @@
 
 Valores aceptados, rangos y qué pasa cuando uno es incorrecto: [Configuración](configuration.md#2-el-plugin-axeda).
 
-| Opción                         | Tipo                                                                           | Por omisión | Significado                                                         |
-| ------------------------------ | ------------------------------------------------------------------------------ | ----------- | ------------------------------------------------------------------- |
-| `permissions`                  | `string[]`                                                                     | —           | Tu catálogo de permisos (concretos, sin comodines). **Obligatoria** |
-| `roles`                        | `Record<clave, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`        | Funciones declaradas, sincronizadas al arrancar                     |
-| `menus`                        | `MenuDefinition[]`                                                             | `[]`        | El menú, declarado en el código                                     |
-| `retention.graceDays`          | `number` (0–3650)                                                              | `30`        | Días que una compañía o negocio borrado puede restaurarse           |
-| `invitations.ttlHours`         | `number`                                                                       | `72`        | Vigencia por defecto de una invitación                              |
-| `invitations.maxRoles`         | `number` (1–50)                                                                | `10`        | Funciones por invitación                                            |
-| `limits.maxAssignmentsPerUser` | `number`                                                                       | `50`        | Asignaciones que puede tener un usuario                             |
-| `limits.maxPermissionsPerRole` | `number`                                                                       | `100`       | Permisos en una función                                             |
-| `limits.maxCachedUsers`        | `number`                                                                       | `10000`     | Usuarios cuyos permisos guarda en caché cada proceso                |
-| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                          | apagado     | Cómo se entregan las invitaciones. Sin esto están desactivadas      |
-| `publicIdentity`               | `boolean`                                                                      | `false`     | Expone `GET /axeda/public/identity` (el único endpoint sin sesión)  |
-| `maxSessionAge`                | `number` (segundos) o `false`                                                  | 30 días     | Lo máximo que vive una sesión desde el inicio, por mucho que se use |
+| Opción                         | Tipo                                                                           | Por omisión | Significado                                                                                  |
+| ------------------------------ | ------------------------------------------------------------------------------ | ----------- | -------------------------------------------------------------------------------------------- |
+| `permissions`                  | `string[]`                                                                     | —           | Tu catálogo de permisos (concretos, sin comodines). **Obligatoria**                          |
+| `roles`                        | `Record<clave, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`        | Funciones declaradas, sincronizadas al arrancar                                              |
+| `menus`                        | `MenuDefinition[]`                                                             | `[]`        | El menú, declarado en el código                                                              |
+| `retention.graceDays`          | `number` (0–3650)                                                              | `30`        | Días que una compañía o negocio borrado puede restaurarse                                    |
+| `invitations.ttlHours`         | `number`                                                                       | `72`        | Vigencia por defecto de una invitación                                                       |
+| `invitations.maxRoles`         | `number` (1–50)                                                                | `10`        | Funciones por invitación                                                                     |
+| `limits.maxAssignmentsPerUser` | `number`                                                                       | `50`        | Asignaciones que puede tener un usuario                                                      |
+| `limits.maxPermissionsPerRole` | `number`                                                                       | `100`       | Permisos en una función                                                                      |
+| `limits.maxCachedUsers`        | `number`                                                                       | `10000`     | Usuarios cuyos permisos guarda en caché cada proceso                                         |
+| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                          | apagado     | Cómo se entregan las invitaciones. Sin esto están desactivadas                               |
+| `publicIdentity`               | `boolean`                                                                      | `false`     | Expone `GET /axeda/public/identity` (el único endpoint sin sesión)                           |
+| `maxSessionAge`                | `number` (segundos) o `false`                                                  | 30 días     | Lo máximo que vive una sesión desde el inicio, por mucho que se use                          |
+| `storage`                      | `ObjectStorage` (p. ej. `s3Storage()` de `@teamblind/axeda-storage`)           | apagado     | Dónde se guardan logos, favicons y fotos de perfil. Sin esto las imágenes están desactivadas |
+| `imageProcessor`               | `ImageProcessor` (p. ej. `sharpImageProcessor()`)                              | ninguno     | Recodifica cada imagen al completar su subida                                                |
+| `images.maxBytes`              | `number` (1 KiB–20 MiB)                                                        | 2 MiB       | La imagen más grande                                                                         |
+| `images.maxDimension`          | `number` (16–8192)                                                             | `4096`      | Píxeles por lado de un logo o una foto de perfil                                             |
+| `images.faviconMaxDimension`   | `number` (16–8192)                                                             | `1024`      | Píxeles por lado de un favicon                                                               |
+| `images.uploadTtlMinutes`      | `number` (1–60)                                                                | `10`        | Minutos para completar una subida                                                            |
+| `images.maxPendingPerUser`     | `number` (1–100)                                                               | `10`        | Subidas que una persona puede dejar abiertas                                                 |
 
 `acceptUrl` debe construirse con tu URL base configurada, nunca con la cabecera `Host` de una petición.
 
@@ -103,6 +110,13 @@ distinguir un caso de otro. Las sedes se administran desde la compañía, o desd
 cuelgan, con `axeda:site:manage`; `site/list` acepta `businessId` para listar las sedes de un negocio,
 o `businessId=none` para las que cuelgan directamente de la compañía.
 
+`image/upload` recibe `{ purpose, targetId, contentType, size }`. `purpose` es `company.logo`,
+`company.favicon`, `business.logo`, `business.favicon`, `site.logo`, `site.favicon` o `user.avatar`;
+`contentType` es `image/png`, `image/jpeg` o `image/webp`. Responde `{ uploadId, url, method, headers,
+expiresAt }`: el navegador manda el archivo con ese método, URL y cabeceras, y luego llama a
+`image/complete` con el `uploadId`. `image/complete` e `image/remove` responden `{ purpose, targetId,
+url }`. Los usuarios llevan `image`, su foto de perfil.
+
 `invitation/create` acepta exactamente uno de `email` o `phoneNumber` (E.164). Las invitaciones
 llevan `channel` (`email` o `phone`), `email` (vacío en una por teléfono) y `phoneNumber` (`null` en
 una por correo). Los usuarios llevan `phoneNumber` y `phoneNumberVerified`, que son `null` y `false`
@@ -184,20 +198,21 @@ Los códigos tienen 6 dígitos, duran 5 minutos y admiten 3 intentos; los númer
 
 Obtén la instancia con `axedaPlugin.instance()` una vez creado Better Auth.
 
-| Llamada                                                                            | Devuelve                                                                                               |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `can(principal, permission, target?)`                                              | `boolean`; global si no hay objetivo                                                                   |
-| `canAnywhere(principal, permission)`                                               | ¿Lo tiene en algún alcance?                                                                            |
-| `effectivePermissions(principal, target?)`                                         | El conjunto de permisos que tiene ahí                                                                  |
-| `scopesFor(principal, permission)`                                                 | Los alcances donde lo tiene                                                                            |
-| `scopeFilter(principal, permission)`                                               | `{ unrestricted, companyIds, businessIds, siteIds }` para tus consultas                                |
-| `resolveTarget(scope)`                                                             | El objetivo comprobable de un id de compañía o negocio, leído de la base de datos; `null` si no existe |
-| `menu(principal, { scope?, locale? })`                                             | El árbol de menú filtrado                                                                              |
-| `roles`, `assignments`, `companies`, `businesses`, `sites`, `invitations`, `users` | Las mismas operaciones que exponen los endpoints, recibiendo un `actor`                                |
-| `publicIdentity({ company, business? })`                                           | Nombre y logos públicos de una compañía o negocio activo                                               |
-| `listAudit(actor, filter, page)`                                                   | Una página de eventos de auditoría                                                                     |
-| `purgeDeleted()`                                                                   | Elimina para siempre lo que pasó su periodo de gracia                                                  |
-| `bootstrap({ userId })`                                                            | Crea la primera administración global (una vez)                                                        |
+| Llamada                                                                            | Devuelve                                                                                                  |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `can(principal, permission, target?)`                                              | `boolean`; global si no hay objetivo                                                                      |
+| `canAnywhere(principal, permission)`                                               | ¿Lo tiene en algún alcance?                                                                               |
+| `effectivePermissions(principal, target?)`                                         | El conjunto de permisos que tiene ahí                                                                     |
+| `scopesFor(principal, permission)`                                                 | Los alcances donde lo tiene                                                                               |
+| `scopeFilter(principal, permission)`                                               | `{ unrestricted, companyIds, businessIds, siteIds }` para tus consultas                                   |
+| `resolveTarget(scope)`                                                             | El objetivo comprobable de un id de compañía o negocio, leído de la base de datos; `null` si no existe    |
+| `menu(principal, { scope?, locale? })`                                             | El árbol de menú filtrado                                                                                 |
+| `roles`, `assignments`, `companies`, `businesses`, `sites`, `invitations`, `users` | Las mismas operaciones que exponen los endpoints, recibiendo un `actor`                                   |
+| `images.createUpload`, `images.completeUpload`, `images.remove`                    | Los endpoints de imágenes; `images.forgetUser(userId)` borra la foto de un usuario borrado                |
+| `publicIdentity({ company, business? })`                                           | Nombre y logos públicos de una compañía o negocio activo                                                  |
+| `listAudit(actor, filter, page)`                                                   | Una página de eventos de auditoría                                                                        |
+| `purgeDeleted()`                                                                   | Elimina para siempre lo que pasó su periodo de gracia, con sus imágenes, y las subidas que nadie completó |
+| `bootstrap({ userId })`                                                            | Crea la primera administración global (una vez)                                                           |
 
 Un `Principal` es `{ userId, authzVersion?, twoFactorEnabled?, banned? }`. Constrúyelo siempre con
 `sessionPrincipal(auth)` o `principalFromUser(row)` a partir de la fila de usuario que Better Auth

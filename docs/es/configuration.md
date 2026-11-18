@@ -253,6 +253,61 @@ axeda({
 - `send` recibe datos, no HTML: escapa lo que pongas en un mensaje. Si lanza un error, quien llama recibe
   `AXEDA_DELIVERY_FAILED` (502).
 
+### Imágenes: logos, favicons y fotos de perfil
+
+Axeda puede guardar los logos y favicons de compañías, negocios y sedes, y las fotos de perfil, en un
+almacén de objetos (Cloudflare R2, S3, MinIO…). El navegador sube el archivo **directamente al almacén** con
+una URL firmada; tu servidor nunca recibe los bytes.
+
+```ts
+import { axeda } from '@teamblind/axeda-better-auth';
+import { s3Storage, sharpImageProcessor } from '@teamblind/axeda-storage';
+
+const axedaPlugin = axeda({
+  permissions: ['invoice:read'],
+  storage: s3Storage({
+    endpoint: 'https://<account-id>.r2.cloudflarestorage.com',
+    bucket: 'acme-images',
+    accessKeyId: process.env.R2_ACCESS_KEY_ID ?? '',
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
+    publicBaseUrl: 'https://images.acme.com',
+  }),
+  imageProcessor: sharpImageProcessor(), // opcional: npm install sharp
+  images: { maxBytes: 2 * 1024 * 1024 },
+});
+```
+
+En el frontend son tres llamadas:
+
+```ts
+const file = input.files[0];
+const ticket = await client.axeda.image.upload({
+  purpose: 'company.logo',
+  targetId: companyId,
+  contentType: file.type,
+  size: file.size,
+});
+await fetch(ticket.data.url, {
+  method: ticket.data.method,
+  headers: ticket.data.headers,
+  body: file,
+});
+const { data } = await client.axeda.image.complete({ uploadId: ticket.data.uploadId });
+// data.url ya es el logoUrl de la compañía
+```
+
+- **Quién puede.** El logo o el favicon de una compañía, negocio o sede pide el mismo permiso que editarla.
+  La foto de perfil la cambia la propia persona, o alguien con `axeda:user:manage` sobre ella.
+- **Qué se acepta.** PNG, JPEG y WebP, nunca SVG. El tipo se decide por los bytes del archivo, no por lo que
+  declara el navegador. Hasta 2 MiB y 4096 píxeles por lado (1024 en un favicon); con un `imageProcessor`
+  una imagen más grande se reduce en vez de rechazarse. Un archivo que no pasa se borra.
+- **Qué se guarda.** Cada imagen con una clave aleatoria (`images/<aleatorio>.png`), sin compañía ni usuario,
+  en caché durante un año. Poner una nueva borra la anterior; purgar o borrar la entidad borra sus imágenes;
+  borrar un usuario borra su foto.
+- **Las subidas en curso** viven bajo `uploads/` durante 10 minutos. `purgeDeleted()` quita las que nadie
+  completó. Bloquea `/uploads/*` en tu dominio público y añade una regla de ciclo de vida (mira el
+  [paquete de almacenamiento](https://github.com/teamblindmx/axeda/tree/main/packages/storage#setting-up-cloudflare-r2)).
+
 ### Vida de la sesión
 
 Se aplican dos límites, y gana el más corto:

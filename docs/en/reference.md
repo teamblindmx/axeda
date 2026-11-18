@@ -4,20 +4,27 @@
 
 Accepted values, ranges and what happens when one is wrong: [Configuration](configuration.md#2-the-plugin-axeda).
 
-| Option                         | Type                                                                         | Default | Meaning                                                                    |
-| ------------------------------ | ---------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------- |
-| `permissions`                  | `string[]`                                                                   | —       | Your permission catalog (concrete, no wildcards). **Required**             |
-| `roles`                        | `Record<key, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`    | Managed roles, synchronised at startup                                     |
-| `menus`                        | `MenuDefinition[]`                                                           | `[]`    | The menu, declared in code                                                 |
-| `retention.graceDays`          | `number` (0–3650)                                                            | `30`    | Days a deleted company or business can be restored                         |
-| `invitations.ttlHours`         | `number`                                                                     | `72`    | Default invitation lifetime                                                |
-| `invitations.maxRoles`         | `number` (1–50)                                                              | `10`    | Roles per invitation                                                       |
-| `limits.maxAssignmentsPerUser` | `number`                                                                     | `50`    | Assignments one user may hold                                              |
-| `limits.maxPermissionsPerRole` | `number`                                                                     | `100`   | Permissions in one role                                                    |
-| `limits.maxCachedUsers`        | `number`                                                                     | `10000` | Users whose permissions each process keeps cached                          |
-| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                        | off     | How invitations are delivered. Without it they are disabled                |
-| `publicIdentity`               | `boolean`                                                                    | `false` | Exposes `GET /axeda/public/identity` (the only endpoint without a session) |
-| `maxSessionAge`                | `number` (seconds) or `false`                                                | 30 days | Longest a session can live from sign-in, however much it is used           |
+| Option                         | Type                                                                         | Default | Meaning                                                                             |
+| ------------------------------ | ---------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------- |
+| `permissions`                  | `string[]`                                                                   | —       | Your permission catalog (concrete, no wildcards). **Required**                      |
+| `roles`                        | `Record<key, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`    | Managed roles, synchronised at startup                                              |
+| `menus`                        | `MenuDefinition[]`                                                           | `[]`    | The menu, declared in code                                                          |
+| `retention.graceDays`          | `number` (0–3650)                                                            | `30`    | Days a deleted company or business can be restored                                  |
+| `invitations.ttlHours`         | `number`                                                                     | `72`    | Default invitation lifetime                                                         |
+| `invitations.maxRoles`         | `number` (1–50)                                                              | `10`    | Roles per invitation                                                                |
+| `limits.maxAssignmentsPerUser` | `number`                                                                     | `50`    | Assignments one user may hold                                                       |
+| `limits.maxPermissionsPerRole` | `number`                                                                     | `100`   | Permissions in one role                                                             |
+| `limits.maxCachedUsers`        | `number`                                                                     | `10000` | Users whose permissions each process keeps cached                                   |
+| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                        | off     | How invitations are delivered. Without it they are disabled                         |
+| `publicIdentity`               | `boolean`                                                                    | `false` | Exposes `GET /axeda/public/identity` (the only endpoint without a session)          |
+| `maxSessionAge`                | `number` (seconds) or `false`                                                | 30 days | Longest a session can live from sign-in, however much it is used                    |
+| `storage`                      | `ObjectStorage` (e.g. `s3Storage()` of `@teamblind/axeda-storage`)           | off     | Where logos, favicons and profile pictures are kept. Without it images are disabled |
+| `imageProcessor`               | `ImageProcessor` (e.g. `sharpImageProcessor()`)                              | none    | Re-encodes every image when its upload is completed                                 |
+| `images.maxBytes`              | `number` (1 KiB–20 MiB)                                                      | 2 MiB   | Largest image                                                                       |
+| `images.maxDimension`          | `number` (16–8192)                                                           | `4096`  | Pixels per side of a logo or a profile picture                                      |
+| `images.faviconMaxDimension`   | `number` (16–8192)                                                           | `1024`  | Pixels per side of a favicon                                                        |
+| `images.uploadTtlMinutes`      | `number` (1–60)                                                              | `10`    | Minutes to complete an upload                                                       |
+| `images.maxPendingPerUser`     | `number` (1–100)                                                             | `10`    | Uploads one person can leave open                                                   |
 
 `acceptUrl` must be built from your configured base URL, never from a request's `Host` header.
 
@@ -102,6 +109,13 @@ telling them apart. Sites are managed from the company, or from the business the
 `axeda:site:manage`; `site/list` takes `businessId` to list the sites of one business, or
 `businessId=none` for those that hang directly from the company.
 
+`image/upload` takes `{ purpose, targetId, contentType, size }`. `purpose` is `company.logo`,
+`company.favicon`, `business.logo`, `business.favicon`, `site.logo`, `site.favicon` or `user.avatar`;
+`contentType` is `image/png`, `image/jpeg` or `image/webp`. It answers `{ uploadId, url, method, headers,
+expiresAt }`: the browser sends the file with that method, URL and headers, then calls `image/complete`
+with the `uploadId`. Both `image/complete` and `image/remove` answer `{ purpose, targetId, url }`. Users
+carry `image`, their profile picture.
+
 `invitation/create` takes exactly one of `email` or `phoneNumber` (E.164). Invitations carry
 `channel` (`email` or `phone`), `email` (empty for a phone invitation) and `phoneNumber` (`null`
 for an email one). Users carry `phoneNumber` and `phoneNumberVerified`, which are `null` and `false`
@@ -182,20 +196,21 @@ tells the placeholder email of a phone-only account (`…@phone.invalid`) from a
 
 Get the instance with `axedaPlugin.instance()` once Better Auth has been created.
 
-| Call                                                                               | Returns                                                                                      |
-| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `can(principal, permission, target?)`                                              | `boolean`; global when no target                                                             |
-| `canAnywhere(principal, permission)`                                               | Holds it in any scope?                                                                       |
-| `effectivePermissions(principal, target?)`                                         | The set of permissions held there                                                            |
-| `scopesFor(principal, permission)`                                                 | The scopes where it is held                                                                  |
-| `scopeFilter(principal, permission)`                                               | `{ unrestricted, companyIds, businessIds, siteIds }` for your queries                        |
-| `resolveTarget(scope)`                                                             | The checkable target for a company or business id, read from the database; `null` if unknown |
-| `menu(principal, { scope?, locale? })`                                             | The filtered menu tree                                                                       |
-| `roles`, `assignments`, `companies`, `businesses`, `sites`, `invitations`, `users` | The same operations the endpoints expose, taking an `actor`                                  |
-| `publicIdentity({ company, business? })`                                           | Public name and logos of an active company or business                                       |
-| `listAudit(actor, filter, page)`                                                   | A page of audit events                                                                       |
-| `purgeDeleted()`                                                                   | Permanently removes what is past its grace period                                            |
-| `bootstrap({ userId })`                                                            | Creates the first global administrator (once)                                                |
+| Call                                                                               | Returns                                                                                              |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `can(principal, permission, target?)`                                              | `boolean`; global when no target                                                                     |
+| `canAnywhere(principal, permission)`                                               | Holds it in any scope?                                                                               |
+| `effectivePermissions(principal, target?)`                                         | The set of permissions held there                                                                    |
+| `scopesFor(principal, permission)`                                                 | The scopes where it is held                                                                          |
+| `scopeFilter(principal, permission)`                                               | `{ unrestricted, companyIds, businessIds, siteIds }` for your queries                                |
+| `resolveTarget(scope)`                                                             | The checkable target for a company or business id, read from the database; `null` if unknown         |
+| `menu(principal, { scope?, locale? })`                                             | The filtered menu tree                                                                               |
+| `roles`, `assignments`, `companies`, `businesses`, `sites`, `invitations`, `users` | The same operations the endpoints expose, taking an `actor`                                          |
+| `images.createUpload`, `images.completeUpload`, `images.remove`                    | The image endpoints; `images.forgetUser(userId)` deletes the picture of a deleted user               |
+| `publicIdentity({ company, business? })`                                           | Public name and logos of an active company or business                                               |
+| `listAudit(actor, filter, page)`                                                   | A page of audit events                                                                               |
+| `purgeDeleted()`                                                                   | Permanently removes what is past its grace period, with its images, and the uploads nobody completed |
+| `bootstrap({ userId })`                                                            | Creates the first global administrator (once)                                                        |
 
 A `Principal` is `{ userId, authzVersion?, twoFactorEnabled?, banned? }`. Always build it with
 `sessionPrincipal(auth)` or `principalFromUser(row)` from the user row Better Auth just read —
