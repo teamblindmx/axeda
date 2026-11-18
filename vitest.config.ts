@@ -18,6 +18,8 @@ export default defineConfig({
     testTimeout: 60_000,
     hookTimeout: 60_000,
     include: ['packages/*/test/**/*.test.ts', 'apps/*/test/**/*.test.ts'],
+    // Semilla fija para las pruebas de propiedades (ver el archivo).
+    setupFiles: ['./vitest.setup.ts'],
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**'],

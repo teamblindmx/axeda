@@ -1,10 +1,10 @@
 # Documentación de Axeda
 
-Autorización jerárquica (**global → compañía → negocio**) para Node.js, sobre
+Autorización jerárquica (**global → compañía → negocio → sede**) para Node.js, sobre
 [Better Auth](https://www.better-auth.com). Better Auth responde _quién eres_; Axeda responde
 _qué puedes hacer y dónde_.
 
-> **Estado:** alfa (`0.1.0-alpha.1`). Instala con la etiqueta `alpha` (`npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express`),
+> **Estado:** alfa (`0.1.0-alpha.2`). Instala con la etiqueta `alpha` (`npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express`),
 > o ejecuta la [aplicación de ejemplo](quickstart.md) desde este repositorio. La API aún puede cambiar antes de la 1.0.
 > Documentation in English: [`../en`](../en/README.md).
 
