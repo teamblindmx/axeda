@@ -25,6 +25,7 @@ import { axedaSchema } from './schema.js';
 import { cappedExpiry, resolveMaxSessionAge, sessionBeingRefreshed } from './session-lifetime.js';
 import { createBetterAuthPersistence } from './stores.js';
 import { createBetterAuthUserAdmin } from './user-admin.js';
+import { createBetterAuthPinHasher } from './pin-hasher.js';
 import { createBetterAuthUserDirectory } from './users.js';
 
 /** Cómo hacer llegar una invitación. Sin esto las invitaciones están desactivadas. */
@@ -83,6 +84,7 @@ function coreOptions(options: AxedaPluginOptions): AxedaOptions {
     ...(options.invitations === undefined ? {} : { invitations: options.invitations }),
     ...(options.menus === undefined ? {} : { menus: options.menus }),
     ...(options.images === undefined ? {} : { images: options.images }),
+    ...(options.staff === undefined ? {} : { staff: options.staff }),
   };
 }
 
@@ -207,6 +209,8 @@ export function axeda(options: AxedaPluginOptions) {
         ...(clock === undefined ? {} : { clock }),
         ...(storage === undefined ? {} : { storage }),
         ...(imageProcessor === undefined ? {} : { imageProcessor }),
+        // El PIN del personal: el hash de contraseñas de Better Auth con una clave de su `secret`.
+        pinHasher: createBetterAuthPinHasher(ctx),
         ...(invitationDelivery === undefined
           ? {}
           : {
@@ -275,6 +279,8 @@ export function axeda(options: AxedaPluginOptions) {
                 // Las claves foráneas ya lo hacen en SQL; MongoDB no las tiene. Se deja constancia.
                 after: async (user: { id: string }) => {
                   await stores.assignments.deleteForUser(user.id);
+                  // Su cuenta de personal, si la tenía (en SQL ya la borra la clave foránea).
+                  await stores.staff.delete(user.id);
                   // Su foto de perfil: el registro y el objeto. Un fallo del almacén no impide el
                   // borrado del usuario; el objeto queda huérfano, sin nadie que lo enlace.
                   await core?.images.forgetUser(user.id).catch(() => 0);
