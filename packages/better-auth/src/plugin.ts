@@ -84,6 +84,7 @@ const PLUGIN_OPTIONS = Object.keys({
   limits: true,
   images: true,
   staff: true,
+  features: true,
   clock: true,
   invitationDelivery: true,
   publicIdentity: true,
@@ -113,6 +114,7 @@ function coreOptions(options: AxedaPluginOptions): AxedaOptions {
     ...(options.menus === undefined ? {} : { menus: options.menus }),
     ...(options.images === undefined ? {} : { images: options.images }),
     ...(options.staff === undefined ? {} : { staff: options.staff }),
+    ...(options.features === undefined ? {} : { features: options.features }),
   };
 }
 
