@@ -11,6 +11,7 @@ export const MODELS = {
   site: 'axedaSite',
   invitation: 'axedaInvitation',
   throttle: 'axedaThrottle',
+  image: 'axedaImage',
 } as const;
 
 /** Fila única de `axedaState` que guarda la versión de política. */
@@ -228,5 +229,41 @@ export const axedaSchema = {
       windowStartsAt: { type: 'date', required: true, input: false },
     },
     indexes: [{ fields: ['key'], unique: true }],
+  },
+  /** Logos, favicons y avatares: primero la subida pendiente y después la imagen lista. */
+  [MODELS.image]: {
+    fields: {
+      purpose: { type: 'string', required: true, input: false },
+      targetId: { type: 'string', required: true, input: false },
+      // Para purgar las imágenes con su compañía o su negocio; vacíos en un avatar.
+      companyId: { type: 'string', required: false, input: false },
+      businessId: { type: 'string', required: false, input: false },
+      status: { type: 'string', required: true, input: false },
+      uploadKey: { type: 'string', required: true, input: false },
+      objectKey: { type: 'string', required: false, input: false },
+      contentType: { type: 'string', required: true, input: false },
+      size: { type: 'number', required: true, input: false },
+      width: { type: 'number', required: false, input: false },
+      height: { type: 'number', required: false, input: false },
+      // Sin clave foránea: el registro puede sobrevivir un momento a quien subió la imagen.
+      uploadedBy: { type: 'string', required: true, input: false },
+      expiresAt: { type: 'date', required: true, input: false },
+      createdAt: { type: 'date', required: true, input: false },
+      /**
+       * `pending:<clave de subida>` mientras está pendiente y `current:<propósito>:<entidad>` cuando está lista:
+       * el índice único impide dos imágenes listas a la vez para lo mismo.
+       */
+      slot: { type: 'string', required: true, input: false },
+      /** 0 mientras está pendiente. Se sube con `incrementOne`: solo un completado lo consigue. */
+      consumed: { type: 'number', required: true, defaultValue: 0, input: false },
+    },
+    indexes: [
+      { fields: ['slot'], unique: true },
+      { fields: ['status', 'expiresAt'] },
+      { fields: ['uploadedBy'] },
+      { fields: ['companyId'] },
+      { fields: ['businessId'] },
+      { fields: ['targetId'] },
+    ],
   },
 } satisfies BetterAuthPluginDBSchema;

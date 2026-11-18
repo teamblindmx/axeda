@@ -23,6 +23,8 @@ import { bootstrapAdministrator, type BootstrapInput, type BootstrapResult } fro
 import { syncManagedRoles } from './managed-roles.js';
 import { createRoleService, type RoleService } from './roles.js';
 import { createInvitationService, type InvitationService } from './invitations.js';
+import { createImageService, type ImageService } from './images.js';
+import type { ImageProcessor, ObjectStorage } from '../ports/images.js';
 import {
   actorPermissions,
   resolveTarget,
@@ -58,6 +60,13 @@ export interface AxedaDependencies {
    * decide el correo. Sin esto las invitaciones están desactivadas.
    */
   readonly invitations?: InvitationDelivery;
+  /**
+   * Dónde se guardan logos, favicons y avatares (R2, S3, MinIO…; ver `@teamblind/axeda-storage`).
+   * Sin esto no se suben imágenes.
+   */
+  readonly storage?: ObjectStorage;
+  /** Recodifica las imágenes al completarlas (p. ej. `sharpImageProcessor()`). Opcional. */
+  readonly imageProcessor?: ImageProcessor;
 }
 
 /** Alcances donde se concede un permiso, listos para filtrar las consultas de la aplicación. */
@@ -108,6 +117,8 @@ export interface Axeda {
   readonly sites: SiteService;
   readonly invitations: InvitationService;
   readonly users: UserService;
+  /** Logos, favicons y avatares con subida directa al almacén (necesita `storage`). */
+  readonly images: ImageService;
   /**
    * El menú de la persona en un alcance (global por defecto): solo lo que tiene permiso de ver.
    * Un alcance que no existe o está inactivo da un menú vacío, sin revelar nada.
@@ -175,6 +186,8 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     users: dependencies.users,
     delivery: dependencies.invitations,
     userAdmin: dependencies.userAdmin,
+    storage: dependencies.storage,
+    imageProcessor: dependencies.imageProcessor,
     ready: () => start(),
   };
   const start = (): Promise<void> =>
@@ -287,6 +300,7 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     sites: tenants.sites,
     invitations: createInvitationService(services),
     users: createUserService(services),
+    images: createImageService(services, tenants.onTenant),
     async menu(principal, menuOptions = {}) {
       const target = await targetOf(menuOptions.scope);
       if (target === null) return [];

@@ -1,5 +1,8 @@
+import type { ImageRecord } from '../domain/image.js';
 import { isUsable } from '../domain/tenant.js';
 import { writeAudit } from './audit.js';
+import { deleteImageObjects } from './image-objects.js';
+import { sweepExpiredUploads } from './images.js';
 import type { Services } from './services.js';
 
 /** Lo único que se publica de una compañía o negocio sin iniciar sesión. */
@@ -50,6 +53,8 @@ export interface PurgeResult {
   readonly companies: number;
   readonly businesses: number;
   readonly sites: number;
+  /** Imágenes borradas: las de lo purgado y las subidas que nadie completó a tiempo. */
+  readonly images: number;
 }
 
 const BATCH = 100;
@@ -66,6 +71,7 @@ export async function purgeExpiredDeletions(services: Services): Promise<PurgeRe
   let companies = 0;
   let businesses = 0;
   let sites = 0;
+  let images = 0;
 
   for (;;) {
     const [oldCompanies, oldBusinesses, oldSites] = await Promise.all([
@@ -77,6 +83,12 @@ export async function purgeExpiredDeletions(services: Services): Promise<PurgeRe
 
     const done = await persistence.transaction(async (stores) => {
       await stores.authz.bumpPolicyVersion();
+      // Sus imágenes salen con ellas; los objetos se borran después de confirmar.
+      const ownedImages: readonly ImageRecord[] = await stores.images.deleteOwnedBy({
+        companyIds: oldCompanies.map((c) => c.id),
+        businessIds: oldBusinesses.map((b) => b.id),
+        siteIds: oldSites.map((s) => s.id),
+      });
       // De abajo arriba: purgar un negocio o una compañía ya se lleva sus sedes.
       const removedSites = await stores.sites.purge(oldSites.map((s) => s.id));
       const removedBusinesses = await stores.businesses.purge(oldBusinesses.map((b) => b.id));
@@ -121,11 +133,19 @@ export async function purgeExpiredDeletions(services: Services): Promise<PurgeRe
           'success',
         );
       }
-      return { companies: removedCompanies, businesses: removedBusinesses, sites: removedSites };
+      return {
+        companies: removedCompanies,
+        businesses: removedBusinesses,
+        sites: removedSites,
+        images: ownedImages,
+      };
     });
+    await deleteImageObjects(services, done.images);
     companies += done.companies;
     businesses += done.businesses;
     sites += done.sites;
+    images += done.images.length;
   }
-  return { companies, businesses, sites };
+  images += await sweepExpiredUploads(services);
+  return { companies, businesses, sites, images };
 }

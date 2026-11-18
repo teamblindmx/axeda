@@ -17,6 +17,7 @@ interface UserRow {
   id: string;
   email: string;
   name: string;
+  image?: string | null;
   emailVerified?: boolean | null;
   // Solo con el plugin de teléfono de Better Auth.
   phoneNumber?: string | null;
@@ -42,6 +43,7 @@ export function toManagedUser(row: UserRow, now: Date): ManagedUser {
     id: row.id,
     email: row.email,
     name: row.name,
+    image: row.image ?? null,
     emailVerified: row.emailVerified === true,
     phoneNumber: row.phoneNumber ?? null,
     phoneNumberVerified: row.phoneNumberVerified === true,

@@ -110,33 +110,35 @@ si no usas el acceso por teléfono.
 Los errores tienen la forma `{ code, message }`. Los códigos son estables; los mensajes están en
 inglés y pueden cambiar, así que decide por `code`.
 
-| Código                       | Estado | Significado                                                                              |
-| ---------------------------- | ------ | ---------------------------------------------------------------------------------------- |
-| `AXEDA_INVALID_INPUT`        | 400    | La entrada no pasó la validación                                                         |
-| `AXEDA_INVALID_PERMISSION`   | 400    | No es un permiso bien formado                                                            |
-| `AXEDA_UNKNOWN_PERMISSION`   | 400    | Un permiso que no está en el catálogo                                                    |
-| `AXEDA_INVITATION_INVALID`   | 400    | Invitación incorrecta, caducada, usada o revocada, o el correo o el teléfono no coincide |
-| `AXEDA_FORBIDDEN`            | 403    | No tienes permiso para esto                                                              |
-| `AXEDA_MFA_REQUIRED`         | 403    | La función exige un 2FA que el usuario no tiene activado                                 |
-| `AXEDA_USER_BANNED`          | 403    | La cuenta está suspendida (al iniciar sesión)                                            |
-| `AXEDA_ROLE_NOT_FOUND`       | 404    |                                                                                          |
-| `AXEDA_ASSIGNMENT_NOT_FOUND` | 404    |                                                                                          |
-| `AXEDA_USER_NOT_FOUND`       | 404    |                                                                                          |
-| `AXEDA_COMPANY_NOT_FOUND`    | 404    |                                                                                          |
-| `AXEDA_BUSINESS_NOT_FOUND`   | 404    |                                                                                          |
-| `AXEDA_SITE_NOT_FOUND`       | 404    |                                                                                          |
-| `AXEDA_EMAIL_TAKEN`          | 409    | Ya existe una cuenta con ese correo                                                      |
-| `AXEDA_ROLE_KEY_TAKEN`       | 409    |                                                                                          |
-| `AXEDA_ROLE_MANAGED`         | 409    | La función está declarada en el código y no se cambia aquí                               |
-| `AXEDA_VERSION_CONFLICT`     | 409    | Alguien la cambió antes; recarga y reintenta                                             |
-| `AXEDA_ASSIGNMENT_EXISTS`    | 409    |                                                                                          |
-| `AXEDA_LIMIT_EXCEEDED`       | 409    | Se alcanzó un límite configurado                                                         |
-| `AXEDA_ALREADY_BOOTSTRAPPED` | 409    | Ya existe una administración global                                                      |
-| `AXEDA_SLUG_TAKEN`           | 409    |                                                                                          |
-| `AXEDA_INVITATION_EXISTS`    | 409    | Ya hay una invitación pendiente para ese correo o teléfono y alcance                     |
-| `AXEDA_FEATURE_DISABLED`     | 501    | Las invitaciones o la administración de usuarios no están configuradas                   |
-| `AXEDA_DELIVERY_FAILED`      | 502    | Tu `invitationDelivery.send` lanzó un error                                              |
-| `AXEDA_INTERNAL_ERROR`       | 500    | Cualquier cosa inesperada; el detalle queda en los registros de tu servidor              |
+| Código                       | Estado | Significado                                                                                       |
+| ---------------------------- | ------ | ------------------------------------------------------------------------------------------------- |
+| `AXEDA_INVALID_INPUT`        | 400    | La entrada no pasó la validación                                                                  |
+| `AXEDA_INVALID_PERMISSION`   | 400    | No es un permiso bien formado                                                                     |
+| `AXEDA_UNKNOWN_PERMISSION`   | 400    | Un permiso que no está en el catálogo                                                             |
+| `AXEDA_INVITATION_INVALID`   | 400    | Invitación incorrecta, caducada, usada o revocada, o el correo o el teléfono no coincide          |
+| `AXEDA_IMAGE_INVALID`        | 400    | El archivo subido no es una imagen aceptada o es demasiado grande (`details.reason` dice por qué) |
+| `AXEDA_UPLOAD_INVALID`       | 400    | Subida desconocida, caducada, ya usada o de otra persona, o aún no se subió nada                  |
+| `AXEDA_FORBIDDEN`            | 403    | No tienes permiso para esto                                                                       |
+| `AXEDA_MFA_REQUIRED`         | 403    | La función exige un 2FA que el usuario no tiene activado                                          |
+| `AXEDA_USER_BANNED`          | 403    | La cuenta está suspendida (al iniciar sesión)                                                     |
+| `AXEDA_ROLE_NOT_FOUND`       | 404    |                                                                                                   |
+| `AXEDA_ASSIGNMENT_NOT_FOUND` | 404    |                                                                                                   |
+| `AXEDA_USER_NOT_FOUND`       | 404    |                                                                                                   |
+| `AXEDA_COMPANY_NOT_FOUND`    | 404    |                                                                                                   |
+| `AXEDA_BUSINESS_NOT_FOUND`   | 404    |                                                                                                   |
+| `AXEDA_SITE_NOT_FOUND`       | 404    |                                                                                                   |
+| `AXEDA_EMAIL_TAKEN`          | 409    | Ya existe una cuenta con ese correo                                                               |
+| `AXEDA_ROLE_KEY_TAKEN`       | 409    |                                                                                                   |
+| `AXEDA_ROLE_MANAGED`         | 409    | La función está declarada en el código y no se cambia aquí                                        |
+| `AXEDA_VERSION_CONFLICT`     | 409    | Alguien la cambió antes; recarga y reintenta                                                      |
+| `AXEDA_ASSIGNMENT_EXISTS`    | 409    |                                                                                                   |
+| `AXEDA_LIMIT_EXCEEDED`       | 409    | Se alcanzó un límite configurado                                                                  |
+| `AXEDA_ALREADY_BOOTSTRAPPED` | 409    | Ya existe una administración global                                                               |
+| `AXEDA_SLUG_TAKEN`           | 409    |                                                                                                   |
+| `AXEDA_INVITATION_EXISTS`    | 409    | Ya hay una invitación pendiente para ese correo o teléfono y alcance                              |
+| `AXEDA_FEATURE_DISABLED`     | 501    | Las invitaciones o la administración de usuarios no están configuradas                            |
+| `AXEDA_DELIVERY_FAILED`      | 502    | Tu `invitationDelivery.send` lanzó un error                                                       |
+| `AXEDA_INTERNAL_ERROR`       | 500    | Cualquier cosa inesperada; el detalle queda en los registros de tu servidor                       |
 
 Los problemas de configuración (`AXEDA_INVALID_CONFIG`, `AXEDA_TRANSACTIONS_UNSUPPORTED`,
 `AXEDA_DATA_CORRUPT`) nunca llegan al cliente como tales: aparecen como `AXEDA_INTERNAL_ERROR`.

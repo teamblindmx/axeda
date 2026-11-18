@@ -9,6 +9,7 @@ import {
   type NewRole,
 } from '@teamblind/axeda-core';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { defineImageContract } from './image-contract.js';
 import { defineTenantContract } from './tenant-contract.js';
 
 /**
@@ -50,6 +51,7 @@ export function runPersistenceContract(name: string, create: PersistenceFactory)
     });
 
     defineTenantContract(() => db);
+    defineImageContract(() => db);
 
     describe('roles', () => {
       it('creates a role with defaults and reads it back by id and by key', async () => {

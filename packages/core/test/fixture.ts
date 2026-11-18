@@ -1,5 +1,10 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { createMemoryPersistence, createMemoryUserDirectory } from '@teamblind/axeda-testing';
+import {
+  createMemoryPersistence,
+  createMemoryStorage,
+  createMemoryUserDirectory,
+  type MemoryStorage,
+} from '@teamblind/axeda-testing';
 import {
   GLOBAL_SCOPE,
   createAxeda,
@@ -12,6 +17,7 @@ import {
   type Clock,
   type Company,
   type InvitationDelivery,
+  type ImageProcessor,
   type InvitationMessage,
   type Role,
   type Site,
@@ -32,6 +38,8 @@ export interface Fixture {
   readonly persistence: AxedaPersistence;
   readonly users: ReturnType<typeof createMemoryUserDirectory>;
   readonly clock: { current: Date };
+  /** El almacén de objetos en memoria (con la guarda de transacciones). */
+  readonly storage: MemoryStorage;
   /** Administrador global (función `*`), creado con `bootstrap`. */
   readonly admin: Actor;
   /** Correos "enviados" por las invitaciones. */
@@ -103,6 +111,7 @@ function guardAgainstQueriesInsideTransactions(persistence: AxedaPersistence): {
     'companies',
     'businesses',
     'invitations',
+    'images',
   ] as const) {
     wrap(persistence[label], label);
   }
@@ -111,7 +120,7 @@ function guardAgainstQueriesInsideTransactions(persistence: AxedaPersistence): {
 
 export async function createFixture(
   options: AxedaOptions = BASE_OPTIONS,
-  extra: { invitations?: boolean } = {},
+  extra: { invitations?: boolean; images?: boolean; imageProcessor?: ImageProcessor } = {},
 ): Promise<Fixture> {
   const forcedIds: string[] = [];
   const persistence = createMemoryPersistence({
@@ -139,6 +148,17 @@ export async function createFixture(
     create: outside('UserAdmin.create', directory.create),
     setBan: outside('UserAdmin.setBan', directory.setBan),
     revokeSessions: outside('UserAdmin.revokeSessions', directory.revokeSessions),
+    setImage: outside('UserAdmin.setImage', directory.setImage),
+  };
+  // El almacén de objetos es un efecto externo: nunca dentro de una transacción.
+  const memoryStorage = createMemoryStorage();
+  const storage: MemoryStorage = {
+    ...memoryStorage,
+    signUpload: outside('ObjectStorage.signUpload', memoryStorage.signUpload),
+    head: outside('ObjectStorage.head', memoryStorage.head),
+    read: outside('ObjectStorage.read', memoryStorage.read),
+    write: outside('ObjectStorage.write', memoryStorage.write),
+    delete: outside('ObjectStorage.delete', memoryStorage.delete),
   };
   const axeda = createAxeda(options, {
     persistence,
@@ -146,6 +166,8 @@ export async function createFixture(
     userAdmin: users,
     clock: fakeClock,
     ...(extra.invitations === false ? {} : { invitations: delivery }),
+    ...(extra.images === false ? {} : { storage }),
+    ...(extra.imageProcessor === undefined ? {} : { imageProcessor: extra.imageProcessor }),
   });
 
   directory.add({ id: 'admin' });
@@ -158,6 +180,7 @@ export async function createFixture(
     persistence,
     users: directory,
     clock,
+    storage,
     admin,
     sent,
     failDelivery,

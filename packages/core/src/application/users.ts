@@ -49,15 +49,44 @@ export interface UserService {
   revokeSessions(actor: Actor, userId: string): Promise<number>;
 }
 
+const forbid = (reason: string, permissions: readonly string[] = []): AxedaError =>
+  markDenied(
+    new AxedaError('AXEDA_FORBIDDEN', 'You are not allowed to manage users.', {
+      details: { reason, permissions },
+    }),
+  );
+
+/**
+ * Una acción sobre OTRA persona: permiso global y, además, que su poder administrativo no
+ * supere el de quien actúa. Se comprueba antes de revelar si el usuario existe.
+ */
+export async function authorizeOnUser(
+  services: Services,
+  userAdmin: UserAdmin,
+  actor: Actor,
+  userId: string,
+): Promise<ManagedUser> {
+  const { persistence } = services;
+  const actorHeld = await actorPermissions(persistence, services, actor, GLOBAL_TARGET);
+  if (!actorHeld.allows(AXEDA_PERMISSIONS.userManage)) throw forbid('missing_user_permission');
+  const user = await userAdmin.get(userId);
+  if (user === null) {
+    throw new AxedaError('AXEDA_USER_NOT_FOUND', `User "${userId}" does not exist.`);
+  }
+  const snapshot = await loadSnapshot(persistence, userId);
+  // Se cuentan también las funciones que exigen 2FA: la protección es para todo su poder.
+  const targetHeld = permissionsHeldAnywhere({
+    ...snapshot,
+    now: services.clock.now(),
+    mfaEnabled: true,
+  });
+  const decision = authorizeUserAction({ actor: actorHeld, target: targetHeld });
+  if (!decision.allowed) throw forbid(decision.reason, decision.permissions);
+  return user;
+}
+
 export function createUserService(services: Services): UserService {
   const { persistence } = services;
-
-  const forbid = (reason: string, permissions: readonly string[] = []): AxedaError =>
-    markDenied(
-      new AxedaError('AXEDA_FORBIDDEN', 'You are not allowed to manage users.', {
-        details: { reason, permissions },
-      }),
-    );
 
   const draft = (
     actor: Actor,
@@ -90,28 +119,8 @@ export function createUserService(services: Services): UserService {
     if (!held.allows(AXEDA_PERMISSIONS.userManage)) throw forbid('missing_user_permission');
   }
 
-  /**
-   * Una acción sobre OTRA persona: permiso global y, además, que su poder administrativo no
-   * supere el de quien actúa. Se comprueba antes de revelar si el usuario existe.
-   */
-  async function authorizeOn(actor: Actor, userId: string): Promise<ManagedUser> {
-    const actorHeld = await actorPermissions(persistence, services, actor, GLOBAL_TARGET);
-    if (!actorHeld.allows(AXEDA_PERMISSIONS.userManage)) throw forbid('missing_user_permission');
-    const user = await admin().get(userId);
-    if (user === null) {
-      throw new AxedaError('AXEDA_USER_NOT_FOUND', `User "${userId}" does not exist.`);
-    }
-    const snapshot = await loadSnapshot(persistence, userId);
-    // Se cuentan también las funciones que exigen 2FA: la protección es para todo su poder.
-    const targetHeld = permissionsHeldAnywhere({
-      ...snapshot,
-      now: services.clock.now(),
-      mfaEnabled: true,
-    });
-    const decision = authorizeUserAction({ actor: actorHeld, target: targetHeld });
-    if (!decision.allowed) throw forbid(decision.reason, decision.permissions);
-    return user;
-  }
+  const authorizeOn = (actor: Actor, userId: string): Promise<ManagedUser> =>
+    authorizeOnUser(services, admin(), actor, userId);
 
   /** Lo que sigue al efecto: invalidar la caché de la persona y dejar constancia, juntos. */
   async function record(actor: Actor, userId: string, entry: AuditDraft): Promise<void> {
