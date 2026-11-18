@@ -303,6 +303,30 @@ const { data } = await client.axeda.image.complete({ uploadId: ticket.data.uploa
   completed. Block `/uploads/*` on your public domain and add a lifecycle rule (see the
   [storage package](https://github.com/teamblindmx/axeda/tree/main/packages/storage#setting-up-cloudflare-r2)).
 
+### Features per company
+
+Declare the modules your platform sells, and the permissions that depend on each one:
+
+```ts
+const axedaPlugin = axeda({
+  permissions: ['inventory:read', 'inventory:write', 'invoice:read'],
+  features: {
+    inventory: { name: 'Inventory', permissions: ['inventory:*'] },
+    reports: { name: 'Reports', permissions: ['invoice:read'], enabledByDefault: true },
+  },
+});
+```
+
+- **Off unless switched on.** A feature is off for every company unless `enabledByDefault` says otherwise.
+  Only the platform switches it per company (`POST /axeda/feature/set`, with `axeda:feature:manage` in
+  global): a company cannot switch on a module it did not pay for.
+- **Its permissions do not count where it is off.** If a company does not have `inventory`, `inventory:*`
+  does not count for anyone **inside that company**, whatever roles they hold, even `*`. `can()`,
+  `scopeFilter()` and the menu follow. Global assignments (the platform) are not cut.
+- **Administration never depends on a plan**: a feature cannot list an `axeda:` permission.
+- `axeda.hasFeature(companyId, 'inventory')` answers on the server; `GET /axeda/feature/list?companyId=…`
+  tells a front end which modules the company has.
+
 ### Staff accounts: username and PIN
 
 Nothing to install: the plugin brings the endpoints and hashes PINs with Better Auth's password hashing and

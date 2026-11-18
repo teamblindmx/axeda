@@ -308,6 +308,30 @@ const { data } = await client.axeda.image.complete({ uploadId: ticket.data.uploa
   completó. Bloquea `/uploads/*` en tu dominio público y añade una regla de ciclo de vida (mira el
   [paquete de almacenamiento](https://github.com/teamblindmx/axeda/tree/main/packages/storage#setting-up-cloudflare-r2)).
 
+### Funcionalidades por compañía
+
+Declara los módulos que vende tu plataforma y los permisos que dependen de cada uno:
+
+```ts
+const axedaPlugin = axeda({
+  permissions: ['inventory:read', 'inventory:write', 'invoice:read'],
+  features: {
+    inventory: { name: 'Inventario', permissions: ['inventory:*'] },
+    reports: { name: 'Reportes', permissions: ['invoice:read'], enabledByDefault: true },
+  },
+});
+```
+
+- **Apagada mientras no se encienda.** Una funcionalidad está apagada para todas las compañías salvo que
+  `enabledByDefault` diga lo contrario. Solo la plataforma la cambia por compañía (`POST /axeda/feature/set`,
+  con `axeda:feature:manage` en global): una compañía no puede encenderse un módulo que no pagó.
+- **Sus permisos no cuentan donde está apagada.** Si una compañía no tiene `inventory`, `inventory:*` no
+  cuenta para nadie **dentro de esa compañía**, tenga las funciones que tenga, incluso `*`. `can()`,
+  `scopeFilter()` y el menú lo siguen. Las asignaciones globales (la plataforma) no se recortan.
+- **La administración nunca depende de un plan**: una funcionalidad no puede incluir un permiso `axeda:`.
+- `axeda.hasFeature(companyId, 'inventory')` responde en el servidor; `GET /axeda/feature/list?companyId=…`
+  le dice a un frontend qué módulos tiene la compañía.
+
 ### Cuentas de personal: usuario y PIN
 
 No hay nada que instalar: el plugin trae los endpoints y cifra los PIN con el hash de contraseñas de Better

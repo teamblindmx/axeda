@@ -4,30 +4,31 @@
 
 Accepted values, ranges and what happens when one is wrong: [Configuration](configuration.md#2-the-plugin-axeda).
 
-| Option                         | Type                                                                         | Default | Meaning                                                                             |
-| ------------------------------ | ---------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------- |
-| `permissions`                  | `string[]`                                                                   | —       | Your permission catalog (concrete, no wildcards). **Required**                      |
-| `roles`                        | `Record<key, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`    | Managed roles, synchronised at startup                                              |
-| `menus`                        | `MenuDefinition[]`                                                           | `[]`    | The menu, declared in code                                                          |
-| `retention.graceDays`          | `number` (0–3650)                                                            | `30`    | Days a deleted company or business can be restored                                  |
-| `invitations.ttlHours`         | `number`                                                                     | `72`    | Default invitation lifetime                                                         |
-| `invitations.maxRoles`         | `number` (1–50)                                                              | `10`    | Roles per invitation                                                                |
-| `limits.maxAssignmentsPerUser` | `number`                                                                     | `50`    | Assignments one user may hold                                                       |
-| `limits.maxPermissionsPerRole` | `number`                                                                     | `100`   | Permissions in one role                                                             |
-| `limits.maxCachedUsers`        | `number`                                                                     | `10000` | Users whose permissions each process keeps cached                                   |
-| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                        | off     | How invitations are delivered. Without it they are disabled                         |
-| `publicIdentity`               | `boolean`                                                                    | `false` | Exposes `GET /axeda/public/identity` (the only endpoint without a session)          |
-| `maxSessionAge`                | `number` (seconds) or `false`                                                | 30 days | Longest a session can live from sign-in, however much it is used                    |
-| `storage`                      | `ObjectStorage` (e.g. `s3Storage()` of `@teamblind/axeda-storage`)           | off     | Where logos, favicons and profile pictures are kept. Without it images are disabled |
-| `imageProcessor`               | `ImageProcessor` (e.g. `sharpImageProcessor()`)                              | none    | Re-encodes every image when its upload is completed                                 |
-| `images.maxBytes`              | `number` (1 KiB–20 MiB)                                                      | 2 MiB   | Largest image                                                                       |
-| `images.maxDimension`          | `number` (16–8192)                                                           | `4096`  | Pixels per side of a logo or a profile picture                                      |
-| `images.faviconMaxDimension`   | `number` (16–8192)                                                           | `1024`  | Pixels per side of a favicon                                                        |
-| `images.uploadTtlMinutes`      | `number` (1–60)                                                              | `10`    | Minutes to complete an upload                                                       |
-| `staff.pinLength`              | `number` (6–8)                                                               | `6`     | Digits of the PINs Axeda generates                                                  |
-| `staff.maxAttempts`            | `number` (3–10)                                                              | `5`     | Wrong PINs in a row before the account is locked                                    |
-| `staff.lockMinutes`            | `number` (1–1440)                                                            | `15`    | How long the lock lasts                                                             |
-| `images.maxPendingPerUser`     | `number` (1–100)                                                             | `10`    | Uploads one person can leave open                                                   |
+| Option                         | Type                                                                         | Default | Meaning                                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------- |
+| `permissions`                  | `string[]`                                                                   | —       | Your permission catalog (concrete, no wildcards). **Required**                               |
+| `roles`                        | `Record<key, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`    | Managed roles, synchronised at startup                                                       |
+| `menus`                        | `MenuDefinition[]`                                                           | `[]`    | The menu, declared in code                                                                   |
+| `retention.graceDays`          | `number` (0–3650)                                                            | `30`    | Days a deleted company or business can be restored                                           |
+| `invitations.ttlHours`         | `number`                                                                     | `72`    | Default invitation lifetime                                                                  |
+| `invitations.maxRoles`         | `number` (1–50)                                                              | `10`    | Roles per invitation                                                                         |
+| `limits.maxAssignmentsPerUser` | `number`                                                                     | `50`    | Assignments one user may hold                                                                |
+| `limits.maxPermissionsPerRole` | `number`                                                                     | `100`   | Permissions in one role                                                                      |
+| `limits.maxCachedUsers`        | `number`                                                                     | `10000` | Users whose permissions each process keeps cached                                            |
+| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                        | off     | How invitations are delivered. Without it they are disabled                                  |
+| `publicIdentity`               | `boolean`                                                                    | `false` | Exposes `GET /axeda/public/identity` (the only endpoint without a session)                   |
+| `maxSessionAge`                | `number` (seconds) or `false`                                                | 30 days | Longest a session can live from sign-in, however much it is used                             |
+| `storage`                      | `ObjectStorage` (e.g. `s3Storage()` of `@teamblind/axeda-storage`)           | off     | Where logos, favicons and profile pictures are kept. Without it images are disabled          |
+| `imageProcessor`               | `ImageProcessor` (e.g. `sharpImageProcessor()`)                              | none    | Re-encodes every image when its upload is completed                                          |
+| `images.maxBytes`              | `number` (1 KiB–20 MiB)                                                      | 2 MiB   | Largest image                                                                                |
+| `images.maxDimension`          | `number` (16–8192)                                                           | `4096`  | Pixels per side of a logo or a profile picture                                               |
+| `images.faviconMaxDimension`   | `number` (16–8192)                                                           | `1024`  | Pixels per side of a favicon                                                                 |
+| `images.uploadTtlMinutes`      | `number` (1–60)                                                              | `10`    | Minutes to complete an upload                                                                |
+| `features`                     | `Record<key, { permissions, name?, description?, enabledByDefault? }>`       | `{}`    | Modules the platform switches per company; their permissions do not count where they are off |
+| `staff.pinLength`              | `number` (6–8)                                                               | `6`     | Digits of the PINs Axeda generates                                                           |
+| `staff.maxAttempts`            | `number` (3–10)                                                              | `5`     | Wrong PINs in a row before the account is locked                                             |
+| `staff.lockMinutes`            | `number` (1–1440)                                                            | `15`    | How long the lock lasts                                                                      |
+| `images.maxPendingPerUser`     | `number` (1–100)                                                             | `10`    | Uploads one person can leave open                                                            |
 
 `acceptUrl` must be built from your configured base URL, never from a request's `Host` header.
 
@@ -124,6 +125,10 @@ hides things. A place that does not exist, is not theirs or is inactive gives an
 telling them apart. Sites are managed from the company, or from the business they hang from, with
 `axeda:site:manage`; `site/list` takes `businessId` to list the sites of one business, or
 `businessId=none` for those that hang directly from the company.
+
+`feature/list` answers `{ items: [{ key, name, description, enabled, source }] }` (`source` is `default` or
+`set`); `feature/set` takes `{ companyId, feature, enabled }` and answers one item. With a place, `/axeda/me`
+lists the concrete permissions of the catalog that count there, sorted.
 
 `staff/create` takes `{ scope, username, name, roleIds? }` and answers `{ member, pin }`: the PIN, only
 there. `staff/sign-in` takes `{ company, username, pin }` (the company slug) and answers `{ userId, name }`
