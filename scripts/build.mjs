@@ -1,13 +1,14 @@
 /**
- * Compila los cuatro paquetes a `dist/` (JavaScript ESM + declaraciones), en orden de dependencias:
+ * Compila los paquetes publicados a `dist/` (JavaScript ESM + declaraciones), en orden de dependencias:
  * `core` primero, porque los demás resuelven `@teamblind/axeda-core` contra su `dist`, no contra el código fuente.
  */
-import { rmSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const ORDER = ['core', 'better-auth', 'express', 'testing'];
+/** Los paquetes publicados, en orden de compilación (`scripts/packages.json`). */
+const ORDER = JSON.parse(readFileSync(new URL('./packages.json', import.meta.url), 'utf8'));
 const tsc = fileURLToPath(new URL('../node_modules/typescript/bin/tsc', import.meta.url));
 
 for (const name of ORDER) {
