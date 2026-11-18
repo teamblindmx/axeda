@@ -10,6 +10,7 @@ import {
   type ImageProcessor,
   type InvitationMessage,
   type ObjectStorage,
+  rejectUnknownOptions,
 } from '@teamblind/axeda-core';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { createEndpoints } from './endpoints.js';
@@ -69,6 +70,32 @@ export interface AxedaPluginOptions extends AxedaOptions {
   /** Recodifica cada imagen al completarla (p. ej. `sharpImageProcessor()`). Opcional. */
   readonly imageProcessor?: ImageProcessor;
 }
+
+/**
+ * Las opciones que existen. El `satisfies` obliga a tenerlas todas y solo esas: una opción nueva
+ * que no se añada aquí no compila.
+ */
+const PLUGIN_OPTIONS = Object.keys({
+  permissions: true,
+  roles: true,
+  menus: true,
+  retention: true,
+  invitations: true,
+  limits: true,
+  images: true,
+  staff: true,
+  clock: true,
+  invitationDelivery: true,
+  publicIdentity: true,
+  maxSessionAge: true,
+  storage: true,
+  imageProcessor: true,
+} satisfies Record<keyof AxedaPluginOptions, true>);
+
+const DELIVERY_OPTIONS = Object.keys({
+  acceptUrl: true,
+  send: true,
+} satisfies Record<keyof InvitationDeliveryOptions, true>);
 
 interface BanRow {
   banned?: boolean | null;
@@ -155,6 +182,13 @@ const RATE_LIMITS = [
  * ```
  */
 export function axeda(options: AxedaPluginOptions) {
+  // Una opción mal escrita no puede apagar algo en silencio.
+  rejectUnknownOptions('axeda()', options, PLUGIN_OPTIONS);
+  rejectUnknownOptions(
+    'axeda({ invitationDelivery })',
+    options.invitationDelivery,
+    DELIVERY_OPTIONS,
+  );
   const maxSessionAge = resolveMaxSessionAge(options.maxSessionAge);
   let core: Axeda | undefined;
   let persistence: AxedaPersistence | undefined;
