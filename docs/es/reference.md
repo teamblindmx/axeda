@@ -24,6 +24,9 @@ Valores aceptados, rangos y qué pasa cuando uno es incorrecto: [Configuración]
 | `images.maxDimension`          | `number` (16–8192)                                                             | `4096`      | Píxeles por lado de un logo o una foto de perfil                                             |
 | `images.faviconMaxDimension`   | `number` (16–8192)                                                             | `1024`      | Píxeles por lado de un favicon                                                               |
 | `images.uploadTtlMinutes`      | `number` (1–60)                                                                | `10`        | Minutos para completar una subida                                                            |
+| `staff.pinLength`              | `number` (6–8)                                                                 | `6`         | Dígitos de los PIN que genera Axeda                                                          |
+| `staff.maxAttempts`            | `number` (3–10)                                                                | `5`         | PIN incorrectos seguidos antes de bloquear la cuenta                                         |
+| `staff.lockMinutes`            | `number` (1–1440)                                                              | `15`        | Cuánto dura el bloqueo                                                                       |
 | `images.maxPendingPerUser`     | `number` (1–100)                                                               | `10`        | Subidas que una persona puede dejar abiertas                                                 |
 
 `acceptUrl` debe construirse con tu URL base configurada, nunca con la cabecera `Host` de una petición.
@@ -120,6 +123,11 @@ oculte cosas. Un lugar que no existe, que no es suyo o que está inactivo da una
 distinguir un caso de otro. Las sedes se administran desde la compañía, o desde el negocio del que
 cuelgan, con `axeda:site:manage`; `site/list` acepta `businessId` para listar las sedes de un negocio,
 o `businessId=none` para las que cuelgan directamente de la compañía.
+
+`staff/create` recibe `{ scope, username, name, roleIds? }` y responde `{ member, pin }`: el PIN, solo ahí.
+`staff/sign-in` recibe `{ company, username, pin }` (el slug de la compañía) y responde `{ userId, name }`
+con la cookie de sesión. Un empleado es `{ userId, companyId, businessId, siteId, username, name, banned,
+failedAttempts, lockedUntil, createdBy, createdAt, pinChangedAt }`, nunca con el PIN.
 
 `image/upload` recibe `{ purpose, targetId, contentType, size }`. `purpose` es `company.logo`,
 `company.favicon`, `business.logo`, `business.favicon`, `site.logo`, `site.favicon` o `user.avatar`;

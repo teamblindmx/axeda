@@ -24,6 +24,9 @@ Accepted values, ranges and what happens when one is wrong: [Configuration](conf
 | `images.maxDimension`          | `number` (16–8192)                                                           | `4096`  | Pixels per side of a logo or a profile picture                                      |
 | `images.faviconMaxDimension`   | `number` (16–8192)                                                           | `1024`  | Pixels per side of a favicon                                                        |
 | `images.uploadTtlMinutes`      | `number` (1–60)                                                              | `10`    | Minutes to complete an upload                                                       |
+| `staff.pinLength`              | `number` (6–8)                                                               | `6`     | Digits of the PINs Axeda generates                                                  |
+| `staff.maxAttempts`            | `number` (3–10)                                                              | `5`     | Wrong PINs in a row before the account is locked                                    |
+| `staff.lockMinutes`            | `number` (1–1440)                                                            | `15`    | How long the lock lasts                                                             |
 | `images.maxPendingPerUser`     | `number` (1–100)                                                             | `10`    | Uploads one person can leave open                                                   |
 
 `acceptUrl` must be built from your configured base URL, never from a request's `Host` header.
@@ -119,6 +122,11 @@ hides things. A place that does not exist, is not theirs or is inactive gives an
 telling them apart. Sites are managed from the company, or from the business they hang from, with
 `axeda:site:manage`; `site/list` takes `businessId` to list the sites of one business, or
 `businessId=none` for those that hang directly from the company.
+
+`staff/create` takes `{ scope, username, name, roleIds? }` and answers `{ member, pin }`: the PIN, only
+there. `staff/sign-in` takes `{ company, username, pin }` (the company slug) and answers `{ userId, name }`
+with the session cookie. A staff member is `{ userId, companyId, businessId, siteId, username, name, banned,
+failedAttempts, lockedUntil, createdBy, createdAt, pinChangedAt }`, never with the PIN.
 
 `image/upload` takes `{ purpose, targetId, contentType, size }`. `purpose` is `company.logo`,
 `company.favicon`, `business.logo`, `business.favicon`, `site.logo`, `site.favicon` or `user.avatar`;

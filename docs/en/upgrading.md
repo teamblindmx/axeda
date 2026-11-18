@@ -1,5 +1,22 @@
 # Upgrading
 
+## From `0.1.0-alpha.3` to `0.1.0-alpha.4`
+
+Staff accounts are new and additive. You have to run the database migration.
+
+| What changed                                                                 | Do you need to act?                                                                       |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Staff accounts with a username and a PIN, and `axeda:staff:manage`           | Only if you want them ([Configuration](configuration.md#staff-accounts-username-and-pin)) |
+| A new table, `axedaStaff`                                                    | **Yes**: run the migration                                                                |
+| `AxedaPersistence` needs a `staff` store; `UserAdmin` may implement `delete` | Only if you wrote your own ([below](#your-own-persistence-and-user-administration))       |
+| A cold permission read makes one more query                                  | No: it runs in parallel and only when the cache misses                                    |
+
+### Your own persistence and user administration
+
+Add a `staff` store (`StaffStore`): unique usernames per company, attempts spent atomically before checking
+the PIN, and deleting the accounts of what is purged. `runPersistenceContract` checks it. Staff accounts
+also need `UserAdmin.delete` and the `pinHasher` dependency of `createAxeda` (the Better Auth plugin sets both).
+
 ## From `0.1.0-alpha.2` to `0.1.0-alpha.3`
 
 Images are new and additive: nothing you use today changes its behaviour. You have to run the database

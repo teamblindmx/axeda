@@ -308,6 +308,53 @@ const { data } = await client.axeda.image.complete({ uploadId: ticket.data.uploa
   completó. Bloquea `/uploads/*` en tu dominio público y añade una regla de ciclo de vida (mira el
   [paquete de almacenamiento](https://github.com/teamblindmx/axeda/tree/main/packages/storage#setting-up-cloudflare-r2)).
 
+### Cuentas de personal: usuario y PIN
+
+No hay nada que instalar: el plugin trae los endpoints y cifra los PIN con el hash de contraseñas de Better
+Auth y una clave derivada de su `secret`. Tú decides quién crea personal dando `axeda:staff:manage`.
+
+```ts
+const axedaPlugin = axeda({
+  permissions: ['order:create', 'order:read'],
+  staff: { pinLength: 6, maxAttempts: 5, lockMinutes: 15 }, // los valores por omisión
+});
+```
+
+Un administrador crea a un empleado y le entrega el PIN, que solo aparece en esta respuesta:
+
+```ts
+const { data } = await client.axeda.staff.create({
+  scope: { type: 'business', id: businessId },
+  username: 'mesero1',
+  name: 'Ana López',
+  roleIds: [waiterRoleId],
+});
+// data.pin, por ejemplo '381946'
+```
+
+En la terminal, el empleado entra; la respuesta deja la cookie de sesión como cualquier otro inicio:
+
+```ts
+await fetch('https://api.acme.com/api/auth/axeda/staff/sign-in', {
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ company: 'acme', username: 'mesero1', pin: '381946' }),
+});
+```
+
+- **Todos los fallos se ven igual**: `401 AXEDA_STAFF_SIGN_IN_FAILED`, tanto si no existen la compañía o el
+  usuario como si el PIN está mal o la cuenta está bloqueada o suspendida. Muestra un solo mensaje.
+- **Bloqueo.** Tras `maxAttempts` PIN incorrectos seguidos la cuenta se bloquea `lockMinutes`, incluso con el
+  PIN correcto. Un administrador puede desbloquearla (`staff/unlock`) o restablecer el PIN
+  (`staff/reset-pin`, que además cierra sus sesiones). Hay también un límite de 10 entradas por minuto
+  por dirección.
+- **El PIN no es una contraseña de Better Auth**: no sirve en `/sign-in/email`, y «olvidé mi contraseña» no
+  aplica. El empleado lo cambia con `staff/change-pin`, dando el actual.
+- **Los PIN débiles se rechazan** (`111111`, `123456`, `121212`…), tanto los generados como los elegidos.
+- **Terminales compartidas.** Las sesiones siguen `maxSessionAge` como cualquier otra; en un dispositivo
+  compartido, cierra la sesión al terminar cada turno.
+
 ### Vida de la sesión
 
 Se aplican dos límites, y gana el más corto:

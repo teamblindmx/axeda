@@ -302,6 +302,52 @@ const { data } = await client.axeda.image.complete({ uploadId: ticket.data.uploa
   completed. Block `/uploads/*` on your public domain and add a lifecycle rule (see the
   [storage package](https://github.com/teamblindmx/axeda/tree/main/packages/storage#setting-up-cloudflare-r2)).
 
+### Staff accounts: username and PIN
+
+Nothing to install: the plugin brings the endpoints and hashes PINs with Better Auth's password hashing and
+a key derived from its `secret`. You decide who may create staff by giving `axeda:staff:manage`.
+
+```ts
+const axedaPlugin = axeda({
+  permissions: ['order:create', 'order:read'],
+  staff: { pinLength: 6, maxAttempts: 5, lockMinutes: 15 }, // the defaults
+});
+```
+
+An administrator creates a staff member and hands over the PIN, which is shown only in this answer:
+
+```ts
+const { data } = await client.axeda.staff.create({
+  scope: { type: 'business', id: businessId },
+  username: 'waiter1',
+  name: 'Ana López',
+  roleIds: [waiterRoleId],
+});
+// data.pin, for example '381946'
+```
+
+On the terminal, the staff member signs in; the answer sets the session cookie as any other sign-in:
+
+```ts
+await fetch('https://api.acme.com/api/auth/axeda/staff/sign-in', {
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ company: 'acme', username: 'waiter1', pin: '381946' }),
+});
+```
+
+- **Every failure looks the same**: `401 AXEDA_STAFF_SIGN_IN_FAILED`, whether the company or the username do not
+  exist, the PIN is wrong, or the account is locked or suspended. Show one message.
+- **Lock.** After `maxAttempts` wrong PINs in a row the account is locked for `lockMinutes`, even for the right
+  PIN. An administrator can unlock it (`staff/unlock`) or reset the PIN (`staff/reset-pin`, which also closes
+  its sessions). There is also a limit of 10 sign-ins a minute per address.
+- **The PIN is not a Better Auth password**: it does not work on `/sign-in/email`, and "forgot my password" does
+  not apply. A staff member changes it with `staff/change-pin`, giving the current one.
+- **Weak PINs are refused** (`111111`, `123456`, `121212`…), both generated and chosen.
+- **Shared terminals.** Sessions follow `maxSessionAge` like any other; on a shared device, sign out at the
+  end of each shift.
+
 ### Session lifetime
 
 Two limits apply, and the shorter one wins:

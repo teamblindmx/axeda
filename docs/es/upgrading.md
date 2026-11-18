@@ -1,5 +1,23 @@
 # Actualizar
 
+## De `0.1.0-alpha.3` a `0.1.0-alpha.4`
+
+Las cuentas de personal son nuevas y solo se suman. Tienes que ejecutar la migración de la base de datos.
+
+| Qué cambió                                                                             | ¿Tienes que hacer algo?                                                                      |
+| -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Cuentas de personal con usuario y PIN, y `axeda:staff:manage`                          | Solo si las quieres ([Configuración](configuration.md#cuentas-de-personal-usuario-y-pin))    |
+| Una tabla nueva, `axedaStaff`                                                          | **Sí**: ejecuta la migración                                                                 |
+| `AxedaPersistence` necesita un almacén `staff`; `UserAdmin` puede implementar `delete` | Solo si escribiste los tuyos ([abajo](#tu-propia-persistencia-y-administración-de-usuarios)) |
+| Una lectura de permisos en frío hace una consulta más                                  | No: va en paralelo y solo cuando falla la caché                                              |
+
+### Tu propia persistencia y administración de usuarios
+
+Añade un almacén `staff` (`StaffStore`): usuarios únicos por compañía, intentos gastados de forma atómica
+antes de comprobar el PIN, y borrar las cuentas de lo que se purga. `runPersistenceContract` lo comprueba.
+El personal necesita además `UserAdmin.delete` y la dependencia `pinHasher` de `createAxeda` (el plugin de
+Better Auth pone las dos).
+
 ## De `0.1.0-alpha.2` a `0.1.0-alpha.3`
 
 Las imágenes son nuevas y solo se suman: nada de lo que ya usas cambia su comportamiento. Tienes que
