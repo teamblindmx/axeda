@@ -7,3 +7,4 @@ export {
   signRequest,
   type Credentials,
 } from './sigv4.js';
+export { s3Storage, type S3StorageOptions } from './s3.js';
