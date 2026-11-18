@@ -13,6 +13,7 @@ export const MODELS = {
   throttle: 'axedaThrottle',
   image: 'axedaImage',
   staff: 'axedaStaff',
+  companyFeature: 'axedaCompanyFeature',
 } as const;
 
 /** Fila única de `axedaState` que guarda la versión de política. */
@@ -260,6 +261,21 @@ export const axedaSchema = {
       { fields: ['businessId'] },
       { fields: ['siteId'] },
     ],
+  },
+  /**
+   * El estado de cada funcionalidad en cada compañía, solo si la plataforma lo cambió (si no, vale el
+   * valor por omisión declarado en el código).
+   */
+  [MODELS.companyFeature]: {
+    fields: {
+      // Sin clave foránea: al purgar una compañía el núcleo borra su estado (también en MongoDB).
+      companyId: { type: 'string', required: true, input: false },
+      feature: { type: 'string', required: true, input: false },
+      enabled: { type: 'boolean', required: true, input: false },
+      updatedBy: { type: 'string', required: true, input: false },
+      updatedAt: { type: 'date', required: true, input: false },
+    },
+    indexes: [{ fields: ['companyId', 'feature'], unique: true }],
   },
   /** Logos, favicons y avatares: primero la subida pendiente y después la imagen lista. */
   [MODELS.image]: {

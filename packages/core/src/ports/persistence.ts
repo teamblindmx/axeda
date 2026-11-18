@@ -3,6 +3,7 @@ import type { Page, PageRequest } from './paging.js';
 import type { BusinessStore, CompanyStore, InvitationStore, SiteStore } from './tenants.js';
 import type { ImageStore } from './images.js';
 import type { StaffStore } from './staff.js';
+import type { FeatureStore } from './features.js';
 import type { PermissionKey } from '../domain/permission-key.js';
 import type { Role, RoleAssignment, RoleStatus } from '../domain/role.js';
 import type { AssignmentScope } from '../domain/scope.js';
@@ -101,6 +102,7 @@ export interface AxedaStores {
   readonly invitations: InvitationStore;
   readonly images: ImageStore;
   readonly staff: StaffStore;
+  readonly features: FeatureStore;
   readonly roles: RoleStore;
   readonly assignments: AssignmentStore;
   readonly authz: AuthzStateStore;
