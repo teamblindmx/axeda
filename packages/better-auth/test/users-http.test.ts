@@ -52,6 +52,7 @@ describe('user administration over HTTP', () => {
       'email',
       'emailVerified',
       'id',
+      'image',
       'name',
       'phoneNumber',
       'phoneNumberVerified',
