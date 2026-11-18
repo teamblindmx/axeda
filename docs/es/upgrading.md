@@ -1,5 +1,84 @@
 # Actualizar
 
+## De `0.1.0-alpha.1` a `0.1.0-alpha.2`
+
+Nada de lo que ya usas cambia su comportamiento: las sedes y el acceso por teléfono son nuevos y solo se
+suman. Tienes que ejecutar la migración de la base de datos, y hay algunos casos que conviene revisar.
+
+| Qué cambió                                                                                             | ¿Tienes que hacer algo?                                                                                           |
+| ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Las sedes, un alcance nuevo bajo la compañía                                                           | Solo si las quieres usar ([abajo](#sedes))                                                                        |
+| El acceso por teléfono, y las invitaciones por teléfono                                                | Solo si los quieres usar ([abajo](#acceso-por-teléfono))                                                          |
+| Tablas nuevas `axedaSite` y `axedaThrottle`, y una columna nueva `channel` en `axedaInvitation`        | **Sí**: ejecuta la migración ([abajo](#la-migración))                                                             |
+| Las invitaciones y los usuarios tienen campos nuevos (`channel`, `phoneNumber`, `phoneNumberVerified`) | Solo si tu código compara esos objetos campo a campo, o implementa `UserAdmin` ([abajo](#tu-propia-persistencia)) |
+| `invitationDelivery.send` recibe `channel` y `phoneNumber`                                             | No, salvo que envíes invitaciones por teléfono                                                                    |
+| `AxedaPersistence` necesita un almacén `sites`                                                         | Solo si escribiste tu propia persistencia ([abajo](#tu-propia-persistencia))                                      |
+| `scopeFilter` devuelve `siteIds` y `purgeDeleted()` devuelve `sites`                                   | Solo si tu código compara esos objetos campo a campo                                                              |
+| `GET /axeda/me` acepta un lugar opcional y entonces devuelve `permissions`                             | No; mira la [Referencia](reference.md#endpoints)                                                                  |
+
+### Sedes
+
+Una sede es un lugar de una compañía. Pertenece siempre a una compañía y, opcionalmente, a uno de sus
+negocios, así que una compañía puede tener sedes sin negocios. Una función asignada en la compañía
+vale en todas sus sedes, una en un negocio en las sedes de ese negocio, y una en una sede solo allí.
+Los empleados de una sede son las personas con una función asignada en ella. Las sedes se
+administran con el permiso nuevo `axeda:site:manage`, desde la compañía o desde el negocio del que
+cuelgan.
+
+```ts
+// Una sede directamente de la compañía, y otra de un negocio de esa compañía
+await axeda.sites.create(actor, companyId, { slug: 'hq', name: 'Headquarters' });
+await axeda.sites.create(actor, companyId, { slug: 'north', name: 'North', businessId });
+
+// Un empleado: una función asignada en la sede
+await axeda.assignments.assign(actor, { userId, roleId, scope: { type: 'site', id: siteId } });
+
+// Una ruta de Express de una sede; su compañía y su negocio salen de la base de datos
+app.get(
+  '/companies/:companyId/sites/:siteId/invoices',
+  x.requirePermission('invoice:read', {
+    scope: resolveScope({ company: 'companyId', site: 'siteId' }),
+  }),
+  listInvoices,
+);
+```
+
+### Acceso por teléfono
+
+Las personas pueden registrarse e iniciar sesión con un número de teléfono y un código, y puedes
+invitarlas por su número. Añade el plugin `phoneNumber` de Better Auth con `securePhoneNumberOptions`, y
+envía las invitaciones por teléfono desde `invitationDelivery.send` cuando `channel` sea `phone`. Mira
+[Configuración](configuration.md#acceso-por-teléfono-securephonenumberoptions).
+
+```ts
+await axeda.invitations.create(actor, {
+  phoneNumber: '+5215512345678',
+  scope: { type: 'site', id: siteId },
+  roleIds: [cashierRoleId],
+});
+```
+
+El plugin de teléfono añade `phoneNumber` y `phoneNumberVerified` a la tabla `user` de Better Auth;
+ejecuta su migración después de añadirlo.
+
+### La migración
+
+Ejecuta la migración de Better Auth como siempre. Crea las tablas `axedaSite` y `axedaThrottle` y añade
+la columna opcional `channel` a `axedaInvitation`; las invitaciones que ya existen siguen funcionando
+como invitaciones por correo. MongoDB no tiene migraciones: las colecciones se crean al usarlas.
+
+### Tu propia persistencia
+
+Si implementaste `AxedaPersistence` por tu cuenta, añade un almacén `sites` (`SiteStore`) y haz que
+purgar una compañía o un negocio purgue también sus sedes, con sus asignaciones e invitaciones. Las
+invitaciones tienen ahora un `channel`: guarda `phoneNumber` en las de teléfono, y busca en
+`findPending` por el contacto (el correo, o el número en una por teléfono; `invitationContact` lo da).
+`runPersistenceContract` de `@teamblind/axeda-testing` lo comprueba todo.
+
+Si implementaste `UserAdmin`, devuelve `phoneNumber` (o `null`) y `phoneNumberVerified` en cada
+`ManagedUser`. Un `UserDirectory` también puede devolverlos; sin ellos no se puede aceptar ninguna
+invitación por teléfono.
+
 ## De `0.1.0-alpha.0` a `0.1.0-alpha.1`
 
 No se quitó ni se renombró ninguna función, tipo u opción exportada: lo único que crece en la API es la

@@ -9,6 +9,7 @@ export const AXEDA_PERMISSIONS = Object.freeze({
   assignmentManage: key('axeda:assignment:manage'),
   companyManage: key('axeda:company:manage'),
   businessManage: key('axeda:business:manage'),
+  siteManage: key('axeda:site:manage'),
   invitationManage: key('axeda:invitation:manage'),
   userManage: key('axeda:user:manage'),
   auditRead: key('axeda:audit:read'),
@@ -18,10 +19,12 @@ export const AXEDA_PERMISSIONS = Object.freeze({
 export const AXEDA_PERMISSION_SCOPES: Readonly<Record<string, readonly ScopeType[]>> =
   Object.freeze({
     [AXEDA_PERMISSIONS.roleManage]: ['global'],
-    [AXEDA_PERMISSIONS.assignmentManage]: ['global', 'company', 'business'],
+    [AXEDA_PERMISSIONS.assignmentManage]: ['global', 'company', 'business', 'site'],
     [AXEDA_PERMISSIONS.companyManage]: ['global', 'company'],
     [AXEDA_PERMISSIONS.businessManage]: ['global', 'company'],
-    [AXEDA_PERMISSIONS.invitationManage]: ['global', 'company', 'business'],
+    // Las sedes se administran desde arriba: la compañía, o el negocio del que cuelgan.
+    [AXEDA_PERMISSIONS.siteManage]: ['global', 'company', 'business'],
+    [AXEDA_PERMISSIONS.invitationManage]: ['global', 'company', 'business', 'site'],
     [AXEDA_PERMISSIONS.userManage]: ['global'],
     [AXEDA_PERMISSIONS.auditRead]: ['global', 'company'],
   });

@@ -14,6 +14,7 @@ import {
   type InvitationDelivery,
   type InvitationMessage,
   type Role,
+  type Site,
 } from '../src/index.js';
 
 export const BASE_OPTIONS = {
@@ -38,7 +39,15 @@ export interface Fixture {
   /** Mientras `on` sea `true`, el envío de invitaciones falla. */
   readonly failDelivery: { on: boolean };
   /** Atajo: crea un usuario y devuelve su actor. */
-  user(id: string, extra?: { twoFactorEnabled?: boolean; emailVerified?: boolean }): Actor;
+  user(
+    id: string,
+    extra?: {
+      twoFactorEnabled?: boolean;
+      emailVerified?: boolean;
+      phoneNumber?: string | null;
+      phoneNumberVerified?: boolean;
+    },
+  ): Actor;
   /** Crea una función como administrador y la devuelve. */
   role(key: string, permissions: string[], extra?: { requireMfa?: boolean }): Promise<Role>;
   /** Asigna una función como administrador. */
@@ -47,6 +56,8 @@ export interface Fixture {
   company(id: string): Promise<Company>;
   /** Crea un negocio con ESE identificador dentro de la compañía indicada. */
   business(id: string, companyId: string): Promise<Business>;
+  /** Crea una sede con ESE identificador en la compañía y, si se indica, en ese negocio. */
+  site(id: string, companyId: string, businessId?: string): Promise<Site>;
 }
 
 /**
@@ -176,6 +187,14 @@ export async function createFixture(
       return axeda.businesses.create(admin, companyId, {
         slug: id.toLowerCase(),
         name: `Business ${id}`,
+      });
+    },
+    async site(id, companyId, businessId) {
+      forcedIds.push(id);
+      return axeda.sites.create(admin, companyId, {
+        slug: id.toLowerCase(),
+        name: `Site ${id}`,
+        ...(businessId === undefined ? {} : { businessId }),
       });
     },
   };

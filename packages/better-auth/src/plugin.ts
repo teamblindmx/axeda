@@ -14,6 +14,7 @@ import { createEndpoints } from './endpoints.js';
 import { createUserEndpoints } from './endpoints-users.js';
 import {
   createInvitationEndpoints,
+  createSiteEndpoints,
   createPublicEndpoints,
   createTenantEndpoints,
 } from './endpoints-tenants.js';
@@ -30,7 +31,10 @@ export interface InvitationDeliveryOptions {
    * configurada: nunca debe salir de la cabecera `Host` de una petición.
    */
   readonly acceptUrl: (token: string) => string;
-  /** Envía el correo. Recibe datos, no HTML: escapa lo que muestres. */
+  /**
+   * Envía la invitación: un correo a `email`, o un SMS a `phoneNumber` si `channel` es `phone`.
+   * Recibe datos, no HTML: escapa lo que muestres.
+   */
   readonly send: (message: InvitationMessage & { readonly link: string }) => Promise<void>;
 }
 
@@ -154,6 +158,7 @@ export function axeda(options: AxedaPluginOptions) {
     endpoints: {
       ...createEndpoints(instance),
       ...createTenantEndpoints(instance),
+      ...createSiteEndpoints(instance),
       ...createInvitationEndpoints(instance),
       ...createUserEndpoints(instance),
       // Siempre registrado (los tipos del cliente no dependen de la configuración); si está

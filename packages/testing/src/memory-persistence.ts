@@ -25,6 +25,7 @@ import {
   createBusinessStore,
   createCompanyStore,
   createInvitationStore,
+  createSiteStore,
   type Run,
   type TenantState,
 } from './memory-tenants.js';
@@ -45,6 +46,7 @@ interface State extends TenantState {
 const snapshot = (state: State): State => ({
   companies: new Map(state.companies),
   businesses: new Map(state.businesses),
+  sites: new Map(state.sites),
   invitations: new Map(state.invitations),
   roles: new Map(state.roles),
   audit: [...state.audit],
@@ -56,6 +58,7 @@ const snapshot = (state: State): State => ({
 function restore(state: State, saved: State): void {
   state.companies = saved.companies;
   state.businesses = saved.businesses;
+  state.sites = saved.sites;
   state.invitations = saved.invitations;
   state.roles = saved.roles;
   state.audit = saved.audit;
@@ -273,6 +276,7 @@ export function createMemoryPersistence(options: MemoryPersistenceOptions = {}):
   const state: State = {
     companies: new Map(),
     businesses: new Map(),
+    sites: new Map(),
     invitations: new Map(),
     roles: new Map(),
     audit: [],
@@ -292,6 +296,7 @@ export function createMemoryPersistence(options: MemoryPersistenceOptions = {}):
   const storesFor = (run: Run): AxedaStores => ({
     companies: createCompanyStore({ state, run, now, nextId }),
     businesses: createBusinessStore({ state, run, now, nextId }),
+    sites: createSiteStore({ state, run, now, nextId }),
     invitations: createInvitationStore({ state, run, now, nextId }),
     roles: createRoleStore(state, run, now, nextId),
     assignments: createAssignmentStore(state, run, now, nextId),

@@ -32,7 +32,12 @@ import {
 } from './rows.js';
 import { axedaSchema, MODELS, POLICY_STATE_KEY } from './schema.js';
 import { byId, decodeCursor, encodeCursor, type Adapter, type Atomic } from './shared.js';
-import { createBusinessStore, createCompanyStore, createInvitationStore } from './tenant-stores.js';
+import {
+  createBusinessStore,
+  createCompanyStore,
+  createInvitationStore,
+  createSiteStore,
+} from './tenant-stores.js';
 
 /**
  * MongoDB sin conjunto de réplicas (un `mongod` suelto) rechaza las transacciones con un error del
@@ -462,6 +467,7 @@ export function createBetterAuthPersistence<Options extends BetterAuthOptions>(
     audit: createAuditStore(target, now),
     companies: createCompanyStore(target, atomic, now),
     businesses: createBusinessStore(target, atomic, now),
+    sites: createSiteStore(target, atomic, now),
     invitations: createInvitationStore(target, now),
   });
 

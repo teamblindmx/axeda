@@ -37,7 +37,7 @@ const assignSchema = z.strictObject({
   roleId: id,
   scope: z.union([
     z.strictObject({ type: z.literal('global') }),
-    z.strictObject({ type: z.enum(['company', 'business']), id }),
+    z.strictObject({ type: z.enum(['company', 'business', 'site']), id }),
   ]),
   expiresAt: z.date().nullish(),
 });
@@ -78,6 +78,30 @@ export function createAssignmentService(services: Services): AssignmentService {
       scope,
       meta: actor,
     }) satisfies AuditDraft;
+
+  /**
+   * De quién cuelgan los negocios y las sedes de estas asignaciones (clave `business:<id>` o
+   * `site:<id>`), leído de la base de datos.
+   */
+  async function parentsOf(
+    assignments: readonly RoleAssignment[],
+  ): Promise<Map<string, { companyId: string; businessId: string | null }>> {
+    const idsOf = (type: 'business' | 'site') =>
+      assignments.flatMap((a) => (a.scope.type === type ? [a.scope.id] : []));
+    const [businessIds, siteIds] = [idsOf('business'), idsOf('site')];
+    const [businesses, sites] = await Promise.all([
+      businessIds.length === 0 ? [] : persistence.businesses.getMany(businessIds),
+      siteIds.length === 0 ? [] : persistence.sites.getMany(siteIds),
+    ]);
+    return new Map([
+      ...businesses.map(
+        (b) => [`business:${b.id}`, { companyId: b.companyId, businessId: null }] as const,
+      ),
+      ...sites.map(
+        (s) => [`site:${s.id}`, { companyId: s.companyId, businessId: s.businessId }] as const,
+      ),
+    ]);
+  }
 
   async function requireRole(stores: AxedaStores, roleId: string): Promise<Role> {
     const role = await stores.roles.get(roleId);
@@ -157,20 +181,18 @@ export function createAssignmentService(services: Services): AssignmentService {
         actorPolicyData(services, actor, snapshot),
         AXEDA_PERMISSIONS.assignmentManage,
       );
-      // Una asignación de negocio se ve a través de un alcance de compañía si es de esa compañía.
-      const businessIds = all.flatMap((a) => (a.scope.type === 'business' ? [a.scope.id] : []));
-      const businesses =
-        businessIds.length === 0 ? [] : await persistence.businesses.getMany(businessIds);
-      const companyOf = new Map(businesses.map((business) => [business.id, business.companyId]));
-      return all.filter((assignment) =>
-        managed.some((container) =>
-          scopeContains(
-            container,
-            assignment.scope,
-            assignment.scope.type === 'business' ? companyOf.get(assignment.scope.id) : undefined,
-          ),
-        ),
-      );
+      // Una asignación de negocio o de sede se ve a través de un alcance de compañía si es de esa
+      // compañía; una de sede, también a través del negocio del que cuelga.
+      const parents = await parentsOf(all);
+      return all.filter((assignment) => {
+        const parent =
+          assignment.scope.type === 'business' || assignment.scope.type === 'site'
+            ? parents.get(`${assignment.scope.type}:${assignment.scope.id}`)
+            : undefined;
+        return managed.some((container) =>
+          scopeContains(container, assignment.scope, parent?.companyId, parent?.businessId),
+        );
+      });
     },
 
     async listForScope(actor, scope, page) {

@@ -1,6 +1,6 @@
 import type { AuditAction, AuditEvent, AuditTargetType, NewAuditEvent } from '../domain/audit.js';
 import type { Page, PageRequest } from './paging.js';
-import type { BusinessStore, CompanyStore, InvitationStore } from './tenants.js';
+import type { BusinessStore, CompanyStore, InvitationStore, SiteStore } from './tenants.js';
 import type { PermissionKey } from '../domain/permission-key.js';
 import type { Role, RoleAssignment, RoleStatus } from '../domain/role.js';
 import type { AssignmentScope } from '../domain/scope.js';
@@ -95,6 +95,7 @@ export interface AuditStore {
 export interface AxedaStores {
   readonly companies: CompanyStore;
   readonly businesses: BusinessStore;
+  readonly sites: SiteStore;
   readonly invitations: InvitationStore;
   readonly roles: RoleStore;
   readonly assignments: AssignmentStore;

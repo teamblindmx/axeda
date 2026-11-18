@@ -33,6 +33,14 @@
       "p95Ms": 8,
       "maxQueries": 3
     },
+    "route: resolveTarget + can(), site of the company": {
+      "p95Ms": 8,
+      "maxQueries": 3
+    },
+    "route: resolveTarget + can(), site of a business": {
+      "p95Ms": 10,
+      "maxQueries": 4
+    },
     "audit.list, no filter": {
       "p95Ms": 20,
       "maxQueries": 1
@@ -91,6 +99,14 @@
     "route: resolveTarget + can(), business scope": {
       "p95Ms": 8,
       "maxQueries": 3
+    },
+    "route: resolveTarget + can(), site of the company": {
+      "p95Ms": 8,
+      "maxQueries": 3
+    },
+    "route: resolveTarget + can(), site of a business": {
+      "p95Ms": 10,
+      "maxQueries": 4
     },
     "audit.list, no filter": {
       "p95Ms": 15,

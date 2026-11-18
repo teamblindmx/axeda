@@ -18,6 +18,9 @@ interface UserRow {
   email: string;
   name: string;
   emailVerified?: boolean | null;
+  // Solo con el plugin de teléfono de Better Auth.
+  phoneNumber?: string | null;
+  phoneNumberVerified?: boolean | null;
   twoFactorEnabled?: boolean | null;
   banned?: boolean | null;
   banReason?: string | null;
@@ -40,6 +43,8 @@ export function toManagedUser(row: UserRow, now: Date): ManagedUser {
     email: row.email,
     name: row.name,
     emailVerified: row.emailVerified === true,
+    phoneNumber: row.phoneNumber ?? null,
+    phoneNumberVerified: row.phoneNumberVerified === true,
     twoFactorEnabled: row.twoFactorEnabled === true,
     // El bloqueo se calcula con la hora actual: uno con fecha de fin se levanta solo.
     banned: isBanned({ banned: flag, banExpires }, now),

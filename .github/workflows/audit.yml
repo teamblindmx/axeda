@@ -21,7 +21,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts
-      - name: Known vulnerabilities
-        run: npm audit --audit-level=high
+      - name: Known vulnerabilities (with the expiring exceptions of scripts/audit-exceptions.json)
+        run: npm run audit:deps
       - name: Registry signatures and provenance of every installed package
         run: npm audit signatures

@@ -7,6 +7,10 @@ export interface DirectoryUser {
   readonly email: string;
   /** Solo un correo verificado puede aceptar una invitación enviada a esa dirección. */
   readonly emailVerified: boolean;
+  /** El teléfono (E.164), si la aplicación usa el acceso por teléfono. */
+  readonly phoneNumber?: string | null | undefined;
+  /** Solo un teléfono verificado puede aceptar una invitación enviada a ese número. */
+  readonly phoneNumberVerified?: boolean | undefined;
   readonly twoFactorEnabled: boolean;
   readonly banned: boolean;
 }

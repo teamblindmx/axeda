@@ -181,6 +181,12 @@ export function secureAuthOptions(input: SecureAuthInput): SecureAuthOptions {
         '/reset-password': { window: 300, max: 5 },
         '/send-verification-email': { window: 300, max: 3 },
         '/two-factor/verify-totp': { window: 60, max: 5 },
+        // Teléfono (plugin phoneNumber). Por IP; el tope por número lo pone securePhoneNumberOptions.
+        '/phone-number/send-otp': { window: 60, max: 3 },
+        '/phone-number/verify': { window: 60, max: 10 },
+        '/sign-in/phone-number': { window: 60, max: 5 },
+        '/phone-number/request-password-reset': { window: 300, max: 3 },
+        '/phone-number/reset-password': { window: 300, max: 5 },
       },
     },
   };

@@ -33,22 +33,37 @@ export const limit = z.coerce.number().int().min(1).max(MAX_PAGE);
 
 export const scopeBody = z.union([
   z.strictObject({ type: z.literal('global') }),
-  z.strictObject({ type: z.enum(['company', 'business']), id }),
+  z.strictObject({ type: z.enum(['company', 'business', 'site']), id }),
 ]);
 
 export const scopeQuery = {
-  scopeType: z.enum(['global', 'company', 'business']).optional(),
+  scopeType: z.enum(['global', 'company', 'business', 'site']).optional(),
   scopeId: id.optional(),
 };
 
 export function scopeFromQuery(query: {
-  scopeType?: 'global' | 'company' | 'business' | undefined;
+  scopeType?: 'global' | 'company' | 'business' | 'site' | undefined;
   scopeId?: string | undefined;
 }): AssignmentScope | undefined {
   if (query.scopeType === undefined) return undefined;
   if (query.scopeType === 'global') return { type: 'global' };
   // Un alcance sin identificador queda fuera de la lista blanca y el núcleo lo rechaza.
   return { type: query.scopeType, id: query.scopeId ?? '' };
+}
+
+/**
+ * Los permisos efectivos de quien llama en un lugar, para que el frontend decida qué mostrar. Un
+ * lugar que no existe, que no es suyo o que está inactivo da una lista vacía: no se distingue
+ * (como el menú).
+ */
+async function permissionsIn(
+  axeda: Axeda,
+  actor: Actor,
+  scope: AssignmentScope,
+): Promise<string[]> {
+  const target = await axeda.resolveTarget(scope);
+  if (target === null) return [];
+  return [...(await axeda.effectivePermissions(actor, target)).keys];
 }
 
 export const pageOf = (query: { cursor?: string | undefined; limit?: number | undefined }) => ({
@@ -113,18 +128,27 @@ export function createEndpoints(core: CoreProvider) {
   return {
     axedaMe: createAuthEndpoint(
       '/axeda/me',
-      { method: 'GET', use: [sessionMiddleware], metadata: access('(authenticated)', 'own') },
+      {
+        method: 'GET',
+        use: [sessionMiddleware],
+        // Opcional: un lugar (compañía, negocio o sede) en el que saber qué puede hacer.
+        query: z.strictObject(scopeQuery).optional(),
+        metadata: access('(authenticated)', 'own'),
+      },
       (ctx) =>
         run(ctx, core, async (axeda, actor) => {
-          const [permissions, assignments] = await Promise.all([
+          const scope = scopeFromQuery(ctx.query ?? {});
+          const [permissions, assignments, inScope] = await Promise.all([
             axeda.effectivePermissions(actor),
             axeda.assignments.listForUser(actor, actor.userId),
+            scope === undefined ? null : permissionsIn(axeda, actor, scope),
           ]);
           return ctx.json({
             userId: actor.userId,
             twoFactorEnabled: actor.twoFactorEnabled === true,
             globalPermissions: [...permissions.keys] as string[],
             assignments: assignments.map(toAssignmentDto),
+            ...(inScope === null ? {} : { permissions: inScope }),
           });
         }),
     ),

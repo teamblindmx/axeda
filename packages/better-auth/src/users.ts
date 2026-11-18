@@ -7,6 +7,8 @@ interface UserRow {
   email: string;
   emailVerified?: boolean | null;
   // Solo existen si la aplicación activa los plugins de Better Auth que los añaden.
+  phoneNumber?: string | null;
+  phoneNumberVerified?: boolean | null;
   twoFactorEnabled?: boolean | null;
   banned?: boolean | null;
   banExpires?: Date | string | null;
@@ -16,6 +18,8 @@ const toDirectoryUser = (row: UserRow, now: Date): DirectoryUser => ({
   id: row.id,
   email: row.email,
   emailVerified: row.emailVerified === true,
+  phoneNumber: row.phoneNumber ?? null,
+  phoneNumberVerified: row.phoneNumberVerified === true,
   // Ante la duda, sin 2FA: las funciones que lo exigen no se asignan ni conceden.
   twoFactorEnabled: row.twoFactorEnabled === true,
   // Un bloqueo con fecha de fin deja de valer al llegar esa fecha.

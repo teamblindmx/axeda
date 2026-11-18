@@ -236,4 +236,5 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm audit --audit-level=high
+      # Como npm audit --audit-level=high, con las excepciones (con caducidad) de scripts/audit-exceptions.json.
+      - run: npm run audit:deps

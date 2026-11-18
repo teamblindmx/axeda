@@ -393,6 +393,208 @@ export function defineTenantContract(database: () => AxedaPersistence): void {
     });
   });
 
+  describe('sites', () => {
+    /** Una compañía con un negocio, y otra compañía con su propio negocio. */
+    async function parents() {
+      const db = database();
+      const acme = await company('acme');
+      const shop = await db.businesses.create({ companyId: acme.id, slug: 'shop', name: 'Shop' });
+      const other = await company('other');
+      const elsewhere = await db.businesses.create({
+        companyId: other.id,
+        slug: 'shop',
+        name: 'Shop',
+      });
+      return { db, acme, shop, other, elsewhere };
+    }
+
+    it('creates a site under a company or under one of its businesses, and reads it back', async () => {
+      const { db, acme, shop } = await parents();
+      const direct = await db.sites.create({ companyId: acme.id, slug: 'north', name: 'North' });
+      expect(direct).toMatchObject({
+        companyId: acme.id,
+        businessId: null,
+        slug: 'north',
+        name: 'North',
+        logoUrl: null,
+        faviconUrl: null,
+        status: 'active',
+        metadata: {},
+        version: 1,
+        deletedAt: null,
+      });
+      const inShop = await db.sites.create({
+        companyId: acme.id,
+        businessId: shop.id,
+        slug: 'south',
+        name: 'South',
+        metadata: { city: 'Monterrey' },
+      });
+      expect(inShop).toMatchObject({ businessId: shop.id, metadata: { city: 'Monterrey' } });
+      expect(await db.sites.get(inShop.id)).toEqual(inShop);
+      expect(await db.sites.getBySlug(acme.id, 'south')).toEqual(inShop);
+      expect(await db.sites.get('nope')).toBeNull();
+      expect((await db.sites.getMany([direct.id, inShop.id, 'nope'])).length).toBe(2);
+    });
+
+    it('requires an existing company, and a business of that same company', async () => {
+      const { db, acme, elsewhere } = await parents();
+      await expectCode(
+        db.sites.create({ companyId: 'missing', slug: 'x', name: 'X' }),
+        'AXEDA_COMPANY_NOT_FOUND',
+      );
+      await expectCode(
+        db.sites.create({ companyId: acme.id, businessId: 'missing', slug: 'x', name: 'X' }),
+        'AXEDA_BUSINESS_NOT_FOUND',
+      );
+      await expectCode(
+        db.sites.create({ companyId: acme.id, businessId: elsewhere.id, slug: 'x', name: 'X' }),
+        'AXEDA_BUSINESS_NOT_FOUND',
+      );
+    });
+
+    it('keeps slugs unique per company, whether the site hangs from a business or not', async () => {
+      const { db, acme, shop, other } = await parents();
+      await db.sites.create({ companyId: acme.id, slug: 'one', name: 'One' });
+      await expectCode(
+        db.sites.create({ companyId: acme.id, businessId: shop.id, slug: 'one', name: 'Again' }),
+        'AXEDA_SLUG_TAKEN',
+      );
+      await expect(
+        db.sites.create({ companyId: other.id, slug: 'one', name: 'Elsewhere' }),
+      ).resolves.toMatchObject({ companyId: other.id });
+    });
+
+    it('lets exactly one of two concurrent creations of the same slug win', async () => {
+      const { db, acme } = await parents();
+      const results = await Promise.allSettled([
+        db.sites.create({ companyId: acme.id, slug: 'race', name: 'A' }),
+        db.sites.create({ companyId: acme.id, slug: 'race', name: 'B' }),
+      ]);
+      expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    });
+
+    it('updates, changes status, soft-deletes and restores with versions; the parents never change', async () => {
+      const { db, acme, shop } = await parents();
+      const created = await db.sites.create({
+        companyId: acme.id,
+        businessId: shop.id,
+        slug: 's',
+        name: 'S',
+      });
+      const renamed = await db.sites.update(created.id, 1, { name: 'Renamed', logoUrl: null });
+      expect(renamed).toMatchObject({ name: 'Renamed', version: 2, businessId: shop.id });
+      await expectCode(db.sites.update(created.id, 1, { name: 'Stale' }), 'AXEDA_VERSION_CONFLICT');
+      await expectCode(db.sites.update('missing', 1, { name: 'X' }), 'AXEDA_SITE_NOT_FOUND');
+      const off = await db.sites.setStatus(created.id, 2, 'inactive');
+      expect(off).toMatchObject({ status: 'inactive', version: 3 });
+      const deleted = await db.sites.setDeleted(created.id, 3, PAST);
+      expect(deleted.deletedAt).toEqual(PAST);
+      const restored = await db.sites.setDeleted(created.id, 4, null);
+      expect(restored).toMatchObject({ deletedAt: null, version: 5, companyId: acme.id });
+    });
+
+    it('lists by slug with cursor pagination, by business, and only what someone may see', async () => {
+      const { db, acme, shop } = await parents();
+      const make = (slug: string, businessId?: string) =>
+        db.sites.create({
+          companyId: acme.id,
+          slug,
+          name: slug,
+          ...(businessId === undefined ? {} : { businessId }),
+        });
+      const a = await make('a');
+      const b = await make('b', shop.id);
+      await make('c', shop.id);
+      const d = await make('d');
+      const slugs = (page: { items: readonly { slug: string }[] }) => page.items.map((s) => s.slug);
+
+      const first = await db.sites.listForCompany(acme.id, {}, { limit: 2 });
+      expect(slugs(first)).toEqual(['a', 'b']);
+      const rest = await db.sites.listForCompany(
+        acme.id,
+        {},
+        { limit: 2, ...(first.nextCursor === null ? {} : { cursor: first.nextCursor }) },
+      );
+      expect(slugs(rest)).toEqual(['c', 'd']);
+      expect(
+        slugs(await db.sites.listForCompany(acme.id, { businessId: shop.id }, { limit: 9 })),
+      ).toEqual(['b', 'c']);
+      expect(
+        slugs(await db.sites.listForCompany(acme.id, { businessId: null }, { limit: 9 })),
+      ).toEqual(['a', 'd']);
+
+      // (sus sedes) OR (las de sus negocios), siempre dentro de la compañía.
+      const visible = (siteIds: string[], businessIds: string[]) =>
+        db.sites
+          .listForCompany(acme.id, { visible: { siteIds, businessIds } }, { limit: 9 })
+          .then(slugs);
+      expect(await visible([a.id], [])).toEqual(['a']);
+      expect(await visible([d.id], [shop.id])).toEqual(['b', 'c', 'd']);
+      expect(await visible([], [])).toEqual([]);
+      await db.sites.setDeleted(b.id, 1, new Date());
+      expect(await visible([], [shop.id])).toEqual(['c']);
+    });
+
+    it('finds the sites deleted before a date', async () => {
+      const { db, acme } = await parents();
+      const old = await db.sites.create({ companyId: acme.id, slug: 'old', name: 'O' });
+      const recent = await db.sites.create({ companyId: acme.id, slug: 'new', name: 'N' });
+      await db.sites.setDeleted(old.id, 1, PAST);
+      await db.sites.setDeleted(recent.id, 1, new Date());
+      const found = await db.sites.listDeletedBefore(new Date('2025-01-01T00:00:00.000Z'), 10);
+      expect(found.map((site) => site.id)).toEqual([old.id]);
+    });
+
+    it('purges a site, and a business or a company purges its sites, with their assignments and invitations', async () => {
+      const { db, acme, shop } = await parents();
+      const role = await db.roles.create({ key: 'r', name: 'R', permissions: [] });
+      const direct = await db.sites.create({ companyId: acme.id, slug: 'direct', name: 'D' });
+      const inShop = await db.sites.create({
+        companyId: acme.id,
+        businessId: shop.id,
+        slug: 'inshop',
+        name: 'I',
+      });
+      const lonely = await db.sites.create({ companyId: acme.id, slug: 'lonely', name: 'L' });
+      for (const site of [direct, inShop, lonely]) {
+        await db.assignments.create({
+          userId: 'u1',
+          roleId: role.id,
+          scope: { type: 'site', id: site.id },
+        });
+      }
+      await db.invitations.create({
+        email: 'a@test.dev',
+        scope: { type: 'site', id: inShop.id },
+        roleIds: [role.id],
+        invitedBy: 'u1',
+        expiresAt: FUTURE,
+        secretHash: 'h',
+      });
+      const scopes = async () =>
+        (await db.assignments.listForUser('u1'))
+          .map((item) => item.scope.type === 'site' && item.scope.id)
+          .sort();
+
+      expect(await db.sites.purge([lonely.id, 'missing'])).toBe(1);
+      expect(await db.sites.get(lonely.id)).toBeNull();
+      expect(await scopes()).toEqual([direct.id, inShop.id].sort());
+
+      expect(await db.businesses.purge([shop.id])).toBe(1);
+      expect(await db.sites.get(inShop.id)).toBeNull();
+      expect(await db.sites.get(direct.id)).not.toBeNull();
+      expect(await scopes()).toEqual([direct.id]);
+      expect(
+        await db.invitations.findPending('a@test.dev', { type: 'site', id: inShop.id }),
+      ).toBeNull();
+
+      expect(await db.companies.purge([acme.id])).toBe(1);
+      expect(await db.sites.get(direct.id)).toBeNull();
+      expect(await scopes()).toEqual([]);
+    });
+  });
+
   describe('invitations', () => {
     const scope = { type: 'company', id: 'c1' } as const;
     const input = (
@@ -433,6 +635,34 @@ export function defineTenantContract(database: () => AxedaPersistence): void {
       await database().invitations.create(input({ scope: { type: 'company', id: 'c2' } }));
       await database().invitations.create(input({ scope: GLOBAL_SCOPE }));
       await database().invitations.create(input({ email: 'someone@test.dev' }));
+    });
+
+    it('stores a phone invitation by its number, apart from email invitations', async () => {
+      const phone = '+5215512345678';
+      const byPhone = await database().invitations.create(
+        input({ channel: 'phone', email: '', phoneNumber: phone }),
+      );
+      expect(byPhone).toMatchObject({ channel: 'phone', email: '', phoneNumber: phone });
+      expect(await database().invitations.get(byPhone.id)).toEqual(byPhone);
+      expect(await database().invitations.findPending(phone, scope)).toEqual(byPhone);
+      await expectCode(
+        database().invitations.create(
+          input({ channel: 'phone', email: '', phoneNumber: phone, secretHash: 'other' }),
+        ),
+        'AXEDA_INVITATION_EXISTS',
+      );
+      // Una por correo al mismo alcance no choca, y por omisión el canal es el correo.
+      const byMail = await database().invitations.create(input());
+      expect(byMail).toMatchObject({ channel: 'email', email: 'new@test.dev', phoneNumber: null });
+      const listed = await database().invitations.list(
+        scope,
+        { pendingOnly: true, now: new Date('2026-06-01T00:00:00.000Z') },
+        { limit: 10 },
+      );
+      expect(listed.items.map((item) => [item.channel, item.phoneNumber]).sort()).toEqual([
+        ['email', null],
+        ['phone', phone],
+      ]);
     });
 
     it('lets exactly one of two concurrent identical invitations win', async () => {

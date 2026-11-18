@@ -13,6 +13,7 @@ export type {
   InvitationDto,
   ManagedUserDto,
   RoleDto,
+  SiteDto,
 } from './dto.js';
 export type { EndpointAccess } from './endpoints.js';
 export { MODELS, axedaSchema } from './schema.js';
@@ -23,3 +24,9 @@ export { createBetterAuthUserAdmin } from './user-admin.js';
 export { actorFromSession as principalFromSession } from './endpoints.js';
 export { principalFromUser, sessionPrincipal, type SessionReader } from './principal.js';
 export { secureAuthOptions, type SecureAuthInput, type SecureAuthOptions } from './preset.js';
+export {
+  isPhoneOnlyEmail,
+  securePhoneNumberOptions,
+  type SecurePhoneNumberInput,
+  type SecurePhoneNumberOptions,
+} from './phone.js';

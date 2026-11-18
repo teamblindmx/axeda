@@ -7,6 +7,7 @@ import type {
   ManagedUser,
   Role,
   RoleAssignment,
+  Site,
 } from '@teamblind/axeda-core';
 
 /**
@@ -114,9 +115,18 @@ export interface BusinessDto extends TenantDto {
   companyId: string;
 }
 
+export interface SiteDto extends TenantDto {
+  companyId: string;
+  /** El negocio del que cuelga, o `null` si cuelga directamente de la compañía. */
+  businessId: string | null;
+}
+
 export interface InvitationDto {
   id: string;
+  channel: 'email' | 'phone';
+  /** Vacío en una invitación por teléfono. */
   email: string;
+  phoneNumber: string | null;
   scope: AssignmentScope;
   roleIds: string[];
   invitedBy: string;
@@ -150,9 +160,17 @@ export const toBusinessDto = (business: Business): BusinessDto => ({
   companyId: business.companyId,
 });
 
+export const toSiteDto = (site: Site): SiteDto => ({
+  ...tenantFields(site),
+  companyId: site.companyId,
+  businessId: site.businessId,
+});
+
 export const toInvitationDto = (invitation: Invitation): InvitationDto => ({
   id: invitation.id,
+  channel: invitation.channel,
   email: invitation.email,
+  phoneNumber: invitation.phoneNumber,
   scope: invitation.scope,
   roleIds: [...invitation.roleIds],
   invitedBy: invitation.invitedBy,
@@ -169,6 +187,9 @@ export interface ManagedUserDto {
   email: string;
   name: string;
   emailVerified: boolean;
+  /** Con el acceso por teléfono; si no, `null`. */
+  phoneNumber: string | null;
+  phoneNumberVerified: boolean;
   twoFactorEnabled: boolean;
   banned: boolean;
   banReason: string | null;
@@ -181,6 +202,8 @@ export const toManagedUserDto = (user: ManagedUser): ManagedUserDto => ({
   email: user.email,
   name: user.name,
   emailVerified: user.emailVerified,
+  phoneNumber: user.phoneNumber,
+  phoneNumberVerified: user.phoneNumberVerified,
   twoFactorEnabled: user.twoFactorEnabled,
   banned: user.banned,
   banReason: user.banReason,

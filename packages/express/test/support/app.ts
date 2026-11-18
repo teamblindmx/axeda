@@ -63,6 +63,7 @@ export interface TestApp {
   give(userId: string, permissions: string[], scope: AssignmentScope): Promise<string>;
   company(slug: string): Promise<string>;
   business(slug: string, companyId: string): Promise<string>;
+  site(slug: string, companyId: string, businessId?: string): Promise<string>;
 }
 
 export interface AppOptions {
@@ -143,6 +144,22 @@ export async function startApp(options: AppOptions = {}): Promise<TestApp> {
     x.requirePermission('invoice:read', { scope: resolveScope({ business: 'businessId' }) }),
     (request, response) => void response.json({ business: request.params['businessId'] }),
   );
+  const siteRoute = (path: string, scope: Parameters<typeof resolveScope>[0]) =>
+    app.get(
+      path,
+      x.requirePermission('invoice:read', { scope: resolveScope(scope) }),
+      (request, response) => void response.json({ site: request.params['siteId'] }),
+    );
+  siteRoute('/sites/:siteId/invoices', { site: 'siteId' });
+  siteRoute('/companies/:companyId/sites/:siteId/invoices', {
+    company: 'companyId',
+    site: 'siteId',
+  });
+  siteRoute('/companies/:companyId/businesses/:businessId/sites/:siteId/invoices', {
+    company: 'companyId',
+    business: 'businessId',
+    site: 'siteId',
+  });
   app.get(
     '/chain/:companyId',
     x.requireAuth(),
@@ -246,6 +263,10 @@ export async function startApp(options: AppOptions = {}): Promise<TestApp> {
     },
     async business(slug, companyId) {
       return (await core.businesses.create(root, companyId, { slug, name: slug })).id;
+    },
+    async site(slug, companyId, businessId) {
+      const parent = businessId === undefined ? {} : { businessId };
+      return (await core.sites.create(root, companyId, { slug, name: slug, ...parent })).id;
     },
   };
 }

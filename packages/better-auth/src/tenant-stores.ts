@@ -14,6 +14,11 @@ import {
   type NewInvitation,
   type Page,
   type PageRequest,
+  type NewSite,
+  type Site,
+  type SiteChanges,
+  type SiteFilter,
+  type SiteStore,
   type StoredInvitation,
   type TenantFilter,
   type TenantStatus,
@@ -45,6 +50,10 @@ interface CompanyRow extends TenantRow {
 interface BusinessRow extends TenantRow {
   companyId: string;
 }
+interface SiteRow extends TenantRow {
+  companyId: string;
+  businessId?: string | null;
+}
 interface InvitationRow {
   id: string;
   email: string;
@@ -57,6 +66,8 @@ interface InvitationRow {
   acceptedAt?: Date | null;
   revokedAt?: Date | null;
   createdAt: Date;
+  /** Ausente en las filas anteriores a alpha.2: entonces es una invitación por correo. */
+  channel?: string | null;
 }
 
 const tenantBase = (row: TenantRow) => ({
@@ -82,9 +93,20 @@ const toBusiness = (row: BusinessRow): Business => ({
   ...tenantBase(row),
   companyId: row.companyId,
 });
+const toSite = (row: SiteRow): Site => ({
+  ...tenantBase(row),
+  companyId: row.companyId,
+  businessId: row.businessId ?? null,
+});
+/** En una invitación por teléfono la columna `email` guarda el número. */
+const recipientOf = (row: InvitationRow) =>
+  row.channel === 'phone'
+    ? { channel: 'phone' as const, email: '', phoneNumber: row.email }
+    : { channel: 'email' as const, email: row.email, phoneNumber: null };
+
 const toInvitation = (row: InvitationRow): StoredInvitation => ({
   id: row.id,
-  email: row.email,
+  ...recipientOf(row),
   scope: toScope({ id: row.id, scopeType: row.scopeType, scopeId: row.scopeId }),
   roleIds: row.roleIds,
   invitedBy: row.invitedBy,
@@ -101,6 +123,7 @@ type Where = {
   field: string;
   value: string | number | boolean | string[] | Date | null;
   operator?: 'in' | 'gt' | 'lt' | 'ne';
+  connector?: 'AND' | 'OR';
 };
 
 /** Condiciones del filtro de borrados y de identificadores. */
@@ -181,7 +204,7 @@ const emptyPage = <T>(): Page<T> => ({ items: [], nextCursor: null });
 /** Borra de verdad las asignaciones e invitaciones de estos alcances. */
 async function dropScopes(
   adapter: Adapter,
-  scopeType: 'company' | 'business',
+  scopeType: 'company' | 'business' | 'site',
   ids: readonly string[],
 ): Promise<void> {
   if (ids.length === 0) return;
@@ -191,6 +214,30 @@ async function dropScopes(
   ];
   await adapter.deleteMany({ model: MODELS.assignment, where });
   await adapter.deleteMany({ model: MODELS.invitation, where });
+}
+
+/**
+ * Borra de verdad las sedes cuyo `field` está en `ids` (las de unas compañías, unos negocios o
+ * esas mismas sedes), con las asignaciones e invitaciones de su alcance. Devuelve cuántas.
+ */
+async function purgeSitesWhere(
+  adapter: Adapter,
+  field: 'id' | 'companyId' | 'businessId',
+  ids: readonly string[],
+): Promise<number> {
+  if (ids.length === 0) return 0;
+  const where = [{ field, operator: 'in' as const, value: [...ids] }];
+  const sites = await adapter.findMany<{ id: string }>({
+    model: MODELS.site,
+    where,
+    limit: MAX_ROWS,
+  });
+  await dropScopes(
+    adapter,
+    'site',
+    sites.map((site) => site.id),
+  );
+  return adapter.deleteMany({ model: MODELS.site, where });
 }
 
 // ---------- compañías ----------
@@ -328,6 +375,7 @@ export function createCompanyStore(
               businesses.map((business) => business.id),
             );
             await dropScopes(trx, 'company', ids);
+            await purgeSitesWhere(trx, 'companyId', ids);
             await trx.deleteMany({
               model: MODELS.business,
               where: [{ field: 'companyId', operator: 'in', value: [...ids] }],
@@ -481,6 +529,7 @@ export function createBusinessStore(
         ? Promise.resolve(0)
         : atomic(async (trx) => {
             await dropScopes(trx, 'business', ids);
+            await purgeSitesWhere(trx, 'businessId', ids);
             return trx.deleteMany({
               model,
               where: [{ field: 'id', operator: 'in', value: [...ids] }],
@@ -489,11 +538,180 @@ export function createBusinessStore(
   };
 }
 
+// ---------- sedes ----------
+
+/** Condiciones propias de las sedes: el negocio y lo que puede ver quien no ve toda la compañía. */
+function siteWhere(filter: SiteFilter): Where[] {
+  const where: Where[] = [];
+  if (filter.businessId !== undefined)
+    where.push({ field: 'businessId', value: filter.businessId });
+  const { visible } = filter;
+  if (visible === undefined) return where;
+  // (sus sedes) OR (las de sus negocios); los adaptadores unen el grupo OR al resto con AND.
+  if (visible.siteIds.length > 0) {
+    where.push({ field: 'id', operator: 'in', value: [...visible.siteIds], connector: 'OR' });
+  }
+  if (visible.businessIds.length > 0) {
+    where.push({
+      field: 'businessId',
+      operator: 'in',
+      value: [...visible.businessIds],
+      connector: 'OR',
+    });
+  }
+  return where;
+}
+
+const nothingVisible = (filter: SiteFilter): boolean =>
+  filter.ids?.length === 0 ||
+  (filter.visible !== undefined &&
+    filter.visible.siteIds.length === 0 &&
+    filter.visible.businessIds.length === 0);
+
+export function createSiteStore(adapter: Adapter, atomic: Atomic, now: () => Date): SiteStore {
+  const model = MODELS.site;
+  const missing = (id: string) => () =>
+    new AxedaError('AXEDA_SITE_NOT_FOUND', `Site "${id}" does not exist.`);
+  const save = (id: string, expectedVersion: number, set: Record<string, unknown>) =>
+    guarded<SiteRow>(adapter, model, id, expectedVersion, set, now, missing(id)).then(toSite);
+
+  /** Lo que en SQL harían las claves foráneas; MongoDB no las tiene. */
+  async function checkParents(input: NewSite): Promise<void> {
+    if (!(await adapter.findOne({ model: MODELS.company, where: byId(input.companyId) }))) {
+      throw new AxedaError(
+        'AXEDA_COMPANY_NOT_FOUND',
+        `Company "${input.companyId}" does not exist.`,
+      );
+    }
+    const businessId = input.businessId ?? null;
+    if (businessId === null) return;
+    const business = await adapter.findOne<{ companyId: string }>({
+      model: MODELS.business,
+      where: byId(businessId),
+    });
+    if (business?.companyId !== input.companyId) {
+      throw new AxedaError('AXEDA_BUSINESS_NOT_FOUND', `Business "${businessId}" does not exist.`);
+    }
+  }
+
+  return {
+    async get(id) {
+      const row = await adapter.findOne<SiteRow>({ model, where: byId(id) });
+      return row ? toSite(row) : null;
+    },
+    async getMany(ids) {
+      if (ids.length === 0) return [];
+      const rows = await adapter.findMany<SiteRow>({
+        model,
+        where: [{ field: 'id', operator: 'in', value: [...ids] }],
+        limit: ids.length,
+      });
+      return rows.map(toSite);
+    },
+    async getBySlug(companyId, slug) {
+      const row = await adapter.findOne<SiteRow>({
+        model,
+        where: [
+          { field: 'companyId', value: companyId },
+          { field: 'slug', value: slug },
+        ],
+      });
+      return row ? toSite(row) : null;
+    },
+    async listForCompany(companyId, filter, page) {
+      if (nothingVisible(filter)) return emptyPage();
+      return pageOf<SiteRow, Site>(
+        adapter,
+        model,
+        [{ field: 'companyId', value: companyId }, ...filterWhere(filter), ...siteWhere(filter)],
+        'slug',
+        (row) => row.slug,
+        page,
+        toSite,
+      );
+    },
+    async create(input: NewSite) {
+      const taken = () =>
+        new AxedaError(
+          'AXEDA_SLUG_TAKEN',
+          `A site with slug "${input.slug}" already exists in that company.`,
+        );
+      await checkParents(input);
+      const existing = await adapter.findOne({
+        model,
+        where: [
+          { field: 'companyId', value: input.companyId },
+          { field: 'slug', value: input.slug },
+        ],
+      });
+      if (existing) throw taken();
+      const at = now();
+      try {
+        const row = await adapter.create<Omit<SiteRow, 'id'>, SiteRow>({
+          model,
+          data: {
+            companyId: input.companyId,
+            businessId: input.businessId ?? null,
+            slug: input.slug,
+            name: input.name,
+            logoUrl: input.logoUrl ?? null,
+            faviconUrl: input.faviconUrl ?? null,
+            status: 'active',
+            metadata: { ...(input.metadata ?? {}) },
+            version: 1,
+            deletedAt: null,
+            createdAt: at,
+            updatedAt: at,
+          },
+        });
+        return toSite(row);
+      } catch (error) {
+        if (isUniqueViolation(error)) throw taken();
+        // La compañía o el negocio desaparecieron entre la comprobación y la inserción.
+        if (isForeignKeyViolation(error)) {
+          throw new AxedaError(
+            'AXEDA_COMPANY_NOT_FOUND',
+            `Company "${input.companyId}" does not exist.`,
+          );
+        }
+        throw error;
+      }
+    },
+    update: (id, expectedVersion, changes: SiteChanges) =>
+      save(
+        id,
+        expectedVersion,
+        defined({
+          name: changes.name,
+          logoUrl: changes.logoUrl,
+          faviconUrl: changes.faviconUrl,
+          metadata: changes.metadata === undefined ? undefined : { ...changes.metadata },
+        }),
+      ),
+    setStatus: (id, expectedVersion, status) => save(id, expectedVersion, { status }),
+    setDeleted: (id, expectedVersion, at) => save(id, expectedVersion, { deletedAt: at }),
+    async listDeletedBefore(before, limit) {
+      const rows = await adapter.findMany<SiteRow>({
+        model,
+        where: [{ field: 'deletedAt', operator: 'lt', value: before }],
+        sortBy: { field: 'id', direction: 'asc' },
+        limit,
+      });
+      return rows.map(toSite);
+    },
+    purge: (ids) =>
+      ids.length === 0 ? Promise.resolve(0) : atomic((trx) => purgeSitesWhere(trx, 'id', ids)),
+  };
+}
+
 // ---------- invitaciones ----------
 
-/** Texto estable de «correo + alcance»; se reduce a un hash corto para la clave única. */
-async function pendingKey(email: string, scope: AssignmentScope): Promise<string> {
-  const data = new TextEncoder().encode(`${email}|${scopeKey(scope)}`);
+/**
+ * Texto estable de «contacto + alcance» (el correo o el número); se reduce a un hash corto para la
+ * clave única. Para un correo es el mismo de antes de alpha.2.
+ */
+async function pendingKey(contact: string, scope: AssignmentScope): Promise<string> {
+  const data = new TextEncoder().encode(`${contact}|${scopeKey(scope)}`);
   const digest = await globalThis.crypto.subtle.digest('SHA-256', data);
   return `pending:${Buffer.from(digest).toString('hex')}`;
 }
@@ -506,10 +724,10 @@ export function createInvitationStore(adapter: Adapter, now: () => Date): Invita
       const row = await adapter.findOne<InvitationRow>({ model, where: byId(id) });
       return row ? toInvitation(row) : null;
     },
-    async findPending(email, scope) {
+    async findPending(contact, scope) {
       const row = await adapter.findOne<InvitationRow>({
         model,
-        where: [{ field: 'pendingKey', value: await pendingKey(email, scope) }],
+        where: [{ field: 'pendingKey', value: await pendingKey(contact, scope) }],
       });
       return row ? toInvitation(row) : null;
     },
@@ -517,9 +735,17 @@ export function createInvitationStore(adapter: Adapter, now: () => Date): Invita
       const exists = () =>
         new AxedaError(
           'AXEDA_INVITATION_EXISTS',
-          'There is already a pending invitation for that email and scope.',
+          'There is already a pending invitation for that contact and scope.',
         );
-      const key = await pendingKey(input.email, input.scope);
+      const channel = input.channel ?? 'email';
+      const contact = channel === 'phone' ? (input.phoneNumber ?? '') : input.email;
+      if (contact === '') {
+        throw new AxedaError(
+          'AXEDA_INVALID_INPUT',
+          'An invitation needs an email or a phone number.',
+        );
+      }
+      const key = await pendingKey(contact, input.scope);
       if (await adapter.findOne({ model, where: [{ field: 'pendingKey', value: key }] }))
         throw exists();
       try {
@@ -529,7 +755,8 @@ export function createInvitationStore(adapter: Adapter, now: () => Date): Invita
         >({
           model,
           data: {
-            email: input.email,
+            email: contact,
+            channel,
             ...scopeColumns(input.scope),
             roleIds: [...input.roleIds],
             invitedBy: input.invitedBy,

@@ -16,6 +16,10 @@ export type {
   CompanyUpdate,
   DeleteOptions,
   ListOptions,
+  SiteInput,
+  SiteListOptions,
+  SiteService,
+  SiteUpdate,
 } from './application/tenants.js';
 export type { PublicIdentity, PurgeResult } from './application/tenant-lifecycle.js';
 export type { BootstrapInput, BootstrapResult } from './application/bootstrap.js';
@@ -52,9 +56,12 @@ export {
   type PermissionKey,
 } from './domain/permission-key.js';
 export {
+  E164_PATTERN,
+  invitationContact,
   invitationState,
   withoutSecret,
   type Invitation,
+  type InvitationChannel,
   type InvitationState,
   type StoredInvitation,
 } from './domain/invitation.js';
@@ -64,8 +71,10 @@ export {
   businessKey,
   companyKey,
   isUsable,
+  siteKey,
   type Business,
   type Company,
+  type Site,
   type TenantMetadata,
   type TenantStatus,
 } from './domain/tenant.js';

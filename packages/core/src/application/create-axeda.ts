@@ -35,7 +35,12 @@ import {
   type PublicIdentity,
   type PurgeResult,
 } from './tenant-lifecycle.js';
-import { createTenantServices, type BusinessService, type CompanyService } from './tenants.js';
+import {
+  createTenantServices,
+  type BusinessService,
+  type CompanyService,
+  type SiteService,
+} from './tenants.js';
 import { assertTransactional } from './startup-checks.js';
 
 export interface AxedaDependencies {
@@ -59,10 +64,12 @@ export interface AxedaDependencies {
 export interface ScopeFilter {
   /** Se concede en global: no hay que filtrar. */
   readonly unrestricted: boolean;
-  /** Compañías donde se concede (incluye todos sus negocios). */
+  /** Compañías donde se concede (incluye todos sus negocios y todas sus sedes). */
   readonly companyIds: readonly string[];
-  /** Negocios concretos donde se concede. */
+  /** Negocios concretos donde se concede (incluye sus sedes). */
   readonly businessIds: readonly string[];
+  /** Sedes concretas donde se concede. */
+  readonly siteIds: readonly string[];
 }
 
 export interface Axeda {
@@ -84,12 +91,13 @@ export interface Axeda {
   /** ¿Tiene el usuario `permission` en algún alcance? Para decidir qué listados mostrar. */
   canAnywhere(principal: Principal, permission: string): Promise<boolean>;
   /**
-   * Pasa de un alcance que llega en una petición (el `id` de una compañía o negocio) al lugar
-   * donde decidir un permiso, **leyendo la base de datos**: la compañía de un negocio nunca se
-   * toma de la petición (T2). `null` si no existe. Para proteger rutas de tu aplicación.
+   * Pasa de un alcance que llega en una petición (el `id` de una compañía, negocio o sede) al
+   * lugar donde decidir un permiso, **leyendo la base de datos**: la compañía de un negocio, y la
+   * compañía y el negocio de una sede, nunca se toman de la petición (T2). `null` si no existe.
+   * Para proteger rutas de tu aplicación.
    */
   resolveTarget(scope: AssignmentScope): Promise<TargetScope | null>;
-  /** Alcances (global, compañías, negocios) donde el usuario tiene `permission`. */
+  /** Alcances (global, compañías, negocios, sedes) donde el usuario tiene `permission`. */
   scopesFor(principal: Principal, permission: string): Promise<readonly AssignmentScope[]>;
   /** Lo mismo, en forma cómoda para filtrar las consultas de la aplicación (T5). */
   scopeFilter(principal: Principal, permission: string): Promise<ScopeFilter>;
@@ -97,6 +105,7 @@ export interface Axeda {
   readonly assignments: AssignmentService;
   readonly companies: CompanyService;
   readonly businesses: BusinessService;
+  readonly sites: SiteService;
   readonly invitations: InvitationService;
   readonly users: UserService;
   /**
@@ -211,15 +220,22 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
 
   /**
    * El alcance en que se evalúa quién lee la auditoría. No exige que la compañía exista ni esté
-   * activa (se debe poder auditar lo borrado); de un negocio desconocido solo lee quien lo es en global.
+   * activa (se debe poder auditar lo borrado); de un negocio o una sede desconocidos solo lee quien
+   * lo es en global.
    */
   async function auditTarget(scope: AssignmentScope | undefined): Promise<TargetScope> {
     if (scope === undefined || scope.type === 'global') return GLOBAL_TARGET;
     if (scope.type === 'company') return { type: 'company', companyId: scope.id };
-    const business = await persistence.businesses.get(scope.id);
-    return business === null
+    if (scope.type === 'business') {
+      const business = await persistence.businesses.get(scope.id);
+      return business === null
+        ? GLOBAL_TARGET
+        : { type: 'business', companyId: business.companyId, businessId: business.id };
+    }
+    const site = await persistence.sites.get(scope.id);
+    return site === null
       ? GLOBAL_TARGET
-      : { type: 'business', companyId: business.companyId, businessId: business.id };
+      : { type: 'site', companyId: site.companyId, businessId: site.businessId, siteId: site.id };
   }
 
   /**
@@ -255,16 +271,20 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     scopesFor,
     async scopeFilter(principal, permission) {
       const scopes = await scopesFor(principal, permission);
+      const idsOf = (type: 'company' | 'business' | 'site') =>
+        scopes.flatMap((scope) => (scope.type === type ? [scope.id] : []));
       return {
         unrestricted: scopes.some((scope) => scope.type === 'global'),
-        companyIds: scopes.flatMap((scope) => (scope.type === 'company' ? [scope.id] : [])),
-        businessIds: scopes.flatMap((scope) => (scope.type === 'business' ? [scope.id] : [])),
+        companyIds: idsOf('company'),
+        businessIds: idsOf('business'),
+        siteIds: idsOf('site'),
       };
     },
     roles: createRoleService(services),
     assignments: createAssignmentService(services),
     companies: tenants.companies,
     businesses: tenants.businesses,
+    sites: tenants.sites,
     invitations: createInvitationService(services),
     users: createUserService(services),
     async menu(principal, menuOptions = {}) {

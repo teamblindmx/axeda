@@ -1,8 +1,8 @@
 # @teamblind/axeda-better-auth
 
-The Better Auth plugin for Axeda: schema, `/axeda/*` endpoints, the typed client, `secureAuthOptions()` and the stores that persist everything through Better Auth's database adapter. It runs on SQLite, PostgreSQL, MySQL and MongoDB.
+The Better Auth plugin for Axeda: schema, `/axeda/*` endpoints, the typed client, `secureAuthOptions()`, `securePhoneNumberOptions()` for access by phone, and the stores that persist everything through Better Auth's database adapter. It runs on SQLite, PostgreSQL, MySQL and MongoDB.
 
-> **Status:** alpha (`0.1.0-alpha.1`); the API can still change before 1.0. Install with `npm install @teamblind/axeda-better-auth@alpha better-auth @better-auth/core`. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
+> **Status:** alpha (`0.1.0-alpha.2`); the API can still change before 1.0. Install with `npm install @teamblind/axeda-better-auth@alpha better-auth @better-auth/core`. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
 
 ## Install
 
@@ -56,11 +56,12 @@ const client = createAuthClient({ baseURL: 'https://api.example.com', plugins: [
 
 Axeda reads no environment variables: everything is passed in code.
 
-| You configure…                      | With                         | Required                                           |
-| ----------------------------------- | ---------------------------- | -------------------------------------------------- |
-| Better Auth: URLs, secret, sessions | `secureAuthOptions({ … })`   | `baseURL`, `secret`, `trustedOrigins`              |
-| Better Auth: the rest               | your own `betterAuth({ … })` | `database`, `plugins`, a verification email sender |
-| What Axeda manages                  | `axeda({ … })`               | `permissions`                                      |
+| You configure…                      | With                                           | Required                                           |
+| ----------------------------------- | ---------------------------------------------- | -------------------------------------------------- |
+| Better Auth: URLs, secret, sessions | `secureAuthOptions({ … })`                     | `baseURL`, `secret`, `trustedOrigins`              |
+| Better Auth: the rest               | your own `betterAuth({ … })`                   | `database`, `plugins`, a verification email sender |
+| What Axeda manages                  | `axeda({ … })`                                 | `permissions`                                      |
+| Access by phone number (optional)   | `phoneNumber(securePhoneNumberOptions({ … }))` | `sendOTP`                                          |
 
 Every option, its accepted values, its default and what happens when it is wrong are in the
 [Configuration guide](https://github.com/teamblindmx/axeda/blob/main/docs/en/configuration.md).
@@ -83,6 +84,6 @@ own: see [Databases](https://github.com/teamblindmx/axeda/blob/main/docs/en/refe
 - [Configuration](https://github.com/teamblindmx/axeda/blob/main/docs/en/configuration.md): every option, the startup order and a production checklist.
 - [Reference](https://github.com/teamblindmx/axeda/blob/main/docs/en/reference.md): endpoints, error codes and the TypeScript API.
 - [Security](https://github.com/teamblindmx/axeda/blob/main/docs/en/security.md): what `secureAuthOptions()` fixes and what stays yours.
-- [Upgrading](https://github.com/teamblindmx/axeda/blob/main/docs/en/upgrading.md): from `0.1.0-alpha.0`.
+- [Upgrading](https://github.com/teamblindmx/axeda/blob/main/docs/en/upgrading.md): from `0.1.0-alpha.0` and `0.1.0-alpha.1`.
 
-Part of [Axeda](https://github.com/teamblindmx/axeda), hierarchical authorization (global → company → business) on top of [Better Auth](https://www.better-auth.com). Licensed under [Apache-2.0](LICENSE).
+Part of [Axeda](https://github.com/teamblindmx/axeda), hierarchical authorization (global → company → business → site) on top of [Better Auth](https://www.better-auth.com). Licensed under [Apache-2.0](LICENSE).

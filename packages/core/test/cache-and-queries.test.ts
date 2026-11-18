@@ -191,11 +191,13 @@ describe('scopesFor and scopeFilter', () => {
       unrestricted: false,
       companyIds: ['A', 'B'],
       businessIds: ['b9'],
+      siteIds: [],
     });
     expect(await f.axeda.scopeFilter({ userId: 'alice' }, 'invoice:create')).toEqual({
       unrestricted: false,
       companyIds: [],
       businessIds: [],
+      siteIds: [],
     });
   });
 

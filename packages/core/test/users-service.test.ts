@@ -164,6 +164,8 @@ describe('user administration', () => {
       'emailVerified',
       'id',
       'name',
+      'phoneNumber',
+      'phoneNumberVerified',
       'twoFactorEnabled',
     ]);
     const [event] = (await w.axeda.listAudit(w.admin, { action: 'user.create' }, { limit: 1 }))

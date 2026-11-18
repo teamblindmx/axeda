@@ -353,11 +353,13 @@ describe('invitations over HTTP', () => {
     expect(text).not.toContain(message?.token.split('.')[1] ?? 'impossible');
     expect(Object.keys(list.json.items[0]).sort()).toEqual([
       'acceptedAt',
+      'channel',
       'createdAt',
       'email',
       'expiresAt',
       'id',
       'invitedBy',
+      'phoneNumber',
       'revokedAt',
       'roleIds',
       'scope',
@@ -550,7 +552,11 @@ describe('purging deleted companies', () => {
 
     const persistence = app.plugin.persistence();
     // Con la gracia vigente no se borra nada.
-    expect(await app.plugin.instance().purgeDeleted()).toEqual({ companies: 0, businesses: 0 });
+    expect(await app.plugin.instance().purgeDeleted()).toEqual({
+      companies: 0,
+      businesses: 0,
+      sites: 0,
+    });
     // Se simula que pasó el plazo moviendo la fecha de borrado al pasado.
     const context = await app.auth.$context;
     await context.adapter.update({
