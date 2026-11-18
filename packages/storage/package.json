@@ -1,6 +1,6 @@
 {
   "name": "@teamblind/axeda-storage",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "description": "Object storage for Axeda images: Cloudflare R2, S3, MinIO and other S3-compatible stores, with signed uploads and no AWS SDK.",
   "license": "Apache-2.0",
   "author": "TeamBlind",
@@ -45,7 +45,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@teamblind/axeda-core": "^0.1.0-alpha.2"
+    "@teamblind/axeda-core": "^0.1.0-alpha.3"
   },
   "peerDependencies": {
     "sharp": ">=0.33.0"

@@ -2,7 +2,7 @@
 
 Middleware to guard the routes of an Express 5 application with Axeda permissions: `requireAuth()`, `requirePermission()` and `resolveScope()`. It denies by default, resolves the company of a business from the database and requires a trusted origin for cookie-bearing writes.
 
-> **Status:** alpha (`0.1.0-alpha.2`); the API can still change before 1.0. Install with `npm install @teamblind/axeda-express@alpha`. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
+> **Status:** alpha (`0.1.0-alpha.3`); the API can still change before 1.0. Install with `npm install @teamblind/axeda-express@alpha`. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
 
 ```ts
 import { createAxedaExpress, resolveScope } from '@teamblind/axeda-express';

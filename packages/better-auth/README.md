@@ -2,7 +2,7 @@
 
 The Better Auth plugin for Axeda: schema, `/axeda/*` endpoints, the typed client, `secureAuthOptions()`, `securePhoneNumberOptions()` for access by phone, and the stores that persist everything through Better Auth's database adapter. It runs on SQLite, PostgreSQL, MySQL and MongoDB.
 
-> **Status:** alpha (`0.1.0-alpha.2`); the API can still change before 1.0. Install with `npm install @teamblind/axeda-better-auth@alpha better-auth @better-auth/core`. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
+> **Status:** alpha (`0.1.0-alpha.3`); the API can still change before 1.0. Install with `npm install @teamblind/axeda-better-auth@alpha better-auth @better-auth/core`. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
 
 ## Install
 
