@@ -90,6 +90,17 @@ Todos cuelgan de la ruta base de Better Auth (`/api/auth`). Todos exigen sesión
 | POST   | `/axeda/image/upload`         | El permiso que edita la entidad; en `user.avatar`, la propia persona o `axeda:user:manage` | por objetivo         |
 | POST   | `/axeda/image/complete`       | (sesión; solo quien pidió la subida)                                                       | propio               |
 | POST   | `/axeda/image/remove`         | Igual que `image/upload`                                                                   | por objetivo         |
+| POST   | `/axeda/staff/sign-in`        | (público; la compañía, el usuario y el PIN)                                                | —                    |
+| GET    | `/axeda/staff/list`           | `axeda:staff:manage`                                                                       | parámetro de alcance |
+| GET    | `/axeda/staff/get`            | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/create`         | `axeda:staff:manage`                                                                       | parámetro de alcance |
+| POST   | `/axeda/staff/rename`         | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/reset-pin`      | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/unlock`         | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/suspend`        | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/reactivate`     | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/remove`         | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/change-pin`     | (sesión; tu propio PIN, dando el actual)                                                   | propio               |
 | GET    | `/axeda/user/list`            | `axeda:user:manage`                                                                        | global               |
 | POST   | `/axeda/user/create`          | `axeda:user:manage`                                                                        | global               |
 | POST   | `/axeda/user/ban`             | `axeda:user:manage`                                                                        | global               |

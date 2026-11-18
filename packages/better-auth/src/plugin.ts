@@ -15,6 +15,7 @@ import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { createEndpoints } from './endpoints.js';
 import { createUserEndpoints } from './endpoints-users.js';
 import { createImageEndpoints } from './endpoints-images.js';
+import { createStaffEndpoints } from './endpoints-staff.js';
 import {
   createInvitationEndpoints,
   createSiteEndpoints,
@@ -138,6 +139,8 @@ function assertSafeAuthOptions(options: object): void {
 const RATE_LIMITS = [
   // El único endpoint sin sesión, más estricto (T10: enumeración).
   { pathMatcher: (path: string) => path.startsWith('/axeda/public/'), max: 30, window: 60 },
+  // Entrar con PIN: además del bloqueo por cuenta, pocos intentos por dirección (T4: fuerza bruta).
+  { pathMatcher: (path: string) => path === '/axeda/staff/sign-in', max: 10, window: 60 },
   { pathMatcher: (path: string) => path.startsWith('/axeda/'), max: 120, window: 60 },
 ];
 
@@ -176,6 +179,7 @@ export function axeda(options: AxedaPluginOptions) {
       ...createInvitationEndpoints(instance),
       ...createUserEndpoints(instance),
       ...createImageEndpoints(instance),
+      ...createStaffEndpoints(instance),
       // Siempre registrado (los tipos del cliente no dependen de la configuración); si está
       // desactivado responde 404, igual que una compañía que no existe.
       ...createPublicEndpoints(instance, () => options.publicIdentity === true),

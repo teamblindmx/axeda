@@ -90,6 +90,17 @@ All live under Better Auth's base path (`/api/auth`). Every one needs a session 
 | POST   | `/axeda/image/upload`         | The permission that edits the entity; for `user.avatar`, the person or `axeda:user:manage` | per target      |
 | POST   | `/axeda/image/complete`       | (authenticated; only the person who asked for the upload)                                  | own             |
 | POST   | `/axeda/image/remove`         | Same as `image/upload`                                                                     | per target      |
+| POST   | `/axeda/staff/sign-in`        | (public; the company, the username and the PIN)                                            | —               |
+| GET    | `/axeda/staff/list`           | `axeda:staff:manage`                                                                       | scope parameter |
+| GET    | `/axeda/staff/get`            | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/create`         | `axeda:staff:manage`                                                                       | scope parameter |
+| POST   | `/axeda/staff/rename`         | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/reset-pin`      | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/unlock`         | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/suspend`        | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/reactivate`     | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/remove`         | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/change-pin`     | (authenticated; your own PIN, giving the current one)                                      | own             |
 | GET    | `/axeda/user/list`            | `axeda:user:manage`                                                                        | global          |
 | POST   | `/axeda/user/create`          | `axeda:user:manage`                                                                        | global          |
 | POST   | `/axeda/user/ban`             | `axeda:user:manage`                                                                        | global          |
