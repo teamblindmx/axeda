@@ -163,3 +163,5 @@ every server instance.
 Every administrative action, success or denial, is appended to an audit log: who, what, on which
 target, in which scope, from which address. It is append-only; denials are recorded even though
 the operation was rolled back. Read it through `GET /axeda/audit/list` with `axeda:audit:read`.
+It is kept in full unless you set `retention.auditDays` and call `purgeAudit()` on a schedule
+([Configuration](configuration.md#audit-retention)).

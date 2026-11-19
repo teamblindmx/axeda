@@ -10,6 +10,7 @@ Accepted values, ranges and what happens when one is wrong: [Configuration](conf
 | `roles`                        | `Record<key, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`    | Managed roles, synchronised at startup                                                       |
 | `menus`                        | `MenuDefinition[]`                                                           | `[]`    | The menu, declared in code                                                                   |
 | `retention.graceDays`          | `number` (0–3650)                                                            | `30`    | Days a deleted company or business can be restored                                           |
+| `retention.auditDays`          | `number` (1–36500)                                                           | none    | Days audit events are kept; `purgeAudit()` deletes older ones                                |
 | `invitations.ttlHours`         | `number`                                                                     | `72`    | Default invitation lifetime                                                                  |
 | `invitations.maxRoles`         | `number` (1–50)                                                              | `10`    | Roles per invitation                                                                         |
 | `limits.maxAssignmentsPerUser` | `number`                                                                     | `50`    | Assignments one user may hold                                                                |
@@ -248,6 +249,7 @@ Get the instance with `axedaPlugin.instance()` once Better Auth has been created
 | `publicIdentity({ company, business? })`                                           | Public name and logos of an active company or business                                               |
 | `listAudit(actor, filter, page)`                                                   | A page of audit events                                                                               |
 | `purgeDeleted()`                                                                   | Permanently removes what is past its grace period, with its images, and the uploads nobody completed |
+| `purgeAudit()`                                                                     | Deletes the audit events older than `retention.auditDays` and records an `audit.purge` event         |
 | `bootstrap({ userId })`                                                            | Creates the first global administrator (once)                                                        |
 
 A `Principal` is `{ userId, authzVersion?, twoFactorEnabled?, banned? }`. Always build it with

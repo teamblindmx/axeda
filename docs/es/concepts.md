@@ -166,4 +166,6 @@ efecto en la siguiente petición, en cada instancia del servidor.
 Toda acción administrativa, con éxito o denegada, se añade a un registro de auditoría: quién, qué,
 sobre qué objetivo, en qué alcance, desde qué dirección. Solo se añade, nunca se modifica; las
 denegaciones se registran aunque la operación se haya deshecho. Se lee con
-`GET /axeda/audit/list` y el permiso `axeda:audit:read`.
+`GET /axeda/audit/list` y el permiso `axeda:audit:read`. Se conserva entero salvo que definas
+`retention.auditDays` y llames a `purgeAudit()` de forma programada
+([Configuración](configuration.md#retención-de-la-auditoría)).

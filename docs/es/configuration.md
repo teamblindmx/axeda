@@ -170,21 +170,22 @@ Solo `permissions` es obligatoria. Todas las demás opciones tienen un valor por
 
 ### Opciones
 
-| Opción                         | Tipo                                         | Por omisión     | Valores aceptados                                        | Notas                                                                                                  |
-| ------------------------------ | -------------------------------------------- | --------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `permissions`                  | `string[]`                                   | — (obligatoria) | ver [Claves de permiso](#claves-de-permiso)              | El catálogo de tu aplicación                                                                           |
-| `roles`                        | `Record<string, string[] \| RoleDefinition>` | `{}`            | ver [Funciones](#funciones-declaradas-en-código)         | Funciones que vienen con tu app; `start()` las crea y las mantiene sincronizadas                       |
-| `menus`                        | `MenuDefinition[]`                           | `[]`            | ver [Elementos de menú](reference.md#elementos-del-menú) | Lo sirve `GET /axeda/menu`, filtrado por lo que puede hacer quien llama                                |
-| `retention.graceDays`          | entero                                       | `30`            | de 0 a 3650                                              | Días que se conserva una compañía o negocio borrado antes de poder purgarse                            |
-| `invitations.ttlHours`         | entero                                       | `72`            | de 1 a 720                                               | Vigencia por omisión de una invitación                                                                 |
-| `invitations.maxRoles`         | entero                                       | `10`            | de 1 a 50                                                | Funciones que puede llevar una invitación                                                              |
-| `limits.maxAssignmentsPerUser` | entero                                       | `50`            | de 1 a 10000                                             | Una concesión (o una invitación aceptada) que lo supere responde `AXEDA_LIMIT_EXCEEDED`                |
-| `limits.maxPermissionsPerRole` | entero                                       | `100`           | de 1 a 10000                                             | Una función con más permisos que esto se rechaza                                                       |
-| `limits.maxCachedUsers`        | entero                                       | `10000`         | de 1 a 10000                                             | Usuarios cuyos permisos guarda cada proceso en memoria. La memoria crece con este valor                |
-| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`        | apagada         | dos funciones                                            | Sin ella, crear una invitación responde `AXEDA_FEATURE_DISABLED` (501)                                 |
-| `publicIdentity`               | `boolean`                                    | `false`         | `true` / `false`                                         | Publica `GET /axeda/public/identity`, el único endpoint que no necesita sesión                         |
-| `maxSessionAge`                | entero positivo (segundos) o `false`         | 30 días         | `> 0`, o `false` para apagarlo                           | Lo máximo que vive una sesión desde que se abrió, por mucho que se use. Se comprueba en `axeda({ … })` |
-| `clock`                        | `{ now(): Date }`                            | el del sistema  | —                                                        | Solo para pruebas                                                                                      |
+| Opción                         | Tipo                                         | Por omisión                     | Valores aceptados                                        | Notas                                                                                                                     |
+| ------------------------------ | -------------------------------------------- | ------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `permissions`                  | `string[]`                                   | — (obligatoria)                 | ver [Claves de permiso](#claves-de-permiso)              | El catálogo de tu aplicación                                                                                              |
+| `roles`                        | `Record<string, string[] \| RoleDefinition>` | `{}`                            | ver [Funciones](#funciones-declaradas-en-código)         | Funciones que vienen con tu app; `start()` las crea y las mantiene sincronizadas                                          |
+| `menus`                        | `MenuDefinition[]`                           | `[]`                            | ver [Elementos de menú](reference.md#elementos-del-menú) | Lo sirve `GET /axeda/menu`, filtrado por lo que puede hacer quien llama                                                   |
+| `retention.graceDays`          | entero                                       | `30`                            | de 0 a 3650                                              | Días que se conserva una compañía o negocio borrado antes de poder purgarse                                               |
+| `retention.auditDays`          | entero                                       | sin límite (se conserva entera) | de 1 a 36500                                             | Días que se conservan los eventos de auditoría; `purgeAudit()` borra los anteriores ([abajo](#retención-de-la-auditoría)) |
+| `invitations.ttlHours`         | entero                                       | `72`                            | de 1 a 720                                               | Vigencia por omisión de una invitación                                                                                    |
+| `invitations.maxRoles`         | entero                                       | `10`                            | de 1 a 50                                                | Funciones que puede llevar una invitación                                                                                 |
+| `limits.maxAssignmentsPerUser` | entero                                       | `50`                            | de 1 a 10000                                             | Una concesión (o una invitación aceptada) que lo supere responde `AXEDA_LIMIT_EXCEEDED`                                   |
+| `limits.maxPermissionsPerRole` | entero                                       | `100`                           | de 1 a 10000                                             | Una función con más permisos que esto se rechaza                                                                          |
+| `limits.maxCachedUsers`        | entero                                       | `10000`                         | de 1 a 10000                                             | Usuarios cuyos permisos guarda cada proceso en memoria. La memoria crece con este valor                                   |
+| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`        | apagada                         | dos funciones                                            | Sin ella, crear una invitación responde `AXEDA_FEATURE_DISABLED` (501)                                                    |
+| `publicIdentity`               | `boolean`                                    | `false`                         | `true` / `false`                                         | Publica `GET /axeda/public/identity`, el único endpoint que no necesita sesión                                            |
+| `maxSessionAge`                | entero positivo (segundos) o `false`         | 30 días                         | `> 0`, o `false` para apagarlo                           | Lo máximo que vive una sesión desde que se abrió, por mucho que se use. Se comprueba en `axeda({ … })`                    |
+| `clock`                        | `{ now(): Date }`                            | el del sistema                  | —                                                        | Solo para pruebas                                                                                                         |
 
 Una clave mal escrita se rechaza, en el primer nivel o dentro de `retention`, `invitations`, `limits`,
 `images`, `staff`, `invitationDelivery` o la definición de una función, con la opción que probablemente
@@ -417,6 +418,25 @@ Se aplican dos límites, y gana el más corto:
 Mientras el límite la retiene, Better Auth escribe la fila de la sesión en cada petición durante el último
 tramo de su vida (`expiresIn` menos `updateAge`: 6 días con el preset), en vez de una vez al día.
 
+### Retención de la auditoría
+
+La auditoría solo crece mientras no digas cuánto conservarla. Con `retention.auditDays`, llama a
+`purgeAudit()` de forma programada, igual que a `purgeDeleted()`; Axeda no corre nada en segundo plano:
+
+```ts
+// Por ejemplo una vez al día, desde tu cron o tu programador de tareas.
+const axedaInstance = plugin.instance();
+await axedaInstance.purgeDeleted();
+await axedaInstance.purgeAudit(); // { removed, before }
+```
+
+- Borra los eventos con más de esos días, por lotes y fuera de transacción: si se corta a medias, la siguiente
+  llamada sigue.
+- Cuando borra algo, apunta un evento `audit.purge` con la fecha de corte y cuántos borró.
+- Sin `retention.auditDays` lanza `AXEDA_INVALID_CONFIG` en vez de borrar nada.
+- Lo que la ley o tus auditores te pidan conservar lo decides tú. Si debes guardar más de lo que conviene tener
+  en la base de datos, exporta los eventos viejos antes de purgarlos.
+
 ---
 
 ## 3. Express: `createAxedaExpress`
@@ -515,7 +535,7 @@ Las variables `AXEDA_TEST_*` son de la suite de pruebas y del benchmark, no de t
 - [ ] Las funciones con `requireMfa` tienen instalado el plugin `twoFactor` de Better Auth.
 - [ ] `maxSessionAge` coincide con tu política (30 días por omisión).
 - [ ] El primer administrador se creó con `bootstrap`.
-- [ ] Archivas tú la auditoría: la retención no es automática y la tabla solo crece.
+- [ ] `retention.auditDays` está definido y `purgeAudit()` corre de forma programada, o archivas tú la auditoría.
 - [ ] MongoDB funciona como conjunto de réplicas; las tablas MySQL creadas antes del índice de `action` se acotaron.
 
 ## Problemas frecuentes

@@ -86,7 +86,7 @@ más corto acorta ese tramo.
 - [ ] El 2FA está activado en las cuentas con funciones administrativas (abajo)
 - [ ] La base de datos tiene transacciones reales (SQLite, PostgreSQL); las copias de seguridad están probadas
 - [ ] `purgeDeleted()` corre con una programación si dependes de que las compañías borradas desaparezcan
-- [ ] Alguien vigila la auditoría
+- [ ] Alguien vigila la auditoría, y `purgeAudit()` corre de forma programada si definiste `retention.auditDays`
 
 ## Autenticación en dos pasos para administradores
 
@@ -118,10 +118,10 @@ Dichos con claridad, para que puedas decidir:
   tres últimas contra servidores reales. MySQL pide configurar dos cosas y MongoDB necesita un
   conjunto de réplicas y no tiene claves foráneas ([Referencia](reference.md#bases-de-datos)).
 - **Una sola autoridad.** Axeda es la única fuente de permisos. Los plugins `admin` y `organization` de Better Auth tienen roles propios; Axeda los ignora, así que no los consultes en tus rutas o tendrás dos sistemas que pueden discrepar.
-- **Los menús** son de solo lectura y vienen del código; editarlos por la API está previsto.
+- **Los menús** vienen del código; por la API solo se ocultan, reordenan y renombran opciones, no se añaden nuevas.
 - **Los mensajes** de la API están en inglés; los códigos (`AXEDA_*`) son estables y están pensados
   para que los traduzcas.
-- **La retención de la auditoría** no es automática: el registro solo crece. Archívalo por tu lado por ahora.
+- **La retención de la auditoría** necesita `retention.auditDays` y un `purgeAudit()` programado; sin ellos el registro solo crece.
 - **Las invitaciones pendientes** aún no tienen tope por alcance.
 - **`user/list` con `banned`** filtra después de la consulta, así que una página puede traer menos filas que el límite.
 - **La concurrencia en un servidor real** (muchos escritores en paralelo sobre un PostgreSQL) está
