@@ -2,7 +2,7 @@
 
 Object storage for the images of Axeda (logos, favicons and profile pictures): Cloudflare R2, Amazon S3, MinIO and any other S3-compatible store. The browser uploads straight to the store with a signed URL, so the bytes never go through your server. Requests are signed with AWS Signature Version 4 on WebCrypto: there is no AWS SDK to install.
 
-> **Status:** alpha; the API can still change before 1.0. Install with `npm install @teamblind/axeda-storage@alpha`. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
+> **Status:** alpha (`0.1.0-alpha.3`); the API can still change before 1.0. Install with `npm install @teamblind/axeda-storage@alpha`. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
 
 ```ts
 import { createAxeda } from '@teamblind/axeda-core';
