@@ -21,6 +21,7 @@ const empty = {
   roles: new Map(),
   unusable: new Set<string>(),
   pinAccount: false,
+  gated: new Map(),
 };
 
 describe('AuthzCache', () => {

@@ -31,13 +31,14 @@ import {
 } from './memory-tenants.js';
 import { createImageStore, type ImageState } from './memory-images.js';
 import { createStaffStore, type StaffState } from './memory-staff.js';
+import { createFeatureStore, type FeatureState } from './memory-features.js';
 
 export interface MemoryPersistenceOptions {
   readonly now?: () => Date;
   readonly nextId?: () => string;
 }
 
-interface State extends TenantState, ImageState, StaffState {
+interface State extends TenantState, ImageState, StaffState, FeatureState {
   roles: Map<string, Role>;
   audit: AuditEvent[];
   assignments: Map<string, RoleAssignment>;
@@ -52,6 +53,7 @@ const snapshot = (state: State): State => ({
   invitations: new Map(state.invitations),
   images: new Map(state.images),
   staff: new Map(state.staff),
+  features: new Map(state.features),
   roles: new Map(state.roles),
   audit: [...state.audit],
   assignments: new Map(state.assignments),
@@ -66,6 +68,7 @@ function restore(state: State, saved: State): void {
   state.invitations = saved.invitations;
   state.images = saved.images;
   state.staff = saved.staff;
+  state.features = saved.features;
   state.roles = saved.roles;
   state.audit = saved.audit;
   state.assignments = saved.assignments;
@@ -286,6 +289,7 @@ export function createMemoryPersistence(options: MemoryPersistenceOptions = {}):
     invitations: new Map(),
     images: new Map(),
     staff: new Map(),
+    features: new Map(),
     roles: new Map(),
     audit: [],
     assignments: new Map(),
@@ -308,6 +312,7 @@ export function createMemoryPersistence(options: MemoryPersistenceOptions = {}):
     invitations: createInvitationStore({ state, run, now, nextId }),
     images: createImageStore(state, run, now, nextId),
     staff: createStaffStore(state, run, now),
+    features: createFeatureStore(state, run, now),
     roles: createRoleStore(state, run, now, nextId),
     assignments: createAssignmentStore(state, run, now, nextId),
     authz: createAuthzStore(state, run),

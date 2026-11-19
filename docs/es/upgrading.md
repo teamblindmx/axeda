@@ -4,13 +4,15 @@
 
 Las cuentas de personal son nuevas y solo se suman. Tienes que ejecutar la migración de la base de datos.
 
-| Qué cambió                                                                             | ¿Tienes que hacer algo?                                                                      |
-| -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Cuentas de personal con usuario y PIN, y `axeda:staff:manage`                          | Solo si las quieres ([Configuración](configuration.md#cuentas-de-personal-usuario-y-pin))    |
-| Una tabla nueva, `axedaStaff`                                                          | **Sí**: ejecuta la migración                                                                 |
-| `AxedaPersistence` necesita un almacén `staff`; `UserAdmin` puede implementar `delete` | Solo si escribiste los tuyos ([abajo](#tu-propia-persistencia-y-administración-de-usuarios)) |
-| Una opción mal escrita ahora lanza `AXEDA_INVALID_CONFIG` en vez de ignorarse          | **Revisa**: si tu aplicación deja de arrancar, el mensaje dice la opción y cómo se escribe   |
-| Una lectura de permisos en frío hace una consulta más                                  | No: va en paralelo y solo cuando falla la caché                                              |
+| Qué cambió                                                                                                   | ¿Tienes que hacer algo?                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| Cuentas de personal con usuario y PIN, y `axeda:staff:manage`                                                | Solo si las quieres ([Configuración](configuration.md#cuentas-de-personal-usuario-y-pin))                                     |
+| Una tabla nueva, `axedaStaff`                                                                                | **Sí**: ejecuta la migración                                                                                                  |
+| `AxedaPersistence` necesita un almacén `staff`; `UserAdmin` puede implementar `delete`                       | Solo si escribiste los tuyos ([abajo](#tu-propia-persistencia-y-administración-de-usuarios))                                  |
+| Una opción mal escrita ahora lanza `AXEDA_INVALID_CONFIG` en vez de ignorarse                                | **Revisa**: si tu aplicación deja de arrancar, el mensaje dice la opción y cómo se escribe                                    |
+| Funcionalidades por compañía y `axeda:feature:manage`; una tabla nueva, `axedaCompanyFeature`                | Solo si declaras funcionalidades ([Configuración](configuration.md#funcionalidades-por-compañía)); la migración crea la tabla |
+| `/axeda/me` con un lugar lista permisos concretos en vez de comodines (`invoice:read` en vez de `invoice:*`) | Solo si tu frontend buscaba un comodín                                                                                        |
+| Una lectura de permisos en frío hace una consulta más                                                        | No: va en paralelo y solo cuando falla la caché                                                                               |
 
 ### Tu propia persistencia y administración de usuarios
 

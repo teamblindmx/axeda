@@ -183,7 +183,7 @@ export function createAssignmentService(services: Services): AssignmentService {
       const all = await persistence.assignments.listForUser(userId);
       if (userId === actor.userId) return all;
 
-      const snapshot = await loadSnapshot(persistence, actor.userId);
+      const snapshot = await loadSnapshot(persistence, actor.userId, services.options.features);
       const managed = scopesGranting(
         actorPolicyData(services, actor, snapshot),
         AXEDA_PERMISSIONS.assignmentManage,

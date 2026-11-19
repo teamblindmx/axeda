@@ -8,6 +8,7 @@ export {
 export type { AssignInput, AssignmentService } from './application/assignments.js';
 export type { InvitationInput, InvitationService } from './application/invitations.js';
 export type { StaffInput, StaffMember, StaffService, StaffSignIn } from './application/staff.js';
+export type { CompanyFeatureState, FeatureService } from './application/features.js';
 export type {
   ImageResult,
   ImageService,
@@ -54,6 +55,7 @@ export {
 export { assertTransactional, isTransactional } from './application/startup-checks.js';
 export { MAX_MENU_DEPTH, type MenuDefinition, type ResolvedMenu } from './config/menus.js';
 export { closestOption, rejectUnknownOptions } from './config/unknown-options.js';
+export { FEATURE_KEY, type FeatureDefinition, type ResolvedFeature } from './config/features.js';
 export { pickLabel, type MenuNode } from './application/menu.js';
 export type { BanInput, UserInput, UserService } from './application/users.js';
 export {

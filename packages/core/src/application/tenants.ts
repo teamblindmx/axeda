@@ -47,6 +47,7 @@ async function purgeOwned(
   // Una tras otra: en SQLite la transacción tiene una sola conexión.
   const images = await stores.images.deleteOwnedBy(owners);
   const staff = await stores.staff.deleteOwnedBy(owners);
+  await stores.features.deleteForCompanies(owners.companyIds);
   return { images, staff };
 }
 
@@ -247,7 +248,7 @@ export function createTenantServices(services: Services): {
   });
 
   async function membershipOf(actor: Actor): Promise<Membership> {
-    const snapshot = await loadSnapshot(persistence, actor.userId);
+    const snapshot = await loadSnapshot(persistence, actor.userId, services.options.features);
     const data = actorPolicyData(services, actor, snapshot);
     const global = effectivePermissions({
       ...data,

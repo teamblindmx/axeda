@@ -4,30 +4,31 @@
 
 Valores aceptados, rangos y qué pasa cuando uno es incorrecto: [Configuración](configuration.md#2-el-plugin-axeda).
 
-| Opción                         | Tipo                                                                           | Por omisión | Significado                                                                                  |
-| ------------------------------ | ------------------------------------------------------------------------------ | ----------- | -------------------------------------------------------------------------------------------- |
-| `permissions`                  | `string[]`                                                                     | —           | Tu catálogo de permisos (concretos, sin comodines). **Obligatoria**                          |
-| `roles`                        | `Record<clave, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`        | Funciones declaradas, sincronizadas al arrancar                                              |
-| `menus`                        | `MenuDefinition[]`                                                             | `[]`        | El menú, declarado en el código                                                              |
-| `retention.graceDays`          | `number` (0–3650)                                                              | `30`        | Días que una compañía o negocio borrado puede restaurarse                                    |
-| `invitations.ttlHours`         | `number`                                                                       | `72`        | Vigencia por defecto de una invitación                                                       |
-| `invitations.maxRoles`         | `number` (1–50)                                                                | `10`        | Funciones por invitación                                                                     |
-| `limits.maxAssignmentsPerUser` | `number`                                                                       | `50`        | Asignaciones que puede tener un usuario                                                      |
-| `limits.maxPermissionsPerRole` | `number`                                                                       | `100`       | Permisos en una función                                                                      |
-| `limits.maxCachedUsers`        | `number`                                                                       | `10000`     | Usuarios cuyos permisos guarda en caché cada proceso                                         |
-| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                          | apagado     | Cómo se entregan las invitaciones. Sin esto están desactivadas                               |
-| `publicIdentity`               | `boolean`                                                                      | `false`     | Expone `GET /axeda/public/identity` (el único endpoint sin sesión)                           |
-| `maxSessionAge`                | `number` (segundos) o `false`                                                  | 30 días     | Lo máximo que vive una sesión desde el inicio, por mucho que se use                          |
-| `storage`                      | `ObjectStorage` (p. ej. `s3Storage()` de `@teamblind/axeda-storage`)           | apagado     | Dónde se guardan logos, favicons y fotos de perfil. Sin esto las imágenes están desactivadas |
-| `imageProcessor`               | `ImageProcessor` (p. ej. `sharpImageProcessor()`)                              | ninguno     | Recodifica cada imagen al completar su subida                                                |
-| `images.maxBytes`              | `number` (1 KiB–20 MiB)                                                        | 2 MiB       | La imagen más grande                                                                         |
-| `images.maxDimension`          | `number` (16–8192)                                                             | `4096`      | Píxeles por lado de un logo o una foto de perfil                                             |
-| `images.faviconMaxDimension`   | `number` (16–8192)                                                             | `1024`      | Píxeles por lado de un favicon                                                               |
-| `images.uploadTtlMinutes`      | `number` (1–60)                                                                | `10`        | Minutos para completar una subida                                                            |
-| `staff.pinLength`              | `number` (6–8)                                                                 | `6`         | Dígitos de los PIN que genera Axeda                                                          |
-| `staff.maxAttempts`            | `number` (3–10)                                                                | `5`         | PIN incorrectos seguidos antes de bloquear la cuenta                                         |
-| `staff.lockMinutes`            | `number` (1–1440)                                                              | `15`        | Cuánto dura el bloqueo                                                                       |
-| `images.maxPendingPerUser`     | `number` (1–100)                                                               | `10`        | Subidas que una persona puede dejar abiertas                                                 |
+| Opción                         | Tipo                                                                           | Por omisión | Significado                                                                                   |
+| ------------------------------ | ------------------------------------------------------------------------------ | ----------- | --------------------------------------------------------------------------------------------- |
+| `permissions`                  | `string[]`                                                                     | —           | Tu catálogo de permisos (concretos, sin comodines). **Obligatoria**                           |
+| `roles`                        | `Record<clave, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`        | Funciones declaradas, sincronizadas al arrancar                                               |
+| `menus`                        | `MenuDefinition[]`                                                             | `[]`        | El menú, declarado en el código                                                               |
+| `retention.graceDays`          | `number` (0–3650)                                                              | `30`        | Días que una compañía o negocio borrado puede restaurarse                                     |
+| `invitations.ttlHours`         | `number`                                                                       | `72`        | Vigencia por defecto de una invitación                                                        |
+| `invitations.maxRoles`         | `number` (1–50)                                                                | `10`        | Funciones por invitación                                                                      |
+| `limits.maxAssignmentsPerUser` | `number`                                                                       | `50`        | Asignaciones que puede tener un usuario                                                       |
+| `limits.maxPermissionsPerRole` | `number`                                                                       | `100`       | Permisos en una función                                                                       |
+| `limits.maxCachedUsers`        | `number`                                                                       | `10000`     | Usuarios cuyos permisos guarda en caché cada proceso                                          |
+| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                          | apagado     | Cómo se entregan las invitaciones. Sin esto están desactivadas                                |
+| `publicIdentity`               | `boolean`                                                                      | `false`     | Expone `GET /axeda/public/identity` (el único endpoint sin sesión)                            |
+| `maxSessionAge`                | `number` (segundos) o `false`                                                  | 30 días     | Lo máximo que vive una sesión desde el inicio, por mucho que se use                           |
+| `storage`                      | `ObjectStorage` (p. ej. `s3Storage()` de `@teamblind/axeda-storage`)           | apagado     | Dónde se guardan logos, favicons y fotos de perfil. Sin esto las imágenes están desactivadas  |
+| `imageProcessor`               | `ImageProcessor` (p. ej. `sharpImageProcessor()`)                              | ninguno     | Recodifica cada imagen al completar su subida                                                 |
+| `images.maxBytes`              | `number` (1 KiB–20 MiB)                                                        | 2 MiB       | La imagen más grande                                                                          |
+| `images.maxDimension`          | `number` (16–8192)                                                             | `4096`      | Píxeles por lado de un logo o una foto de perfil                                              |
+| `images.faviconMaxDimension`   | `number` (16–8192)                                                             | `1024`      | Píxeles por lado de un favicon                                                                |
+| `images.uploadTtlMinutes`      | `number` (1–60)                                                                | `10`        | Minutos para completar una subida                                                             |
+| `features`                     | `Record<clave, { permissions, name?, description?, enabledByDefault? }>`       | `{}`        | Módulos que la plataforma enciende por compañía; sus permisos no cuentan donde están apagados |
+| `staff.pinLength`              | `number` (6–8)                                                                 | `6`         | Dígitos de los PIN que genera Axeda                                                           |
+| `staff.maxAttempts`            | `number` (3–10)                                                                | `5`         | PIN incorrectos seguidos antes de bloquear la cuenta                                          |
+| `staff.lockMinutes`            | `number` (1–1440)                                                              | `15`        | Cuánto dura el bloqueo                                                                        |
+| `images.maxPendingPerUser`     | `number` (1–100)                                                               | `10`        | Subidas que una persona puede dejar abiertas                                                  |
 
 `acceptUrl` debe construirse con tu URL base configurada, nunca con la cabecera `Host` de una petición.
 
@@ -104,6 +105,8 @@ Todos cuelgan de la ruta base de Better Auth (`/api/auth`). Todos exigen sesión
 | POST   | `/axeda/staff/reactivate`     | `axeda:staff:manage`                                                                       | por objetivo         |
 | POST   | `/axeda/staff/remove`         | `axeda:staff:manage`                                                                       | por objetivo         |
 | POST   | `/axeda/staff/change-pin`     | (sesión; tu propio PIN, dando el actual)                                                   | propio               |
+| GET    | `/axeda/feature/list`         | (sesión; quien ve la compañía)                                                             | por objetivo         |
+| POST   | `/axeda/feature/set`          | `axeda:feature:manage`                                                                     | global               |
 | GET    | `/axeda/user/list`            | `axeda:user:manage`                                                                        | global               |
 | POST   | `/axeda/user/create`          | `axeda:user:manage`                                                                        | global               |
 | POST   | `/axeda/user/ban`             | `axeda:user:manage`                                                                        | global               |
@@ -123,6 +126,10 @@ oculte cosas. Un lugar que no existe, que no es suyo o que está inactivo da una
 distinguir un caso de otro. Las sedes se administran desde la compañía, o desde el negocio del que
 cuelgan, con `axeda:site:manage`; `site/list` acepta `businessId` para listar las sedes de un negocio,
 o `businessId=none` para las que cuelgan directamente de la compañía.
+
+`feature/list` responde `{ items: [{ key, name, description, enabled, source }] }` (`source` es `default` o
+`set`); `feature/set` recibe `{ companyId, feature, enabled }` y responde un elemento. Con un lugar,
+`/axeda/me` lista los permisos concretos del catálogo que cuentan ahí, ordenados.
 
 `staff/create` recibe `{ scope, username, name, roleIds? }` y responde `{ member, pin }`: el PIN, solo ahí.
 `staff/sign-in` recibe `{ company, username, pin }` (el slug de la compañía) y responde `{ userId, name }`

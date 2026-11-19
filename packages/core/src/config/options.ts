@@ -9,6 +9,7 @@ import {
 } from '../domain/permission-key.js';
 import { AxedaError } from '../errors.js';
 import { resolveMenus, type MenuDefinition, type ResolvedMenu } from './menus.js';
+import { resolveFeatures, type FeatureDefinition, type ResolvedFeature } from './features.js';
 
 export interface RoleDefinition {
   readonly name?: string | undefined;
@@ -38,6 +39,11 @@ export interface AxedaOptions {
     /** Usuarios cuyos permisos se guardan en la caché en memoria de cada proceso. */
     readonly maxCachedUsers?: number;
   };
+  /**
+   * Funcionalidades (módulos) que la plataforma activa por compañía. Sin una funcionalidad, sus
+   * permisos no valen dentro de esa compañía.
+   */
+  readonly features?: Readonly<Record<string, FeatureDefinition>>;
   /** Personal con usuario y PIN. */
   readonly staff?: {
     /** Dígitos de los PIN que se generan, de 6 a 8. Por omisión 6. */
@@ -82,6 +88,7 @@ export interface ResolvedOptions {
     readonly maxPermissionsPerRole: number;
     readonly maxCachedUsers: number;
   };
+  readonly features: ReadonlyMap<string, ResolvedFeature>;
   readonly staff: {
     readonly pinLength: number;
     readonly maxAttempts: number;
@@ -154,6 +161,17 @@ const optionsSchema = z.strictObject({
       maxPermissionsPerRole: limitSchema.optional(),
       maxCachedUsers: limitSchema.optional(),
     })
+    .optional(),
+  features: z
+    .record(
+      z.string(),
+      z.strictObject({
+        permissions: z.array(z.string()),
+        name: z.string().min(1).max(200).optional(),
+        description: z.string().max(1000).optional(),
+        enabledByDefault: z.boolean().optional(),
+      }),
+    )
     .optional(),
   staff: z
     .strictObject({
@@ -289,5 +307,6 @@ export function resolveOptions(options: AxedaOptions): ResolvedOptions {
     invitations: invitationsOf(shape.invitations),
     images: imagesOf(shape.images),
     staff: staffOf(shape.staff),
+    features: resolveFeatures(shape.features, catalog),
   };
 }

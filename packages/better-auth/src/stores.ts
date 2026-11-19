@@ -23,6 +23,7 @@ import {
 import { isForeignKeyViolation, isUniqueViolation } from './errors.js';
 import { createImageStore } from './image-store.js';
 import { createStaffStore } from './staff-store.js';
+import { createFeatureStore } from './feature-store.js';
 import {
   scopeColumns,
   toAssignment,
@@ -473,6 +474,7 @@ export function createBetterAuthPersistence<Options extends BetterAuthOptions>(
     invitations: createInvitationStore(target, now),
     images: createImageStore(target, now),
     staff: createStaffStore(target, now),
+    features: createFeatureStore(target, now),
   });
 
   const root = storesFor(

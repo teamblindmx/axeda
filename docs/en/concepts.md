@@ -1,5 +1,7 @@
 # Concepts
 
+| `axeda:feature:manage` | global | Switch a company's features on or off (the platform only) |
+
 ## The hierarchy
 
 Axeda decides on four levels. A permission is always checked **in a scope**:

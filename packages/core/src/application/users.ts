@@ -73,7 +73,7 @@ export async function authorizeOnUser(
   if (user === null) {
     throw new AxedaError('AXEDA_USER_NOT_FOUND', `User "${userId}" does not exist.`);
   }
-  const snapshot = await loadSnapshot(persistence, userId);
+  const snapshot = await loadSnapshot(persistence, userId, services.options.features);
   // Se cuentan también las funciones que exigen 2FA: la protección es para todo su poder.
   const targetHeld = permissionsHeldAnywhere({
     ...snapshot,

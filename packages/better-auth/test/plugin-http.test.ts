@@ -155,6 +155,14 @@ describe('every endpoint requires a session and a permission', () => {
     },
     '/axeda/image/complete': { method: 'POST', body: { uploadId: 'x' }, unprivileged: [501] },
     '/axeda/image/remove': { method: 'POST', body: { purpose: 'company.logo', targetId: 'x' } },
+    // Funcionalidades: ver las de una compañía que no existe es 404; cambiarlas, solo la plataforma.
+    '/axeda/feature/list': { method: 'GET', query: { companyId: 'x' } },
+    '/axeda/feature/set': {
+      method: 'POST',
+      body: { companyId: 'x', feature: 'nope', enabled: true },
+      // El administrador global pasa el permiso y recibe 400: esa funcionalidad no está declarada.
+      admin: [400],
+    },
     // Personal. Entrar con PIN no pide sesión: con datos falsos es 401 para todos.
     '/axeda/staff/sign-in': {
       method: 'POST',
