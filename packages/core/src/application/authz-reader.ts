@@ -64,11 +64,10 @@ export async function loadSnapshot(
   userId: string,
   features?: ReadonlyMap<string, ResolvedFeature>,
 ): Promise<AuthzSnapshot> {
-  // En paralelo: saber si es personal no añade espera, solo una consulta en la carga en frío.
-  const [assignments, staff] = await Promise.all([
-    stores.assignments.listForUser(userId),
-    stores.staff.get(userId),
-  ]);
+  // Una tras otra, nunca en paralelo: esto también corre dentro de transacciones, y MongoDB no
+  // admite varias operaciones a la vez en la misma (tampoco SQLite, con su única conexión).
+  const assignments = await stores.assignments.listForUser(userId);
+  const staff = await stores.staff.get(userId);
   const pinAccount = staff !== null;
   const roleIds = [...new Set(assignments.map((assignment) => assignment.roleId))];
   const roles = new Map<string, Role>(
