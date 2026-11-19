@@ -166,21 +166,22 @@ Only `permissions` is required. Every other option has a default.
 
 ### Options
 
-| Option                         | Type                                         | Default      | Accepted values                           | Notes                                                                                    |
-| ------------------------------ | -------------------------------------------- | ------------ | ----------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `permissions`                  | `string[]`                                   | — (required) | see [Permission keys](#permission-keys)   | The catalog of your application                                                          |
-| `roles`                        | `Record<string, string[] \| RoleDefinition>` | `{}`         | see [Roles](#roles-declared-in-code)      | Roles that ship with your app, created and kept in sync by `start()`                     |
-| `menus`                        | `MenuDefinition[]`                           | `[]`         | see [Menu items](reference.md#menu-items) | Served by `GET /axeda/menu`, filtered by what the caller may do                          |
-| `retention.graceDays`          | integer                                      | `30`         | 0 to 3650                                 | Days a deleted company or business is kept before it can be purged                       |
-| `invitations.ttlHours`         | integer                                      | `72`         | 1 to 720                                  | Default life of an invitation                                                            |
-| `invitations.maxRoles`         | integer                                      | `10`         | 1 to 50                                   | Roles one invitation may carry                                                           |
-| `limits.maxAssignmentsPerUser` | integer                                      | `50`         | 1 to 10000                                | A grant (or an accepted invitation) over the limit answers `AXEDA_LIMIT_EXCEEDED`        |
-| `limits.maxPermissionsPerRole` | integer                                      | `100`        | 1 to 10000                                | A role with more permissions than this is refused                                        |
-| `limits.maxCachedUsers`        | integer                                      | `10000`      | 1 to 10000                                | Users whose permissions each process keeps in memory. Memory grows with this value       |
-| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`        | off          | two functions                             | Without it, creating an invitation answers `AXEDA_FEATURE_DISABLED` (501)                |
-| `publicIdentity`               | `boolean`                                    | `false`      | `true` / `false`                          | Publishes `GET /axeda/public/identity`, the only endpoint that needs no session          |
-| `maxSessionAge`                | positive integer (seconds) or `false`        | 30 days      | `> 0`, or `false` to turn it off          | Longest a session lives from sign-in, however much it is used. Checked at `axeda({ … })` |
-| `clock`                        | `{ now(): Date }`                            | system clock | —                                         | For tests only                                                                           |
+| Option                         | Type                                         | Default            | Accepted values                           | Notes                                                                                     |
+| ------------------------------ | -------------------------------------------- | ------------------ | ----------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `permissions`                  | `string[]`                                   | — (required)       | see [Permission keys](#permission-keys)   | The catalog of your application                                                           |
+| `roles`                        | `Record<string, string[] \| RoleDefinition>` | `{}`               | see [Roles](#roles-declared-in-code)      | Roles that ship with your app, created and kept in sync by `start()`                      |
+| `menus`                        | `MenuDefinition[]`                           | `[]`               | see [Menu items](reference.md#menu-items) | Served by `GET /axeda/menu`, filtered by what the caller may do                           |
+| `retention.graceDays`          | integer                                      | `30`               | 0 to 3650                                 | Days a deleted company or business is kept before it can be purged                        |
+| `retention.auditDays`          | integer                                      | off (kept in full) | 1 to 36500                                | Days audit events are kept; `purgeAudit()` deletes older ones ([below](#audit-retention)) |
+| `invitations.ttlHours`         | integer                                      | `72`               | 1 to 720                                  | Default life of an invitation                                                             |
+| `invitations.maxRoles`         | integer                                      | `10`               | 1 to 50                                   | Roles one invitation may carry                                                            |
+| `limits.maxAssignmentsPerUser` | integer                                      | `50`               | 1 to 10000                                | A grant (or an accepted invitation) over the limit answers `AXEDA_LIMIT_EXCEEDED`         |
+| `limits.maxPermissionsPerRole` | integer                                      | `100`              | 1 to 10000                                | A role with more permissions than this is refused                                         |
+| `limits.maxCachedUsers`        | integer                                      | `10000`            | 1 to 10000                                | Users whose permissions each process keeps in memory. Memory grows with this value        |
+| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`        | off                | two functions                             | Without it, creating an invitation answers `AXEDA_FEATURE_DISABLED` (501)                 |
+| `publicIdentity`               | `boolean`                                    | `false`            | `true` / `false`                          | Publishes `GET /axeda/public/identity`, the only endpoint that needs no session           |
+| `maxSessionAge`                | positive integer (seconds) or `false`        | 30 days            | `> 0`, or `false` to turn it off          | Longest a session lives from sign-in, however much it is used. Checked at `axeda({ … })`  |
+| `clock`                        | `{ now(): Date }`                            | system clock       | —                                         | For tests only                                                                            |
 
 A misspelled key is rejected, at the top level or inside `retention`, `invitations`, `limits`, `images`,
 `staff`, `invitationDelivery` or a role definition, with the option it probably meant
@@ -410,6 +411,25 @@ Two limits apply, and the shorter one wins:
 While the limit holds a session back, Better Auth writes the session row on every request during the
 last `expiresIn` minus `updateAge` of its life (6 days with the preset), instead of once a day.
 
+### Audit retention
+
+The audit log only grows unless you set how long to keep it. With `retention.auditDays`, call
+`purgeAudit()` on a schedule, as you do with `purgeDeleted()`; Axeda runs nothing in the background:
+
+```ts
+// For example once a day, from your cron or scheduler.
+const axedaInstance = plugin.instance();
+await axedaInstance.purgeDeleted();
+await axedaInstance.purgeAudit(); // { removed, before }
+```
+
+- It deletes the events older than that many days, in batches and outside a transaction: if it stops halfway,
+  the next call carries on.
+- When it deletes something it records an `audit.purge` event, with the cut-off and how many it removed.
+- Without `retention.auditDays` it throws `AXEDA_INVALID_CONFIG` instead of deleting anything.
+- What the law or your auditors ask you to keep is yours to decide. If you must keep more than the database
+  should hold, export the old events before purging them.
+
 ---
 
 ## 3. Express: `createAxedaExpress`
@@ -508,7 +528,7 @@ The `AXEDA_TEST_*` variables belong to the test suite and the benchmark, not to 
 - [ ] Roles that use `requireMfa` have Better Auth's `twoFactor` plugin installed.
 - [ ] `maxSessionAge` matches your policy (30 days by default).
 - [ ] The first administrator was created with `bootstrap`.
-- [ ] You archive the audit log yourself: retention is not automatic and the table only grows.
+- [ ] `retention.auditDays` is set and `purgeAudit()` runs on a schedule, or you archive the audit log yourself.
 - [ ] MongoDB runs as a replica set; MySQL tables created before the `action` index were bounded.
 
 ## Troubleshooting

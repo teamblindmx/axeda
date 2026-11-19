@@ -10,6 +10,7 @@ Valores aceptados, rangos y qué pasa cuando uno es incorrecto: [Configuración]
 | `roles`                        | `Record<clave, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`        | Funciones declaradas, sincronizadas al arrancar                                               |
 | `menus`                        | `MenuDefinition[]`                                                             | `[]`        | El menú, declarado en el código                                                               |
 | `retention.graceDays`          | `number` (0–3650)                                                              | `30`        | Días que una compañía o negocio borrado puede restaurarse                                     |
+| `retention.auditDays`          | `number` (1–36500)                                                             | ninguno     | Días que se conservan los eventos de auditoría; `purgeAudit()` borra los anteriores           |
 | `invitations.ttlHours`         | `number`                                                                       | `72`        | Vigencia por defecto de una invitación                                                        |
 | `invitations.maxRoles`         | `number` (1–50)                                                                | `10`        | Funciones por invitación                                                                      |
 | `limits.maxAssignmentsPerUser` | `number`                                                                       | `50`        | Asignaciones que puede tener un usuario                                                       |
@@ -250,6 +251,7 @@ Obtén la instancia con `axedaPlugin.instance()` una vez creado Better Auth.
 | `publicIdentity({ company, business? })`                                           | Nombre y logos públicos de una compañía o negocio activo                                                  |
 | `listAudit(actor, filter, page)`                                                   | Una página de eventos de auditoría                                                                        |
 | `purgeDeleted()`                                                                   | Elimina para siempre lo que pasó su periodo de gracia, con sus imágenes, y las subidas que nadie completó |
+| `purgeAudit()`                                                                     | Borra los eventos de auditoría con más de `retention.auditDays` días y apunta un evento `audit.purge`     |
 | `bootstrap({ userId })`                                                            | Crea la primera administración global (una vez)                                                           |
 
 Un `Principal` es `{ userId, authzVersion?, twoFactorEnabled?, banned? }`. Constrúyelo siempre con

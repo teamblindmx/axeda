@@ -84,7 +84,7 @@ Better Auth writes the session row on every request instead of once a day. A sho
 - [ ] 2FA is enabled for accounts that hold administrative roles (below)
 - [ ] The database has real transactions (SQLite, PostgreSQL); backups are tested
 - [ ] `purgeDeleted()` runs on a schedule if you rely on deleted companies disappearing
-- [ ] Someone watches the audit log
+- [ ] Someone watches the audit log, and `purgeAudit()` runs on a schedule if you set `retention.auditDays`
 
 ## Two-factor authentication for administrators
 
@@ -115,10 +115,10 @@ Stated plainly, so you can decide:
   last three against real servers. MySQL has two things to set and MongoDB needs a replica set and
   has no foreign keys ([Reference](reference.md#databases)).
 - **One authority.** Axeda is the only source of permissions. Better Auth's own `admin` and `organization` plugins have roles of their own; Axeda ignores them, so do not check them in your routes or you will have two systems that can disagree.
-- **Menus** are read-only and come from code; editing them through the API is planned.
+- **Menus** come from code; through the API you can only hide, reorder and rename items, not add new ones.
 - **Messages** from the API are in English; the codes (`AXEDA_*`) are stable and meant for you to
   translate.
-- **Audit retention** is not automatic: the log only grows. Archive it on your side for now.
+- **Audit retention** needs `retention.auditDays` and a scheduled `purgeAudit()`; without them the log only grows.
 - **Pending invitations** have no cap per scope yet.
 - **`user/list` with `banned`** filters after the query, so a page may hold fewer rows than the limit.
 - **Real-server concurrency** (many parallel writers on one PostgreSQL) is covered by atomic

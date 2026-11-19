@@ -23,10 +23,17 @@ export interface AxedaOptions {
   readonly permissions: readonly string[];
   /** Funciones declaradas en código (`managed`). La clave es el identificador estable. */
   readonly roles?: Readonly<Record<string, readonly string[] | RoleDefinition>>;
-  /** Días que una compañía o negocio borrado se conserva antes de poder purgarse. */
   /** Menú de la aplicación, declarado en el código (`GET /axeda/menu`). */
   readonly menus?: readonly MenuDefinition[];
-  readonly retention?: { readonly graceDays?: number };
+  readonly retention?: {
+    /** Días que una compañía, negocio o sede borrado se conserva antes de poder purgarse. */
+    readonly graceDays?: number;
+    /**
+     * Días que se conservan los eventos de auditoría; `purgeAudit()` borra los anteriores. Sin
+     * este valor, la auditoría se conserva entera.
+     */
+    readonly auditDays?: number;
+  };
   readonly invitations?: {
     /** Horas de vigencia por defecto. */
     readonly ttlHours?: number;
@@ -81,7 +88,7 @@ export interface ResolvedOptions {
   readonly catalog: readonly PermissionKey[];
   readonly roles: ReadonlyMap<string, ResolvedRoleDefinition>;
   readonly menus: ResolvedMenu;
-  readonly retention: { readonly graceDays: number };
+  readonly retention: { readonly graceDays: number; readonly auditDays: number | null };
   readonly invitations: { readonly ttlHours: number; readonly maxRoles: number };
   readonly limits: {
     readonly maxAssignmentsPerUser: number;
@@ -143,7 +150,13 @@ const optionsSchema = z.strictObject({
     )
     .optional(),
   menus: z.array(z.unknown()).optional(),
-  retention: z.strictObject({ graceDays: z.number().int().min(0).max(3650).optional() }).optional(),
+  retention: z
+    .strictObject({
+      graceDays: z.number().int().min(0).max(3650).optional(),
+      // Al menos un día: un valor menor borraría lo que acaba de pasar.
+      auditDays: z.number().int().min(1).max(36_500).optional(),
+    })
+    .optional(),
   invitations: z
     .strictObject({
       ttlHours: z
@@ -268,6 +281,7 @@ const limitsOf = (limits: Shape['limits']): ResolvedOptions['limits'] => ({
 
 const retentionOf = (retention: Shape['retention']): ResolvedOptions['retention'] => ({
   graceDays: retention?.graceDays ?? DEFAULT_RETENTION.graceDays,
+  auditDays: retention?.auditDays ?? null,
 });
 
 const definedOnly = (value: object | undefined) =>

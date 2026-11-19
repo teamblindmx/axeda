@@ -13,13 +13,16 @@ Staff accounts are new and additive. You have to run the database migration.
 | Features per company and `axeda:feature:manage`; a new table, `axedaCompanyFeature`                               | Only if you declare features ([Configuration](configuration.md#features-per-company)); the migration creates the table          |
 | `/axeda/me` with a place lists concrete permissions instead of wildcards (`invoice:read` rather than `invoice:*`) | Only if your front end looked for a wildcard                                                                                    |
 | Menus adjustable through the API and `axeda:menu:manage`; a new table, `axedaMenuAdjustment`                      | Only if you want them ([Configuration](configuration.md#adjusting-the-menu-without-deploying)); the migration creates the table |
-| A cold permission read makes one more query                                                                       | No: it runs in parallel and only when the cache misses                                                                          |
+| A cold permission read makes one more query                                                                       | No: only when the cache misses                                                                                                  |
+| Audit retention: `retention.auditDays` and `purgeAudit()`                                                         | Only if you want it ([Configuration](configuration.md#audit-retention)); nothing is deleted unless you call it                  |
 
 ### Your own persistence and user administration
 
 Add a `staff` store (`StaffStore`): unique usernames per company, attempts spent atomically before checking
 the PIN, and deleting the accounts of what is purged. `runPersistenceContract` checks it. Staff accounts
 also need `UserAdmin.delete` and the `pinHasher` dependency of `createAxeda` (the Better Auth plugin sets both).
+The audit store needs `deleteBefore(before, limit)`: delete up to `limit` of the oldest events before that moment
+and return how many.
 
 ## From `0.1.0-alpha.2` to `0.1.0-alpha.3`
 

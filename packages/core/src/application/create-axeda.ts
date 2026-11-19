@@ -15,6 +15,7 @@ import type { AuditFilter, AxedaPersistence, Page, PageRequest } from '../ports/
 import { systemClock, type Clock } from '../ports/platform.js';
 import type { AuditEvent } from '../domain/audit.js';
 import { createAssignmentService, type AssignmentService } from './assignments.js';
+import { purgeExpiredAudit, type AuditPurgeResult } from './audit-retention.js';
 import { buildMenu, type MenuNode } from './menu.js';
 import { createUserService, type UserService } from './users.js';
 import { AuthzCache } from './authz-cache.js';
@@ -164,6 +165,11 @@ export interface Axeda {
    * (p. ej. desde un cron); Axeda no corre tareas en segundo plano.
    */
   purgeDeleted(): Promise<PurgeResult>;
+  /**
+   * Borra los eventos de auditoría con más de `retention.auditDays` días (sin esa opción, lanza
+   * `AXEDA_INVALID_CONFIG`). Como `purgeDeleted()`, la aplicación lo llama desde un cron.
+   */
+  purgeAudit(): Promise<AuditPurgeResult>;
   /** Auditoría: global con `axeda:audit:read` global; de una compañía, con ese permiso allí. */
   listAudit(actor: Actor, filter: AuditFilter, page: PageRequest): Promise<Page<AuditEvent>>;
   /** Crea el primer administrador global (operación del servidor, no de la API). */
@@ -350,6 +356,7 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     },
     publicIdentity: (query) => publicIdentity(services, query),
     purgeDeleted: () => purgeExpiredDeletions(services),
+    purgeAudit: () => purgeExpiredAudit(services),
     async listAudit(actor, filter, page) {
       await start();
       const target = await auditTarget(filter.scope);

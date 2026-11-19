@@ -88,12 +88,19 @@ export interface AuditFilter {
 }
 
 /**
- * Registro de auditoría. Solo se añade: no hay actualizar ni borrar. Los identificadores
- * ordenan cronológicamente, así que `list` devuelve primero lo más reciente.
+ * Registro de auditoría. Solo se añade: no hay actualizar, y solo se borra lo antiguo por la
+ * retención. Los identificadores ordenan cronológicamente, así que `list` devuelve primero lo
+ * más reciente.
  */
 export interface AuditStore {
   append(event: NewAuditEvent): Promise<AuditEvent>;
   list(filter: AuditFilter, page: PageRequest): Promise<Page<AuditEvent>>;
+  /**
+   * Borra hasta `limit` de los eventos más antiguos de antes de `before` (al milisegundo; lo de
+   * ese mismo milisegundo se queda) y devuelve cuántos borró. Menos de `limit` significa que no
+   * queda ninguno anterior.
+   */
+  deleteBefore(before: Date, limit: number): Promise<number>;
 }
 
 export interface AxedaStores {

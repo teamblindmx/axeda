@@ -431,6 +431,29 @@ export function runPersistenceContract(name: string, create: PersistenceFactory)
         expect(await count({})).toBe(4);
       });
 
+      it('deletes the oldest events before a moment, a batch at a time, and keeps the rest', async () => {
+        // Pasa al menos un milisegundo, para que el corte quede entre dos eventos.
+        const tick = async () => {
+          const start = Date.now();
+          while (Date.now() <= start) await new Promise((resolve) => setTimeout(resolve, 1));
+        };
+        for (let index = 0; index < 3; index += 1) {
+          await db.audit.append(event({ targetId: `old-${index}` }));
+        }
+        await tick();
+        const cutoff = new Date();
+        await tick();
+        const kept = await db.audit.append(event({ targetId: 'new' }));
+
+        expect(await db.audit.deleteBefore(cutoff, 2)).toBe(2);
+        const middle = (await db.audit.list({}, { limit: 10 })).items.map((item) => item.targetId);
+        // Primero se van los más antiguos.
+        expect(middle).toEqual(['new', 'old-2']);
+        expect(await db.audit.deleteBefore(cutoff, 2)).toBe(1);
+        expect(await db.audit.deleteBefore(cutoff, 2)).toBe(0);
+        expect((await db.audit.list({}, { limit: 10 })).items).toEqual([kept]);
+      });
+
       it('is rolled back with the transaction that wrote it', async () => {
         await expect(
           db.transaction(async (tx) => {
