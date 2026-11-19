@@ -86,7 +86,10 @@ export function createStaffEndpoints(core: CoreProvider) {
         try {
           const request = ctx.request;
           ({ userId } = await core().staff.signIn(ctx.body, {
-            ip: request === undefined ? undefined : (getIP(request, {}) ?? undefined),
+            ip:
+              request === undefined
+                ? undefined
+                : (getIP(request, ctx.context.options) ?? undefined),
             userAgent: ctx.headers?.get('user-agent') ?? undefined,
           }));
         } catch (error) {
