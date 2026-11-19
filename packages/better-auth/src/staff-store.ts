@@ -195,23 +195,23 @@ export function createStaffStore(adapter: Adapter, now: () => Date): StaffStore 
     },
 
     async deleteOwnedBy(owners) {
-      const groups = await Promise.all(
-        (
-          [
-            ['companyId', owners.companyIds],
-            ['businessId', owners.businessIds],
-            ['siteId', owners.siteIds],
-          ] as const
-        ).map(([field, ids]) =>
-          ids.length === 0
-            ? Promise.resolve([] as StaffRow[])
-            : adapter.findMany<StaffRow>({
-                model,
-                where: [{ field, operator: 'in', value: [...ids] }],
-                limit: MAX_ROWS,
-              }),
-        ),
-      );
+      // Una tras otra: se llama dentro de la transacción de purga, y MongoDB no admite varias
+      // operaciones a la vez en la misma transacción.
+      const groups: StaffRow[][] = [];
+      for (const [field, ids] of [
+        ['companyId', owners.companyIds],
+        ['businessId', owners.businessIds],
+        ['siteId', owners.siteIds],
+      ] as const) {
+        if (ids.length === 0) continue;
+        groups.push(
+          await adapter.findMany<StaffRow>({
+            model,
+            where: [{ field, operator: 'in', value: [...ids] }],
+            limit: MAX_ROWS,
+          }),
+        );
+      }
       const unique = new Map<string, StaffAccount>();
       for (const row of groups.flat()) unique.set(row.userId, withoutPin(toStaff(row)));
       if (unique.size > 0) {

@@ -180,18 +180,22 @@ export function createImageStore(adapter: Adapter, now: () => Date): ImageStore 
     },
 
     async deleteOwnedBy(owners) {
-      const groups = await Promise.all([
+      // Una tras otra: se llama dentro de la transacción de purga, y MongoDB no admite varias
+      // operaciones a la vez en la misma transacción.
+      const byCompany =
         owners.companyIds.length === 0
           ? []
-          : findAll([{ field: 'companyId', operator: 'in', value: [...owners.companyIds] }]),
+          : await findAll([{ field: 'companyId', operator: 'in', value: [...owners.companyIds] }]);
+      const byBusiness =
         owners.businessIds.length === 0
           ? []
-          : findAll([{ field: 'businessId', operator: 'in', value: [...owners.businessIds] }]),
+          : await findAll([
+              { field: 'businessId', operator: 'in', value: [...owners.businessIds] },
+            ]);
+      const bySite =
         owners.siteIds.length === 0
           ? []
-          : findAll([{ field: 'targetId', operator: 'in', value: [...owners.siteIds] }]),
-      ]);
-      const [byCompany, byBusiness, bySite] = groups;
+          : await findAll([{ field: 'targetId', operator: 'in', value: [...owners.siteIds] }]);
       const unique = new Map<string, ImageRecord>();
       // Un avatar nunca sale con una compañía; por id de sede solo cuentan las imágenes de sede.
       for (const image of [...byCompany, ...byBusiness]) {
