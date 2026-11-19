@@ -2,6 +2,7 @@ import type { BetterAuthOptions } from '@better-auth/core';
 import type { DBAdapter } from '@better-auth/core/db/adapter';
 import {
   AxedaError,
+  auditIdFloor,
   createAuditIdFactory,
   type AssignmentStore,
   type AuditEvent,
@@ -338,6 +339,23 @@ function createAuditStore(adapter: Adapter, now: () => Date): AuditStore {
         items,
         nextCursor: rows.length > page.limit && last ? encodeCursor(last.id) : null,
       };
+    },
+
+    async deleteBefore(before: Date, limit: number) {
+      // Por la clave primaria: el identificador ordena por tiempo, y así no hace falta un índice
+      // sobre `at`. Primero los identificadores del lote, luego se borran: un lote acotado.
+      const rows = await adapter.findMany<Pick<AuditRow, 'id'>>({
+        model,
+        where: [{ field: 'id', operator: 'lt', value: auditIdFloor(before) }],
+        sortBy: { field: 'id', direction: 'asc' },
+        limit,
+        select: ['id'],
+      });
+      if (rows.length === 0) return 0;
+      return adapter.deleteMany({
+        model,
+        where: [{ field: 'id', operator: 'in', value: rows.map((row) => row.id) }],
+      });
     },
   };
 }

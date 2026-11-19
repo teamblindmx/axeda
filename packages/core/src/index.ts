@@ -128,6 +128,7 @@ export {
 } from './domain/tenant.js';
 export {
   MAX_AUDIT_METADATA_BYTES,
+  auditIdFloor,
   createAuditIdFactory,
   type AuditAction,
   type AuditEvent,

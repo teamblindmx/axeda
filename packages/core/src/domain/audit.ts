@@ -49,6 +49,7 @@ export type AuditAction =
   | 'feature.set'
   | 'menu.adjust'
   | 'menu.reset'
+  | 'audit.purge'
   | 'bootstrap';
 
 export type AuditOutcome = 'success' | 'denied';
@@ -95,6 +96,15 @@ export const AUDIT_ID_LENGTH = 36;
  * proceso, aunque el reloj retroceda o dos eventos caigan en el mismo milisegundo) y 88 bits
  * aleatorios para evitar colisiones entre procesos.
  */
+/**
+ * Cota de los identificadores de auditoría anteriores a `at`: todo evento de un milisegundo
+ * anterior tiene un identificador menor (como cadena) que este valor, y ninguno de `at` o
+ * posterior lo tiene. Sirve para borrar por la clave primaria, sin un índice sobre la fecha.
+ */
+export function auditIdFloor(at: Date): string {
+  return Math.max(0, at.getTime()).toString(36).padStart(9, '0');
+}
+
 export function createAuditIdFactory(): (at: Date) => string {
   let lastMillis = 0;
   let sequence = 0;

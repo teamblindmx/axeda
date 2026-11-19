@@ -1,5 +1,6 @@
 import {
   AxedaError,
+  auditIdFloor,
   createAuditIdFactory,
   scopeKey,
   type AssignmentStore,
@@ -273,6 +274,19 @@ function createAuditStore(state: State, run: Run, now: () => Date): AuditStore {
           items,
           nextCursor: remaining.length > items.length && last ? encodeCursor(last.id) : null,
         };
+      }),
+    deleteBefore: (before, limit) =>
+      run(async () => {
+        const floor = auditIdFloor(before);
+        const doomed = new Set(
+          state.audit
+            .filter((event) => event.id < floor)
+            .sort((a, b) => a.id.localeCompare(b.id))
+            .slice(0, limit)
+            .map((event) => event.id),
+        );
+        state.audit = state.audit.filter((event) => !doomed.has(event.id));
+        return doomed.size;
       }),
   };
 }
