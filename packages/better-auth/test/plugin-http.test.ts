@@ -155,6 +155,18 @@ describe('every endpoint requires a session and a permission', () => {
     },
     '/axeda/image/complete': { method: 'POST', body: { uploadId: 'x' }, unprivileged: [501] },
     '/axeda/image/remove': { method: 'POST', body: { purpose: 'company.logo', targetId: 'x' } },
+    // Ajustes del menú: solo con axeda:menu:manage.
+    '/axeda/menu-adjustment/list': { method: 'GET', query: { scopeType: 'company', scopeId: 'x' } },
+    '/axeda/menu-adjustment/set': {
+      method: 'POST',
+      body: { level: { type: 'global' }, itemKey: 'reports', hidden: true },
+      unprivileged: [403],
+    },
+    '/axeda/menu-adjustment/reset': {
+      method: 'POST',
+      body: { level: { type: 'global' }, itemKey: 'reports' },
+      unprivileged: [403],
+    },
     // Funcionalidades: ver las de una compañía que no existe es 404; cambiarlas, solo la plataforma.
     '/axeda/feature/list': { method: 'GET', query: { companyId: 'x' } },
     '/axeda/feature/set': {

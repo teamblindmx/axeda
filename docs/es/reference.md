@@ -52,68 +52,71 @@ Máximo 200 elementos y 3 niveles. La etiqueta se elige por idioma exacto, luego
 Todos cuelgan de la ruta base de Better Auth (`/api/auth`). Todos exigen sesión salvo el último.
 «Por objetivo» significa que el permiso se comprueba en el alcance de lo que se modifica.
 
-| Método | Ruta                          | Requiere                                                                                   | Se comprueba en      |
-| ------ | ----------------------------- | ------------------------------------------------------------------------------------------ | -------------------- |
-| GET    | `/axeda/me`                   | (sesión)                                                                                   | propio               |
-| GET    | `/axeda/permission/list`      | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
-| GET    | `/axeda/role/list`            | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
-| GET    | `/axeda/role/get`             | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
-| POST   | `/axeda/role/create`          | `axeda:role:manage`                                                                        | global               |
-| POST   | `/axeda/role/update`          | `axeda:role:manage`                                                                        | global               |
-| POST   | `/axeda/role/set-status`      | `axeda:role:manage`                                                                        | global               |
-| POST   | `/axeda/role/delete`          | `axeda:role:manage`                                                                        | global               |
-| GET    | `/axeda/assignment/list`      | `axeda:assignment:manage`                                                                  | por objetivo         |
-| POST   | `/axeda/assignment/create`    | `axeda:assignment:manage`                                                                  | parámetro de alcance |
-| POST   | `/axeda/assignment/revoke`    | `axeda:assignment:manage`                                                                  | por objetivo         |
-| GET    | `/axeda/audit/list`           | `axeda:audit:read`                                                                         | parámetro de alcance |
-| GET    | `/axeda/company/list`         | pertenencia                                                                                | por objetivo         |
-| GET    | `/axeda/company/get`          | pertenencia                                                                                | por objetivo         |
-| POST   | `/axeda/company/create`       | `axeda:company:manage`                                                                     | global               |
-| POST   | `/axeda/company/update`       | `axeda:company:manage`                                                                     | por objetivo         |
-| POST   | `/axeda/company/set-status`   | `axeda:company:manage`                                                                     | global               |
-| POST   | `/axeda/company/delete`       | `axeda:company:manage`                                                                     | global               |
-| POST   | `/axeda/company/restore`      | `axeda:company:manage`                                                                     | global               |
-| GET    | `/axeda/business/list`        | pertenencia                                                                                | por objetivo         |
-| GET    | `/axeda/business/get`         | pertenencia                                                                                | por objetivo         |
-| POST   | `/axeda/business/create`      | `axeda:business:manage`                                                                    | por objetivo         |
-| POST   | `/axeda/business/update`      | `axeda:business:manage`                                                                    | por objetivo         |
-| POST   | `/axeda/business/set-status`  | `axeda:business:manage`                                                                    | por objetivo         |
-| POST   | `/axeda/business/delete`      | `axeda:business:manage`                                                                    | por objetivo         |
-| POST   | `/axeda/business/restore`     | `axeda:business:manage`                                                                    | por objetivo         |
-| GET    | `/axeda/site/list`            | pertenencia                                                                                | por objetivo         |
-| GET    | `/axeda/site/get`             | pertenencia                                                                                | por objetivo         |
-| POST   | `/axeda/site/create`          | `axeda:site:manage`                                                                        | por objetivo         |
-| POST   | `/axeda/site/update`          | `axeda:site:manage`                                                                        | por objetivo         |
-| POST   | `/axeda/site/set-status`      | `axeda:site:manage`                                                                        | por objetivo         |
-| POST   | `/axeda/site/delete`          | `axeda:site:manage`                                                                        | por objetivo         |
-| POST   | `/axeda/site/restore`         | `axeda:site:manage`                                                                        | por objetivo         |
-| GET    | `/axeda/invitation/list`      | `axeda:invitation:manage`                                                                  | parámetro de alcance |
-| POST   | `/axeda/invitation/create`    | `axeda:invitation:manage`                                                                  | parámetro de alcance |
-| POST   | `/axeda/invitation/accept`    | (sesión; autorizan el secreto y un correo o teléfono verificado)                           | propio               |
-| POST   | `/axeda/invitation/revoke`    | `axeda:invitation:manage`                                                                  | por objetivo         |
-| POST   | `/axeda/image/upload`         | El permiso que edita la entidad; en `user.avatar`, la propia persona o `axeda:user:manage` | por objetivo         |
-| POST   | `/axeda/image/complete`       | (sesión; solo quien pidió la subida)                                                       | propio               |
-| POST   | `/axeda/image/remove`         | Igual que `image/upload`                                                                   | por objetivo         |
-| POST   | `/axeda/staff/sign-in`        | (público; la compañía, el usuario y el PIN)                                                | —                    |
-| GET    | `/axeda/staff/list`           | `axeda:staff:manage`                                                                       | parámetro de alcance |
-| GET    | `/axeda/staff/get`            | `axeda:staff:manage`                                                                       | por objetivo         |
-| POST   | `/axeda/staff/create`         | `axeda:staff:manage`                                                                       | parámetro de alcance |
-| POST   | `/axeda/staff/rename`         | `axeda:staff:manage`                                                                       | por objetivo         |
-| POST   | `/axeda/staff/reset-pin`      | `axeda:staff:manage`                                                                       | por objetivo         |
-| POST   | `/axeda/staff/unlock`         | `axeda:staff:manage`                                                                       | por objetivo         |
-| POST   | `/axeda/staff/suspend`        | `axeda:staff:manage`                                                                       | por objetivo         |
-| POST   | `/axeda/staff/reactivate`     | `axeda:staff:manage`                                                                       | por objetivo         |
-| POST   | `/axeda/staff/remove`         | `axeda:staff:manage`                                                                       | por objetivo         |
-| POST   | `/axeda/staff/change-pin`     | (sesión; tu propio PIN, dando el actual)                                                   | propio               |
-| GET    | `/axeda/feature/list`         | (sesión; quien ve la compañía)                                                             | por objetivo         |
-| POST   | `/axeda/feature/set`          | `axeda:feature:manage`                                                                     | global               |
-| GET    | `/axeda/user/list`            | `axeda:user:manage`                                                                        | global               |
-| POST   | `/axeda/user/create`          | `axeda:user:manage`                                                                        | global               |
-| POST   | `/axeda/user/ban`             | `axeda:user:manage`                                                                        | global               |
-| POST   | `/axeda/user/unban`           | `axeda:user:manage`                                                                        | global               |
-| POST   | `/axeda/user/revoke-sessions` | `axeda:user:manage`                                                                        | global               |
-| GET    | `/axeda/menu`                 | (sesión; solo lista lo que puedes usar)                                                    | propio               |
-| GET    | `/axeda/public/identity`      | (pública, apagada salvo `publicIdentity`)                                                  | —                    |
+| Método | Ruta                           | Requiere                                                                                   | Se comprueba en      |
+| ------ | ------------------------------ | ------------------------------------------------------------------------------------------ | -------------------- |
+| GET    | `/axeda/me`                    | (sesión)                                                                                   | propio               |
+| GET    | `/axeda/permission/list`       | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
+| GET    | `/axeda/role/list`             | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
+| GET    | `/axeda/role/get`              | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
+| POST   | `/axeda/role/create`           | `axeda:role:manage`                                                                        | global               |
+| POST   | `/axeda/role/update`           | `axeda:role:manage`                                                                        | global               |
+| POST   | `/axeda/role/set-status`       | `axeda:role:manage`                                                                        | global               |
+| POST   | `/axeda/role/delete`           | `axeda:role:manage`                                                                        | global               |
+| GET    | `/axeda/assignment/list`       | `axeda:assignment:manage`                                                                  | por objetivo         |
+| POST   | `/axeda/assignment/create`     | `axeda:assignment:manage`                                                                  | parámetro de alcance |
+| POST   | `/axeda/assignment/revoke`     | `axeda:assignment:manage`                                                                  | por objetivo         |
+| GET    | `/axeda/audit/list`            | `axeda:audit:read`                                                                         | parámetro de alcance |
+| GET    | `/axeda/company/list`          | pertenencia                                                                                | por objetivo         |
+| GET    | `/axeda/company/get`           | pertenencia                                                                                | por objetivo         |
+| POST   | `/axeda/company/create`        | `axeda:company:manage`                                                                     | global               |
+| POST   | `/axeda/company/update`        | `axeda:company:manage`                                                                     | por objetivo         |
+| POST   | `/axeda/company/set-status`    | `axeda:company:manage`                                                                     | global               |
+| POST   | `/axeda/company/delete`        | `axeda:company:manage`                                                                     | global               |
+| POST   | `/axeda/company/restore`       | `axeda:company:manage`                                                                     | global               |
+| GET    | `/axeda/business/list`         | pertenencia                                                                                | por objetivo         |
+| GET    | `/axeda/business/get`          | pertenencia                                                                                | por objetivo         |
+| POST   | `/axeda/business/create`       | `axeda:business:manage`                                                                    | por objetivo         |
+| POST   | `/axeda/business/update`       | `axeda:business:manage`                                                                    | por objetivo         |
+| POST   | `/axeda/business/set-status`   | `axeda:business:manage`                                                                    | por objetivo         |
+| POST   | `/axeda/business/delete`       | `axeda:business:manage`                                                                    | por objetivo         |
+| POST   | `/axeda/business/restore`      | `axeda:business:manage`                                                                    | por objetivo         |
+| GET    | `/axeda/site/list`             | pertenencia                                                                                | por objetivo         |
+| GET    | `/axeda/site/get`              | pertenencia                                                                                | por objetivo         |
+| POST   | `/axeda/site/create`           | `axeda:site:manage`                                                                        | por objetivo         |
+| POST   | `/axeda/site/update`           | `axeda:site:manage`                                                                        | por objetivo         |
+| POST   | `/axeda/site/set-status`       | `axeda:site:manage`                                                                        | por objetivo         |
+| POST   | `/axeda/site/delete`           | `axeda:site:manage`                                                                        | por objetivo         |
+| POST   | `/axeda/site/restore`          | `axeda:site:manage`                                                                        | por objetivo         |
+| GET    | `/axeda/invitation/list`       | `axeda:invitation:manage`                                                                  | parámetro de alcance |
+| POST   | `/axeda/invitation/create`     | `axeda:invitation:manage`                                                                  | parámetro de alcance |
+| POST   | `/axeda/invitation/accept`     | (sesión; autorizan el secreto y un correo o teléfono verificado)                           | propio               |
+| POST   | `/axeda/invitation/revoke`     | `axeda:invitation:manage`                                                                  | por objetivo         |
+| POST   | `/axeda/image/upload`          | El permiso que edita la entidad; en `user.avatar`, la propia persona o `axeda:user:manage` | por objetivo         |
+| POST   | `/axeda/image/complete`        | (sesión; solo quien pidió la subida)                                                       | propio               |
+| POST   | `/axeda/image/remove`          | Igual que `image/upload`                                                                   | por objetivo         |
+| POST   | `/axeda/staff/sign-in`         | (público; la compañía, el usuario y el PIN)                                                | —                    |
+| GET    | `/axeda/staff/list`            | `axeda:staff:manage`                                                                       | parámetro de alcance |
+| GET    | `/axeda/staff/get`             | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/create`          | `axeda:staff:manage`                                                                       | parámetro de alcance |
+| POST   | `/axeda/staff/rename`          | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/reset-pin`       | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/unlock`          | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/suspend`         | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/reactivate`      | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/remove`          | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/change-pin`      | (sesión; tu propio PIN, dando el actual)                                                   | propio               |
+| GET    | `/axeda/feature/list`          | (sesión; quien ve la compañía)                                                             | por objetivo         |
+| POST   | `/axeda/feature/set`           | `axeda:feature:manage`                                                                     | global               |
+| GET    | `/axeda/menu-adjustment/list`  | `axeda:menu:manage`                                                                        | parámetro de alcance |
+| POST   | `/axeda/menu-adjustment/set`   | `axeda:menu:manage`                                                                        | parámetro de alcance |
+| POST   | `/axeda/menu-adjustment/reset` | `axeda:menu:manage`                                                                        | parámetro de alcance |
+| GET    | `/axeda/user/list`             | `axeda:user:manage`                                                                        | global               |
+| POST   | `/axeda/user/create`           | `axeda:user:manage`                                                                        | global               |
+| POST   | `/axeda/user/ban`              | `axeda:user:manage`                                                                        | global               |
+| POST   | `/axeda/user/unban`            | `axeda:user:manage`                                                                        | global               |
+| POST   | `/axeda/user/revoke-sessions`  | `axeda:user:manage`                                                                        | global               |
+| GET    | `/axeda/menu`                  | (sesión; solo lista lo que puedes usar)                                                    | propio               |
+| GET    | `/axeda/public/identity`       | (pública, apagada salvo `publicIdentity`)                                                  | —                    |
 
 Los endpoints de Better Auth solo admiten `GET` y `POST`, por eso las modificaciones y los borrados
 son `POST`. Los endpoints de Axeda tienen límite de peticiones por dirección: 120 por minuto, y 30

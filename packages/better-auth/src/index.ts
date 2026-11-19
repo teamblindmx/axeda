@@ -19,6 +19,7 @@ export type {
 } from './dto.js';
 export type { EndpointAccess } from './endpoints.js';
 export type { StaffMemberDto } from './endpoints-staff.js';
+export type { MenuAdjustmentDto } from './endpoints-menu-adjustments.js';
 export { MODELS, axedaSchema } from './schema.js';
 export { MAPPED_CODES } from './http-errors.js';
 export { createBetterAuthPersistence, type BetterAuthPersistenceOptions } from './stores.js';
