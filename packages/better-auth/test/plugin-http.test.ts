@@ -592,3 +592,22 @@ describe.each(serverKinds)('on a database server (%s)', (kind) => {
     expect((await app.get('/axeda/audit/list', admin.cookie)).json.items.length).toBeGreaterThan(2);
   }, 60_000);
 });
+
+describe('the address in the audit log', () => {
+  it('follows Better Auth trustedProxies, like its rate limit', async () => {
+    const { app, admin } = await world({
+      betterAuth: { advanced: { ipAddress: { trustedProxies: ['10.0.0.0/8'] } } },
+    });
+    // Detrás de un proxy de confianza: la dirección real es la anterior a la del proxy.
+    const response = await app.send('/axeda/role/create', {
+      method: 'POST',
+      headers: { cookie: admin.cookie, 'x-forwarded-for': '203.0.113.7, 10.0.0.1' },
+      body: { key: 'viewer', name: 'Viewer', permissions: ['invoice:read'] },
+    });
+    expect(response.status).toBe(200);
+    const events = await app.plugin
+      .persistence()
+      .audit.list({ action: 'role.create' }, { limit: 1 });
+    expect(events.items[0]?.ip).toBe('203.0.113.7');
+  });
+});

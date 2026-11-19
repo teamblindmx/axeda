@@ -98,7 +98,9 @@ export async function actorFromSession(ctx: SessionContext): Promise<Actor> {
     throw new APIError('UNAUTHORIZED', { code: 'AXEDA_UNAUTHENTICATED', message: 'Sign in.' });
   }
   const request = ctx.request;
-  const ip = request === undefined ? undefined : (getIP(request, {}) ?? undefined);
+  // Con las opciones de Better Auth: así respeta trustedProxies e ipAddressHeaders, como su límite.
+  const ipOptions = (ctx.context.options ?? {}) as Parameters<typeof getIP>[1];
+  const ip = request === undefined ? undefined : (getIP(request, ipOptions) ?? undefined);
   return {
     ...principalFromUser(user),
     ip,

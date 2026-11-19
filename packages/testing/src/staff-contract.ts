@@ -2,7 +2,7 @@ import { isAxedaError, type AxedaPersistence, type NewStaffAccount } from '@team
 import { describe, expect, it } from 'vitest';
 
 const NOW = new Date('2026-06-01T12:00:00.000Z');
-const policy = { maxAttempts: 3, lockMs: 15 * 60_000 };
+const policy = { maxAttempts: 3, lockMs: 15 * 60_000, maxLockMs: 60 * 60_000 };
 
 const account = (overrides: Partial<NewStaffAccount> = {}): NewStaffAccount => ({
   userId: 's1',
@@ -36,6 +36,7 @@ export function defineStaffContract(database: () => AxedaPersistence): void {
         username: 'mesero1',
         failedAttempts: 0,
         lockedUntil: null,
+        lockCount: 0,
         createdBy: 'u1',
       });
       expect(created).not.toHaveProperty('pinHash');
@@ -96,6 +97,33 @@ export function defineStaffContract(database: () => AxedaPersistence): void {
       const later = new Date(NOW.getTime() + policy.lockMs + 1);
       expect(await spend(later)).toBe('allowed');
       expect((await database().staff.get('s1'))?.failedAttempts).toBe(1);
+    });
+
+    it('doubles each lock in a row, up to the longest lock, and a success starts over', async () => {
+      await database().staff.create(account());
+      let at = NOW;
+      const lockOnce = async () => {
+        for (let i = 0; i < policy.maxAttempts; i++) {
+          expect(await database().staff.consumeAttempt('s1', at, policy)).toBe('allowed');
+        }
+        const locked = await database().staff.get('s1');
+        const length = (locked?.lockedUntil?.getTime() ?? 0) - at.getTime();
+        at = new Date((locked?.lockedUntil?.getTime() ?? 0) + 1);
+        return length;
+      };
+      // 15 min, 30, 60 y luego el tope (60).
+      expect([await lockOnce(), await lockOnce(), await lockOnce(), await lockOnce()]).toEqual([
+        15 * 60_000,
+        30 * 60_000,
+        60 * 60_000,
+        60 * 60_000,
+      ]);
+      expect((await database().staff.get('s1'))?.lockCount).toBe(4);
+      await database().staff.resetAttempts('s1');
+      expect(await database().staff.get('s1')).toMatchObject({ lockCount: 0, failedAttempts: 0 });
+      expect(await lockOnce()).toBe(15 * 60_000);
+      await database().staff.setPin('s1', 'hash-2', at);
+      expect((await database().staff.get('s1'))?.lockCount).toBe(0);
     });
 
     it('never lets simultaneous attempts go past the limit', async () => {

@@ -28,7 +28,7 @@ Accepted values, ranges and what happens when one is wrong: [Configuration](conf
 | `features`                     | `Record<key, { permissions, name?, description?, enabledByDefault? }>`       | `{}`    | Modules the platform switches per company; their permissions do not count where they are off |
 | `staff.pinLength`              | `number` (6–8)                                                               | `6`     | Digits of the PINs Axeda generates                                                           |
 | `staff.maxAttempts`            | `number` (3–10)                                                              | `5`     | Wrong PINs in a row before the account is locked                                             |
-| `staff.lockMinutes`            | `number` (1–1440)                                                            | `15`    | How long the lock lasts                                                                      |
+| `staff.lockMinutes`            | `number` (1–1440)                                                            | `15`    | How long the first lock lasts; each lock in a row doubles it, up to a day                    |
 | `images.maxPendingPerUser`     | `number` (1–100)                                                             | `10`    | Uploads one person can leave open                                                            |
 
 `acceptUrl` must be built from your configured base URL, never from a request's `Host` header.
@@ -143,7 +143,8 @@ lists the concrete permissions of the catalog that count there, sorted.
 `staff/create` takes `{ scope, username, name, roleIds? }` and answers `{ member, pin }`: the PIN, only
 there. `staff/sign-in` takes `{ company, username, pin }` (the company slug) and answers `{ userId, name }`
 with the session cookie. A staff member is `{ userId, companyId, businessId, siteId, username, name, banned,
-failedAttempts, lockedUntil, createdBy, createdAt, pinChangedAt }`, never with the PIN.
+failedAttempts, lockedUntil, lockCount, createdBy, createdAt, pinChangedAt }`, never with the PIN (`lockCount`:
+locks in a row, each twice as long as the previous one, up to a day).
 
 `image/upload` takes `{ purpose, targetId, contentType, size }`. `purpose` is `company.logo`,
 `company.favicon`, `business.logo`, `business.favicon`, `site.logo`, `site.favicon` or `user.avatar`;

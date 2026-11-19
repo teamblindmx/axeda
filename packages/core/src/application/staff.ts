@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { AXEDA_PERMISSIONS } from '../domain/axeda-permissions.js';
 import type { AuditAction } from '../domain/audit.js';
 import type { Actor, RequestMeta, Role } from '../domain/role.js';
-import type { AssignmentScope, TargetScope } from '../domain/scope.js';
+import { scopeKey, type AssignmentScope, type TargetScope } from '../domain/scope.js';
 import {
   PIN_PATTERN,
   STAFF_EMAIL_DOMAIN,
@@ -93,6 +93,9 @@ const createSchema = (maxRoles: number) =>
   });
 const usernameSchema = createSchema(1).shape.username;
 
+/** Lo más que dura un bloqueo, por muchos que lleve seguidos: un día. */
+const MAX_LOCK_MS = 24 * 60 * 60_000;
+
 const signInFailed = (): AxedaError =>
   new AxedaError('AXEDA_STAFF_SIGN_IN_FAILED', 'Wrong company, username or PIN.');
 
@@ -120,7 +123,11 @@ function homeOf(target: TargetScope): {
 export function createStaffService(services: Services): StaffService {
   const { persistence, options } = services;
   const limits = options.staff;
-  const policy = { maxAttempts: limits.maxAttempts, lockMs: limits.lockMinutes * 60_000 };
+  const policy = {
+    maxAttempts: limits.maxAttempts,
+    lockMs: limits.lockMinutes * 60_000,
+    maxLockMs: MAX_LOCK_MS,
+  };
   let dummyHash: Promise<string> | undefined;
 
   function deps(): {
@@ -215,6 +222,59 @@ export function createStaffService(services: Services): StaffService {
         return result;
       });
     });
+  }
+
+  /**
+   * Los lugares donde la cuenta tiene funciones, ya resueltos (fuera de la transacción: resolver un
+   * lugar consulta la base de datos raíz). `null` si el lugar ya no existe: allí no da nada.
+   */
+  async function placesOf(userId: string): Promise<Map<string, TargetScope | null>> {
+    const places = new Map<string, TargetScope | null>();
+    for (const { scope } of await persistence.assignments.listForUser(userId)) {
+      const key = scopeKey(scope);
+      if (places.has(key)) continue;
+      places.set(
+        key,
+        await resolveTarget(services, scope, { requireUsable: false }).catch(() => null),
+      );
+    }
+    return places;
+  }
+
+  /**
+   * Restablecer un PIN es poder entrar como esa persona. Así que quien lo hace debe tener, en cada
+   * lugar donde la cuenta tiene funciones, todos los permisos que ella tiene allí: la misma regla
+   * que para darle esas funciones (nadie obtiene más de lo que tiene).
+   */
+  async function assertCoversAccount(
+    stores: AxedaStores,
+    actor: Actor,
+    userId: string,
+    places: ReadonlyMap<string, TargetScope | null>,
+  ): Promise<void> {
+    const catalog = [...services.catalog];
+    const missing = new Set<string>();
+    for (const { scope } of await stores.assignments.listForUser(userId)) {
+      const key = scopeKey(scope);
+      // Una función dada después de resolver los lugares: no se sabe qué da, así que no.
+      if (!places.has(key)) missing.add(`(${key})`);
+      const target = places.get(key);
+      if (target === undefined || target === null) continue;
+      const held = await actorPermissions(stores, services, { userId }, target);
+      const mine = await actorPermissions(stores, services, actor, target);
+      for (const permission of held.concrete(catalog)) {
+        if (!mine.allows(permission)) missing.add(permission);
+      }
+    }
+    if (missing.size > 0) {
+      throw markDenied(
+        new AxedaError(
+          'AXEDA_FORBIDDEN',
+          'You cannot reset the PIN of someone who holds permissions you do not have.',
+          { details: { reason: 'exceeds_granter_permissions', permissions: [...missing].sort() } },
+        ),
+      );
+    }
   }
 
   /** Las funciones que se dan al crear la cuenta, con las reglas de siempre, en su lugar. */
@@ -395,8 +455,18 @@ export function createStaffService(services: Services): StaffService {
       const { hasher, admin } = deps();
       const pin = generatePin(limits.pinLength);
       const pinHash = await hasher.hash(pin);
-      await record(actor, userId, 'staff.reset_pin', (stores) =>
-        stores.staff.setPin(userId, pinHash, services.clock.now()),
+      let places: ReadonlyMap<string, TargetScope | null> = new Map();
+      await record(
+        actor,
+        userId,
+        'staff.reset_pin',
+        async (stores) => {
+          await assertCoversAccount(stores, actor, userId, places);
+          await stores.staff.setPin(userId, pinHash, services.clock.now());
+        },
+        async () => {
+          places = await placesOf(userId);
+        },
       );
       // Quien tuviera el PIN anterior deja de estar dentro.
       await admin.revokeSessions(userId);
@@ -407,7 +477,7 @@ export function createStaffService(services: Services): StaffService {
       return member(
         await record(actor, userId, 'staff.unlock', async (stores, found) => {
           await stores.staff.resetAttempts(userId);
-          return { ...found, failedAttempts: 0, lockedUntil: null };
+          return { ...found, failedAttempts: 0, lockedUntil: null, lockCount: 0 };
         }),
       );
     },

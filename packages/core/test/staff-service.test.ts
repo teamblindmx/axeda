@@ -199,6 +199,34 @@ describe('managing staff', () => {
     expect(await w.persistence.staff.get(member.userId)).toBeNull();
     await rejectsWith(w.signIn('mesera.1', fresh), 'AXEDA_STAFF_SIGN_IN_FAILED');
   });
+
+  it('does not let a manager reset the PIN of someone holding permissions they lack', async () => {
+    const w = await world();
+    const { member, pin } = await w.hire(w.manager);
+    // La plataforma le da algo que el encargado no tiene, en la compañía: ya no le basta con staff:manage.
+    const refunds = await w.role('refunds', ['invoice:delete']);
+    await w.axeda.assignments.assign(w.admin, {
+      userId: member.userId,
+      roleId: refunds.id,
+      scope: { type: 'company', id: 'A' },
+    });
+    const error = await rejectsWith(
+      w.axeda.staff.resetPin(w.manager, member.userId),
+      'AXEDA_FORBIDDEN',
+    );
+    expect(error.details).toMatchObject({
+      reason: 'exceeds_granter_permissions',
+      permissions: ['invoice:delete'],
+    });
+    // El PIN no cambió y el intento quedó en la auditoría.
+    expect(await w.signIn('mesero1', pin)).toEqual({ userId: member.userId });
+    const denied = await w.axeda.listAudit(w.admin, { action: 'staff.reset_pin' }, { limit: 5 });
+    expect(denied.items.map((event) => [event.actorId, event.outcome])).toEqual([
+      ['manager', 'denied'],
+    ]);
+    // Quien sí tiene esos permisos puede.
+    expect((await w.axeda.staff.resetPin(w.owner, member.userId)).pin).toMatch(/^\d{6}$/);
+  });
 });
 
 describe('signing in with a username and a PIN', () => {
@@ -233,6 +261,28 @@ describe('signing in with a username and a PIN', () => {
     expect(denied.items.map((event) => event.metadata['reason'] ?? event.outcome)).toContain(
       'locked',
     );
+  });
+
+  it('makes each lock in a row twice as long, so slow guessing does not pay', async () => {
+    const w = await world();
+    const { pin, member } = await w.hire(w.owner);
+    const wrong = pin === '381946' ? '519372' : '381946';
+    const lockLength = async () => {
+      for (let i = 0; i < 5; i++)
+        await rejectsWith(w.signIn('mesero1', wrong), 'AXEDA_STAFF_SIGN_IN_FAILED');
+      const { lockedUntil } = await w.axeda.staff.get(w.owner, member.userId);
+      const length = (lockedUntil?.getTime() ?? 0) - w.clock.current.getTime();
+      w.clock.current = new Date((lockedUntil?.getTime() ?? 0) + 1);
+      return length / MINUTE;
+    };
+    expect([await lockLength(), await lockLength(), await lockLength()]).toEqual([15, 30, 60]);
+    expect((await w.axeda.staff.get(w.owner, member.userId)).lockCount).toBe(3);
+    // Entrar bien vuelve a empezar.
+    expect(await w.signIn('mesero1', pin)).toEqual({ userId: member.userId });
+    expect(await lockLength()).toBe(15);
+    // Por muchos seguidos, un bloqueo nunca pasa de un día.
+    for (let i = 0; i < 8; i++) await lockLength();
+    expect(await lockLength()).toBe(24 * 60);
   });
 
   it('lets five simultaneous wrong attempts through at most, and an admin unlock', async () => {

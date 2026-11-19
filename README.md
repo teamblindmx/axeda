@@ -3,7 +3,7 @@
 **Hierarchical authorization for Node.js on top of [Better Auth](https://www.better-auth.com).**
 Axeda decides **what each user can do and where**: global → company → business → site, with permissions declared in code, scoped role assignments, companies, businesses and sites, sign-up by phone number, and menus derived from permissions.
 
-> **Status:** alpha (`0.1.0-alpha.3`). Feature-complete for a first look (authorization, companies, businesses and sites, invitations by email or phone, logos and profile pictures uploaded to R2 or S3, users and menus, Express middleware, a runnable example), but the API can still change before 1.0.
+> **Status:** alpha (`0.1.0-alpha.4`). Feature-complete for a first look (authorization, companies, businesses and sites, invitations by email or phone, logos and profile pictures uploaded to R2 or S3, staff accounts with a username and PIN, features per company, users and menus adjustable without deploying, Express middleware, a runnable example), but the API can still change before 1.0.
 >
 > ```bash
 > npm install @teamblind/axeda-core@alpha @teamblind/axeda-better-auth@alpha @teamblind/axeda-express@alpha better-auth @better-auth/core express
@@ -11,7 +11,7 @@ Axeda decides **what each user can do and where**: global → company → busine
 >
 > See the [documentation](docs/en/README.md) and the [quick start](docs/en/quickstart.md).
 
-**Autorización jerárquica para Node.js sobre Better Auth.** Axeda decide **qué puede hacer cada usuario y dónde** (global → compañía → negocio → sede). **Estado:** alfa (`0.1.0-alpha.3`); la API aún puede cambiar antes de la 1.0. Instala con la etiqueta `alpha` (comando arriba). Mira la [documentación](docs/es/README.md) y el [inicio rápido](docs/es/quickstart.md).
+**Autorización jerárquica para Node.js sobre Better Auth.** Axeda decide **qué puede hacer cada usuario y dónde** (global → compañía → negocio → sede). **Estado:** alfa (`0.1.0-alpha.4`); la API aún puede cambiar antes de la 1.0. Instala con la etiqueta `alpha` (comando arriba). Mira la [documentación](docs/es/README.md) y el [inicio rápido](docs/es/quickstart.md).
 
 ## Packages
 

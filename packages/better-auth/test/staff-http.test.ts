@@ -58,6 +58,7 @@ describe.each(databaseKinds)('staff over HTTP (%s)', (kind) => {
       'createdAt',
       'createdBy',
       'failedAttempts',
+      'lockCount',
       'lockedUntil',
       'name',
       'pinChangedAt',

@@ -36,8 +36,15 @@ export interface StaffFilter {
 export interface AttemptPolicy {
   /** Intentos permitidos antes de bloquear. */
   readonly maxAttempts: number;
-  /** Cuánto dura el bloqueo. */
+  /** Cuánto dura el primer bloqueo. Cada bloqueo seguido dura el doble que el anterior. */
   readonly lockMs: number;
+  /** Lo más que puede durar un bloqueo. */
+  readonly maxLockMs: number;
+}
+
+/** Duración del bloqueo número `lockCount + 1`: `lockMs`, el doble, el doble… hasta `maxLockMs`. */
+export function lockDuration(policy: AttemptPolicy, lockCount: number): number {
+  return Math.min(policy.maxLockMs, policy.lockMs * 2 ** Math.min(lockCount, 30));
 }
 
 /** De quién son las cuentas que se purgan con su compañía, negocio o sede. */
@@ -57,15 +64,16 @@ export interface StaffStore {
   list(filter: StaffFilter, page: PageRequest): Promise<Page<StaffAccount>>;
   /** Lanza `AXEDA_USERNAME_TAKEN` o `AXEDA_STAFF_NOT_FOUND`. */
   rename(userId: string, username: string): Promise<StaffAccount>;
-  /** Nuevo PIN: también reinicia los intentos y quita el bloqueo. */
+  /** Nuevo PIN: también reinicia los intentos y los bloqueos, y quita el bloqueo. */
   setPin(userId: string, pinHash: string, at: Date): Promise<void>;
   /**
    * Gasta un intento **antes** de comprobar el PIN, de forma atómica: de varios intentos
-   * simultáneos solo pasan los que quedan. Devuelve `'locked'` si no queda ninguno (y bloquea la
-   * cuenta `lockMs` al gastar el último). Un bloqueo vencido se levanta solo.
+   * simultáneos solo pasan los que quedan. Devuelve `'locked'` si no queda ninguno. Al gastar el
+   * último bloquea la cuenta `lockDuration(policy, lockCount)` y suma un bloqueo seguido. Un
+   * bloqueo vencido se levanta solo y devuelve los intentos, pero no borra los bloqueos seguidos.
    */
   consumeAttempt(userId: string, now: Date, policy: AttemptPolicy): Promise<'allowed' | 'locked'>;
-  /** Tras un acierto o un desbloqueo: intentos a cero y sin bloqueo. */
+  /** Tras un acierto o un desbloqueo: intentos y bloqueos seguidos a cero, y sin bloqueo. */
   resetAttempts(userId: string): Promise<void>;
   /** Devuelve `false` si no existía. */
   delete(userId: string): Promise<boolean>;
