@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { defineImageContract } from './image-contract.js';
 import { defineStaffContract } from './staff-contract.js';
 import { defineFeatureContract } from './feature-contract.js';
+import { defineMenuAdjustmentContract } from './menu-adjustment-contract.js';
 import { defineTenantContract } from './tenant-contract.js';
 
 /**
@@ -56,6 +57,7 @@ export function runPersistenceContract(name: string, create: PersistenceFactory)
     defineImageContract(() => db);
     defineStaffContract(() => db);
     defineFeatureContract(() => db);
+    defineMenuAdjustmentContract(() => db);
 
     describe('roles', () => {
       it('creates a role with defaults and reads it back by id and by key', async () => {

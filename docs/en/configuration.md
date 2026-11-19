@@ -303,6 +303,31 @@ const { data } = await client.axeda.image.complete({ uploadId: ticket.data.uploa
   completed. Block `/uploads/*` on your public domain and add a lifecycle rule (see the
   [storage package](https://github.com/teamblindmx/axeda/tree/main/packages/storage#setting-up-cloudflare-r2)).
 
+### Adjusting the menu without deploying
+
+The menu is still declared in code (`menus`), with the permission each option needs. On top of it, whoever
+holds `axeda:menu:manage` can **hide** an item (and everything under it), **reorder** it among its siblings
+or **rename** it, per language:
+
+```ts
+await client.axeda.menuAdjustment.set({
+  level: { type: 'company', id: companyId }, // or { type: 'global' } for everyone
+  itemKey: 'reports',
+  label: { es: 'Análisis', en: 'Analytics' },
+  order: 0,
+});
+await client.axeda.menuAdjustment.reset({
+  level: { type: 'company', id: companyId },
+  itemKey: 'reports',
+});
+```
+
+- **Two levels.** Global adjustments (permission in global) apply to everyone; a company's (permission in that
+  company) apply on top inside it, field by field. Businesses and sites use their company's menu.
+- **Nothing new can be added.** Only items declared in code can be adjusted; their path and their permission
+  never change, so an adjustment cannot add a link nor show an option to someone without its permission.
+- Changes are audited (`menu.adjust`, `menu.reset`) and take effect on the next `GET /axeda/menu`.
+
 ### Features per company
 
 Declare the modules your platform sells, and the permissions that depend on each one:

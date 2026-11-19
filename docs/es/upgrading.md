@@ -12,6 +12,7 @@ Las cuentas de personal son nuevas y solo se suman. Tienes que ejecutar la migra
 | Una opción mal escrita ahora lanza `AXEDA_INVALID_CONFIG` en vez de ignorarse                                | **Revisa**: si tu aplicación deja de arrancar, el mensaje dice la opción y cómo se escribe                                    |
 | Funcionalidades por compañía y `axeda:feature:manage`; una tabla nueva, `axedaCompanyFeature`                | Solo si declaras funcionalidades ([Configuración](configuration.md#funcionalidades-por-compañía)); la migración crea la tabla |
 | `/axeda/me` con un lugar lista permisos concretos en vez de comodines (`invoice:read` en vez de `invoice:*`) | Solo si tu frontend buscaba un comodín                                                                                        |
+| Menús ajustables por API y `axeda:menu:manage`; una tabla nueva, `axedaMenuAdjustment`                       | Solo si los quieres ([Configuración](configuration.md#ajustar-el-menú-sin-desplegar)); la migración crea la tabla             |
 | Una lectura de permisos en frío hace una consulta más                                                        | No: va en paralelo y solo cuando falla la caché                                                                               |
 
 ### Tu propia persistencia y administración de usuarios

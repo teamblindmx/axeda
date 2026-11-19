@@ -28,6 +28,8 @@ import type { ImageProcessor, ObjectStorage } from '../ports/images.js';
 import type { PinHasher } from '../ports/staff.js';
 import { createStaffService, type StaffService } from './staff.js';
 import { createFeatureService, hasFeature, type FeatureService } from './features.js';
+import { createMenuAdjustmentService, type MenuAdjustmentService } from './menu-adjustments.js';
+import { applyMenuAdjustments } from '../config/menu-overrides.js';
 import {
   actorPermissions,
   resolveTarget,
@@ -136,6 +138,11 @@ export interface Axeda {
    * no valen dentro de una compañía que no la tiene: esto es para lo demás (mostrar, cobrar…).
    */
   hasFeature(companyId: string, feature: string): Promise<boolean>;
+  /**
+   * Ajustes del menú declarado en el código (ocultar, ordenar, renombrar), globales o de una
+   * compañía, con `axeda:menu:manage` en ese nivel.
+   */
+  readonly menuAdjustments: MenuAdjustmentService;
   /**
    * El menú de la persona en un alcance (global por defecto): solo lo que tiene permiso de ver.
    * Un alcance que no existe o está inactivo da un menú vacío, sin revelar nada.
@@ -328,10 +335,18 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     staff: createStaffService(services),
     features: createFeatureService(services, tenants.companies),
     hasFeature: (companyId, feature) => hasFeature(services, companyId, feature),
+    menuAdjustments: createMenuAdjustmentService(services),
     async menu(principal, menuOptions = {}) {
       const target = await targetOf(menuOptions.scope);
       if (target === null) return [];
-      return buildMenu(resolved.menus, await effective(principal, target), menuOptions.locale);
+      const held = await effective(principal, target);
+      if (resolved.menus.items.size === 0) return [];
+      // Los ajustes globales y, encima, los de la compañía del lugar pedido.
+      const layers = [
+        await persistence.menuAdjustments.list(null),
+        target.type === 'global' ? [] : await persistence.menuAdjustments.list(target.companyId),
+      ];
+      return buildMenu(applyMenuAdjustments(resolved.menus, layers), held, menuOptions.locale);
     },
     publicIdentity: (query) => publicIdentity(services, query),
     purgeDeleted: () => purgeExpiredDeletions(services),

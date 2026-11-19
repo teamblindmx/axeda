@@ -52,68 +52,71 @@ At most 200 items and 3 levels. The label is picked by exact locale, then base l
 All live under Better Auth's base path (`/api/auth`). Every one needs a session except the last.
 “Per target” means the permission is checked in the scope of the thing being changed.
 
-| Method | Path                          | Requires                                                                                   | Checked in      |
-| ------ | ----------------------------- | ------------------------------------------------------------------------------------------ | --------------- |
-| GET    | `/axeda/me`                   | (authenticated)                                                                            | own             |
-| GET    | `/axeda/permission/list`      | `axeda:role:manage` or `axeda:assignment:manage`                                           | any             |
-| GET    | `/axeda/role/list`            | `axeda:role:manage` or `axeda:assignment:manage`                                           | any             |
-| GET    | `/axeda/role/get`             | `axeda:role:manage` or `axeda:assignment:manage`                                           | any             |
-| POST   | `/axeda/role/create`          | `axeda:role:manage`                                                                        | global          |
-| POST   | `/axeda/role/update`          | `axeda:role:manage`                                                                        | global          |
-| POST   | `/axeda/role/set-status`      | `axeda:role:manage`                                                                        | global          |
-| POST   | `/axeda/role/delete`          | `axeda:role:manage`                                                                        | global          |
-| GET    | `/axeda/assignment/list`      | `axeda:assignment:manage`                                                                  | per target      |
-| POST   | `/axeda/assignment/create`    | `axeda:assignment:manage`                                                                  | scope parameter |
-| POST   | `/axeda/assignment/revoke`    | `axeda:assignment:manage`                                                                  | per target      |
-| GET    | `/axeda/audit/list`           | `axeda:audit:read`                                                                         | scope parameter |
-| GET    | `/axeda/company/list`         | membership                                                                                 | per target      |
-| GET    | `/axeda/company/get`          | membership                                                                                 | per target      |
-| POST   | `/axeda/company/create`       | `axeda:company:manage`                                                                     | global          |
-| POST   | `/axeda/company/update`       | `axeda:company:manage`                                                                     | per target      |
-| POST   | `/axeda/company/set-status`   | `axeda:company:manage`                                                                     | global          |
-| POST   | `/axeda/company/delete`       | `axeda:company:manage`                                                                     | global          |
-| POST   | `/axeda/company/restore`      | `axeda:company:manage`                                                                     | global          |
-| GET    | `/axeda/business/list`        | membership                                                                                 | per target      |
-| GET    | `/axeda/business/get`         | membership                                                                                 | per target      |
-| POST   | `/axeda/business/create`      | `axeda:business:manage`                                                                    | per target      |
-| POST   | `/axeda/business/update`      | `axeda:business:manage`                                                                    | per target      |
-| POST   | `/axeda/business/set-status`  | `axeda:business:manage`                                                                    | per target      |
-| POST   | `/axeda/business/delete`      | `axeda:business:manage`                                                                    | per target      |
-| POST   | `/axeda/business/restore`     | `axeda:business:manage`                                                                    | per target      |
-| GET    | `/axeda/site/list`            | membership                                                                                 | per target      |
-| GET    | `/axeda/site/get`             | membership                                                                                 | per target      |
-| POST   | `/axeda/site/create`          | `axeda:site:manage`                                                                        | per target      |
-| POST   | `/axeda/site/update`          | `axeda:site:manage`                                                                        | per target      |
-| POST   | `/axeda/site/set-status`      | `axeda:site:manage`                                                                        | per target      |
-| POST   | `/axeda/site/delete`          | `axeda:site:manage`                                                                        | per target      |
-| POST   | `/axeda/site/restore`         | `axeda:site:manage`                                                                        | per target      |
-| GET    | `/axeda/invitation/list`      | `axeda:invitation:manage`                                                                  | scope parameter |
-| POST   | `/axeda/invitation/create`    | `axeda:invitation:manage`                                                                  | scope parameter |
-| POST   | `/axeda/invitation/accept`    | (authenticated; the secret and a verified email or phone authorize)                        | own             |
-| POST   | `/axeda/invitation/revoke`    | `axeda:invitation:manage`                                                                  | per target      |
-| POST   | `/axeda/image/upload`         | The permission that edits the entity; for `user.avatar`, the person or `axeda:user:manage` | per target      |
-| POST   | `/axeda/image/complete`       | (authenticated; only the person who asked for the upload)                                  | own             |
-| POST   | `/axeda/image/remove`         | Same as `image/upload`                                                                     | per target      |
-| POST   | `/axeda/staff/sign-in`        | (public; the company, the username and the PIN)                                            | —               |
-| GET    | `/axeda/staff/list`           | `axeda:staff:manage`                                                                       | scope parameter |
-| GET    | `/axeda/staff/get`            | `axeda:staff:manage`                                                                       | per target      |
-| POST   | `/axeda/staff/create`         | `axeda:staff:manage`                                                                       | scope parameter |
-| POST   | `/axeda/staff/rename`         | `axeda:staff:manage`                                                                       | per target      |
-| POST   | `/axeda/staff/reset-pin`      | `axeda:staff:manage`                                                                       | per target      |
-| POST   | `/axeda/staff/unlock`         | `axeda:staff:manage`                                                                       | per target      |
-| POST   | `/axeda/staff/suspend`        | `axeda:staff:manage`                                                                       | per target      |
-| POST   | `/axeda/staff/reactivate`     | `axeda:staff:manage`                                                                       | per target      |
-| POST   | `/axeda/staff/remove`         | `axeda:staff:manage`                                                                       | per target      |
-| POST   | `/axeda/staff/change-pin`     | (authenticated; your own PIN, giving the current one)                                      | own             |
-| GET    | `/axeda/feature/list`         | (authenticated; whoever sees the company)                                                  | per target      |
-| POST   | `/axeda/feature/set`          | `axeda:feature:manage`                                                                     | global          |
-| GET    | `/axeda/user/list`            | `axeda:user:manage`                                                                        | global          |
-| POST   | `/axeda/user/create`          | `axeda:user:manage`                                                                        | global          |
-| POST   | `/axeda/user/ban`             | `axeda:user:manage`                                                                        | global          |
-| POST   | `/axeda/user/unban`           | `axeda:user:manage`                                                                        | global          |
-| POST   | `/axeda/user/revoke-sessions` | `axeda:user:manage`                                                                        | global          |
-| GET    | `/axeda/menu`                 | (authenticated; only lists what you may use)                                               | own             |
-| GET    | `/axeda/public/identity`      | (public, off unless `publicIdentity`)                                                      | —               |
+| Method | Path                           | Requires                                                                                   | Checked in      |
+| ------ | ------------------------------ | ------------------------------------------------------------------------------------------ | --------------- |
+| GET    | `/axeda/me`                    | (authenticated)                                                                            | own             |
+| GET    | `/axeda/permission/list`       | `axeda:role:manage` or `axeda:assignment:manage`                                           | any             |
+| GET    | `/axeda/role/list`             | `axeda:role:manage` or `axeda:assignment:manage`                                           | any             |
+| GET    | `/axeda/role/get`              | `axeda:role:manage` or `axeda:assignment:manage`                                           | any             |
+| POST   | `/axeda/role/create`           | `axeda:role:manage`                                                                        | global          |
+| POST   | `/axeda/role/update`           | `axeda:role:manage`                                                                        | global          |
+| POST   | `/axeda/role/set-status`       | `axeda:role:manage`                                                                        | global          |
+| POST   | `/axeda/role/delete`           | `axeda:role:manage`                                                                        | global          |
+| GET    | `/axeda/assignment/list`       | `axeda:assignment:manage`                                                                  | per target      |
+| POST   | `/axeda/assignment/create`     | `axeda:assignment:manage`                                                                  | scope parameter |
+| POST   | `/axeda/assignment/revoke`     | `axeda:assignment:manage`                                                                  | per target      |
+| GET    | `/axeda/audit/list`            | `axeda:audit:read`                                                                         | scope parameter |
+| GET    | `/axeda/company/list`          | membership                                                                                 | per target      |
+| GET    | `/axeda/company/get`           | membership                                                                                 | per target      |
+| POST   | `/axeda/company/create`        | `axeda:company:manage`                                                                     | global          |
+| POST   | `/axeda/company/update`        | `axeda:company:manage`                                                                     | per target      |
+| POST   | `/axeda/company/set-status`    | `axeda:company:manage`                                                                     | global          |
+| POST   | `/axeda/company/delete`        | `axeda:company:manage`                                                                     | global          |
+| POST   | `/axeda/company/restore`       | `axeda:company:manage`                                                                     | global          |
+| GET    | `/axeda/business/list`         | membership                                                                                 | per target      |
+| GET    | `/axeda/business/get`          | membership                                                                                 | per target      |
+| POST   | `/axeda/business/create`       | `axeda:business:manage`                                                                    | per target      |
+| POST   | `/axeda/business/update`       | `axeda:business:manage`                                                                    | per target      |
+| POST   | `/axeda/business/set-status`   | `axeda:business:manage`                                                                    | per target      |
+| POST   | `/axeda/business/delete`       | `axeda:business:manage`                                                                    | per target      |
+| POST   | `/axeda/business/restore`      | `axeda:business:manage`                                                                    | per target      |
+| GET    | `/axeda/site/list`             | membership                                                                                 | per target      |
+| GET    | `/axeda/site/get`              | membership                                                                                 | per target      |
+| POST   | `/axeda/site/create`           | `axeda:site:manage`                                                                        | per target      |
+| POST   | `/axeda/site/update`           | `axeda:site:manage`                                                                        | per target      |
+| POST   | `/axeda/site/set-status`       | `axeda:site:manage`                                                                        | per target      |
+| POST   | `/axeda/site/delete`           | `axeda:site:manage`                                                                        | per target      |
+| POST   | `/axeda/site/restore`          | `axeda:site:manage`                                                                        | per target      |
+| GET    | `/axeda/invitation/list`       | `axeda:invitation:manage`                                                                  | scope parameter |
+| POST   | `/axeda/invitation/create`     | `axeda:invitation:manage`                                                                  | scope parameter |
+| POST   | `/axeda/invitation/accept`     | (authenticated; the secret and a verified email or phone authorize)                        | own             |
+| POST   | `/axeda/invitation/revoke`     | `axeda:invitation:manage`                                                                  | per target      |
+| POST   | `/axeda/image/upload`          | The permission that edits the entity; for `user.avatar`, the person or `axeda:user:manage` | per target      |
+| POST   | `/axeda/image/complete`        | (authenticated; only the person who asked for the upload)                                  | own             |
+| POST   | `/axeda/image/remove`          | Same as `image/upload`                                                                     | per target      |
+| POST   | `/axeda/staff/sign-in`         | (public; the company, the username and the PIN)                                            | —               |
+| GET    | `/axeda/staff/list`            | `axeda:staff:manage`                                                                       | scope parameter |
+| GET    | `/axeda/staff/get`             | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/create`          | `axeda:staff:manage`                                                                       | scope parameter |
+| POST   | `/axeda/staff/rename`          | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/reset-pin`       | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/unlock`          | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/suspend`         | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/reactivate`      | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/remove`          | `axeda:staff:manage`                                                                       | per target      |
+| POST   | `/axeda/staff/change-pin`      | (authenticated; your own PIN, giving the current one)                                      | own             |
+| GET    | `/axeda/feature/list`          | (authenticated; whoever sees the company)                                                  | per target      |
+| POST   | `/axeda/feature/set`           | `axeda:feature:manage`                                                                     | global          |
+| GET    | `/axeda/menu-adjustment/list`  | `axeda:menu:manage`                                                                        | scope parameter |
+| POST   | `/axeda/menu-adjustment/set`   | `axeda:menu:manage`                                                                        | scope parameter |
+| POST   | `/axeda/menu-adjustment/reset` | `axeda:menu:manage`                                                                        | scope parameter |
+| GET    | `/axeda/user/list`             | `axeda:user:manage`                                                                        | global          |
+| POST   | `/axeda/user/create`           | `axeda:user:manage`                                                                        | global          |
+| POST   | `/axeda/user/ban`              | `axeda:user:manage`                                                                        | global          |
+| POST   | `/axeda/user/unban`            | `axeda:user:manage`                                                                        | global          |
+| POST   | `/axeda/user/revoke-sessions`  | `axeda:user:manage`                                                                        | global          |
+| GET    | `/axeda/menu`                  | (authenticated; only lists what you may use)                                               | own             |
+| GET    | `/axeda/public/identity`       | (public, off unless `publicIdentity`)                                                      | —               |
 
 Better Auth endpoints accept only `GET` and `POST`, so updates and deletes are `POST`. Axeda's
 endpoints are rate limited per address: 120 per minute, and 30 for `/axeda/public/`. The typed
@@ -125,6 +128,12 @@ hides things. A place that does not exist, is not theirs or is inactive gives an
 telling them apart. Sites are managed from the company, or from the business they hang from, with
 `axeda:site:manage`; `site/list` takes `businessId` to list the sites of one business, or
 `businessId=none` for those that hang directly from the company.
+
+`menu-adjustment/set` takes `{ level, itemKey, hidden?, order?, label? }` (`level` is `{ type: 'global' }`
+or `{ type: 'company', id }`; at least one of the three) and replaces the adjustment of that item at that
+level; `menu-adjustment/reset` takes `{ level, itemKey }`; `menu-adjustment/list` takes
+`?scopeType=global|company&scopeId=…`. An adjustment is `{ companyId, itemKey, hidden, order, labels,
+updatedBy, updatedAt }`.
 
 `feature/list` answers `{ items: [{ key, name, description, enabled, source }] }` (`source` is `default` or
 `set`); `feature/set` takes `{ companyId, feature, enabled }` and answers one item. With a place, `/axeda/me`

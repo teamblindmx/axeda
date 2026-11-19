@@ -14,6 +14,7 @@ export const MODELS = {
   image: 'axedaImage',
   staff: 'axedaStaff',
   companyFeature: 'axedaCompanyFeature',
+  menuAdjustment: 'axedaMenuAdjustment',
 } as const;
 
 /** Fila única de `axedaState` que guarda la versión de política. */
@@ -276,6 +277,22 @@ export const axedaSchema = {
       updatedAt: { type: 'date', required: true, input: false },
     },
     indexes: [{ fields: ['companyId', 'feature'], unique: true }],
+  },
+  /**
+   * Ajustes del menú del código: ocultar, ordenar o renombrar un elemento, globales (`companyId`
+   * vacío) o de una compañía.
+   */
+  [MODELS.menuAdjustment]: {
+    fields: {
+      companyId: { type: 'string', required: true, input: false },
+      itemKey: { type: 'string', required: true, input: false },
+      hidden: { type: 'boolean', required: false, input: false },
+      sortOrder: { type: 'number', required: false, input: false },
+      labels: { type: 'json', required: false, input: false },
+      updatedBy: { type: 'string', required: true, input: false },
+      updatedAt: { type: 'date', required: true, input: false },
+    },
+    indexes: [{ fields: ['companyId', 'itemKey'], unique: true }],
   },
   /** Logos, favicons y avatares: primero la subida pendiente y después la imagen lista. */
   [MODELS.image]: {

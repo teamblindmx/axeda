@@ -1,6 +1,7 @@
 # Conceptos
 
 | `axeda:feature:manage` | global | Encender o apagar las funcionalidades de una compañía (solo la plataforma) |
+| `axeda:menu:manage` | global, compañía | Ocultar, ordenar o renombrar opciones del menú para todos (global) o dentro de una compañía |
 
 ## La jerarquía
 

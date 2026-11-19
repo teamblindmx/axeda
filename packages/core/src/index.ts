@@ -10,6 +10,11 @@ export type { InvitationInput, InvitationService } from './application/invitatio
 export type { StaffInput, StaffMember, StaffService, StaffSignIn } from './application/staff.js';
 export type { CompanyFeatureState, FeatureService } from './application/features.js';
 export type {
+  MenuAdjustmentInput,
+  MenuAdjustmentService,
+  MenuLevel,
+} from './application/menu-adjustments.js';
+export type {
   ImageResult,
   ImageService,
   ImageTarget,
@@ -54,6 +59,7 @@ export {
 } from './application/services.js';
 export { assertTransactional, isTransactional } from './application/startup-checks.js';
 export { MAX_MENU_DEPTH, type MenuDefinition, type ResolvedMenu } from './config/menus.js';
+export { applyMenuAdjustments, type MenuAdjustment } from './config/menu-overrides.js';
 export { closestOption, rejectUnknownOptions } from './config/unknown-options.js';
 export { FEATURE_KEY, type FeatureDefinition, type ResolvedFeature } from './config/features.js';
 export { pickLabel, type MenuNode } from './application/menu.js';

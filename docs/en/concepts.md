@@ -1,6 +1,7 @@
 # Concepts
 
 | `axeda:feature:manage` | global | Switch a company's features on or off (the platform only) |
+| `axeda:menu:manage` | global, company | Hide, reorder or rename menu items for everyone (global) or inside a company |
 
 ## The hierarchy
 

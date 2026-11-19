@@ -308,6 +308,32 @@ const { data } = await client.axeda.image.complete({ uploadId: ticket.data.uploa
   completó. Bloquea `/uploads/*` en tu dominio público y añade una regla de ciclo de vida (mira el
   [paquete de almacenamiento](https://github.com/teamblindmx/axeda/tree/main/packages/storage#setting-up-cloudflare-r2)).
 
+### Ajustar el menú sin desplegar
+
+El menú se sigue declarando en el código (`menus`), con el permiso que pide cada opción. Encima, quien tiene
+`axeda:menu:manage` puede **ocultar** un elemento (y todo lo que tenga debajo), **reordenarlo** entre sus
+hermanos o **renombrarlo**, por idioma:
+
+```ts
+await client.axeda.menuAdjustment.set({
+  level: { type: 'company', id: companyId }, // o { type: 'global' } para todos
+  itemKey: 'reports',
+  label: { es: 'Análisis', en: 'Analytics' },
+  order: 0,
+});
+await client.axeda.menuAdjustment.reset({
+  level: { type: 'company', id: companyId },
+  itemKey: 'reports',
+});
+```
+
+- **Dos niveles.** Los ajustes globales (permiso en global) valen para todos; los de una compañía (permiso en
+  esa compañía) se aplican encima dentro de ella, campo a campo. Negocios y sedes usan el menú de su compañía.
+- **No se puede añadir nada.** Solo se ajustan elementos declarados en el código; su ruta y su permiso nunca
+  cambian, así que un ajuste no puede meter un enlace ni mostrar una opción a quien no tiene su permiso.
+- Los cambios quedan en la auditoría (`menu.adjust`, `menu.reset`) y se ven en el siguiente
+  `GET /axeda/menu`.
+
 ### Funcionalidades por compañía
 
 Declara los módulos que vende tu plataforma y los permisos que dependen de cada uno:
