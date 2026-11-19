@@ -34,6 +34,11 @@ export type {
 } from './staff.js';
 export type { CompanyFeature, FeatureChange, FeatureStore } from './features.js';
 export type {
+  MenuAdjustmentChange,
+  MenuAdjustmentStore,
+  StoredMenuAdjustment,
+} from './menu-adjustments.js';
+export type {
   BanDetails,
   DirectoryUser,
   NewUser,
