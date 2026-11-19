@@ -9,6 +9,7 @@ import {
   type Principal,
   type ScopeFilter,
   type TargetScope,
+  rejectUnknownOptions,
 } from '@teamblind/axeda-core';
 import { isCrossSiteWrite, trustedOriginSet } from './csrf.js';
 import { globalScope, type RequestedScope, type ScopeResolver } from './scope.js';
@@ -188,7 +189,22 @@ function mismatches(
   return false;
 }
 
+const EXPRESS_OPTIONS = Object.keys({
+  axeda: true,
+  principal: true,
+  onDenied: true,
+  trustedOrigins: true,
+  csrf: true,
+} satisfies Record<keyof BaseOptions | 'trustedOrigins' | 'csrf', true>);
+
+const PERMISSION_OPTIONS = Object.keys({
+  scope: true,
+  onDeny: true,
+} satisfies Record<keyof RequirePermissionOptions, true>);
+
 export function createAxedaExpress(options: AxedaExpressOptions): AxedaExpress {
+  // Una opción mal escrita no puede apagar la defensa contra CSRF ni nada más en silencio.
+  rejectUnknownOptions('createAxedaExpress()', options, EXPRESS_OPTIONS);
   const { axeda } = options;
   const trusted = options.csrf === false ? null : trustedOriginSet(options.trustedOrigins);
   const known = new WeakMap<object, Actor>();
@@ -281,6 +297,12 @@ export function createAxedaExpress(options: AxedaExpressOptions): AxedaExpress {
       }),
 
     requirePermission(permission, permissionOptions = {}) {
+      // Un `scop` mal escrito haría comprobar el permiso en global en vez de en la ruta.
+      rejectUnknownOptions(
+        `requirePermission('${permission}')`,
+        permissionOptions,
+        PERMISSION_OPTIONS,
+      );
       const checked = checkedPermission(axeda, permission);
       const resolver = permissionOptions.scope ?? globalScope;
       const denied: Reply = permissionOptions.onDeny === 'not-found' ? 'notFound' : 'forbidden';

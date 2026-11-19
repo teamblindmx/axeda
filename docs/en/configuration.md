@@ -16,15 +16,15 @@ This page explains every option, what values are accepted and what happens when 
 
 ## When a mistake shows up
 
-| Mistake                                                                            | Shows up…                                         | As                                                       |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------------- |
-| `maxSessionAge` not a positive whole number                                        | when you call `axeda({ … })`                      | `AXEDA_INVALID_CONFIG`                                   |
-| Any other plugin option out of range, malformed or misspelled **inside** an object | when Better Auth is created (`betterAuth({ … })`) | `AXEDA_INVALID_CONFIG`, with the path and the reason     |
-| A weak `secureAuthOptions` input                                                   | when you call `secureAuthOptions({ … })`          | `AXEDA_INVALID_CONFIG`                                   |
-| A Better Auth option Axeda will not run with                                       | when Better Auth is created                       | `AXEDA_INVALID_CONFIG`                                   |
-| The Axeda tables do not exist (you did not migrate)                                | at `start()`, or at the first request             | the database's own error (`no such table: axedaState` …) |
-| The database has no real transactions                                              | at `start()`                                      | `AXEDA_TRANSACTIONS_UNSUPPORTED`                         |
-| A misspelled option at the **top level** of `axeda({ … })` (`invitationDelivry`)   | **never**: it is ignored                          | the feature is simply off. Check the spelling            |
+| Mistake                                                                                   | Shows up…                                            | As                                                          |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------- |
+| `maxSessionAge` not a positive whole number                                               | when you call `axeda({ … })`                         | `AXEDA_INVALID_CONFIG`                                      |
+| Any other plugin option out of range, malformed or misspelled **inside** an object        | when Better Auth is created (`betterAuth({ … })`)    | `AXEDA_INVALID_CONFIG`, with the path and the reason        |
+| A weak `secureAuthOptions` input                                                          | when you call `secureAuthOptions({ … })`             | `AXEDA_INVALID_CONFIG`                                      |
+| A Better Auth option Axeda will not run with                                              | when Better Auth is created                          | `AXEDA_INVALID_CONFIG`                                      |
+| The Axeda tables do not exist (you did not migrate)                                       | at `start()`, or at the first request                | the database's own error (`no such table: axedaState` …)    |
+| The database has no real transactions                                                     | at `start()`                                         | `AXEDA_TRANSACTIONS_UNSUPPORTED`                            |
+| A misspelled option (`invitationDelivry`, `scop`, `trustedProxys`…) in any Axeda function | when you call it (`axeda()`, `requirePermission()`…) | `AXEDA_INVALID_CONFIG`, naming the option it probably meant |
 
 Configuration errors never reach a browser as such: an HTTP client sees `AXEDA_INTERNAL_ERROR` and the
 detail stays in your server log ([error codes](reference.md#error-codes)).
@@ -182,8 +182,9 @@ Only `permissions` is required. Every other option has a default.
 | `maxSessionAge`                | positive integer (seconds) or `false`        | 30 days      | `> 0`, or `false` to turn it off          | Longest a session lives from sign-in, however much it is used. Checked at `axeda({ … })` |
 | `clock`                        | `{ now(): Date }`                            | system clock | —                                         | For tests only                                                                           |
 
-Misspelled keys **inside** `retention`, `invitations`, `limits` or a role definition are rejected. A
-misspelled key at the **top level** is ignored (see [the table above](#when-a-mistake-shows-up)).
+A misspelled key is rejected, at the top level or inside `retention`, `invitations`, `limits`, `images`,
+`staff`, `invitationDelivery` or a role definition, with the option it probably meant
+(`unknown option "publicIdentiy". Did you mean "publicIdentity"?`).
 
 ### Permission keys
 

@@ -1,5 +1,5 @@
 import type { BetterAuthOptions } from '@better-auth/core';
-import { AxedaError } from '@teamblind/axeda-core';
+import { AxedaError, rejectUnknownOptions } from '@teamblind/axeda-core';
 
 export interface SecureAuthInput {
   /** URL pública del servidor de autenticación. En producción, `https`. */
@@ -131,7 +131,18 @@ function trustedOriginList(input: SecureAuthInput, production: boolean): string[
  * plugin `twoFactor` de Better Auth, y conviene desactivar «confiar en este dispositivo» con
  * `trustDeviceMaxAge: 0` en las cuentas administrativas (ver la guía de seguridad).
  */
+const SECURE_AUTH_INPUT = Object.keys({
+  baseURL: true,
+  secret: true,
+  trustedOrigins: true,
+  environment: true,
+  trustedProxies: true,
+  rateLimitStorage: true,
+  requireEmailVerification: true,
+} satisfies Record<keyof SecureAuthInput, true>);
+
 export function secureAuthOptions(input: SecureAuthInput): SecureAuthOptions {
+  rejectUnknownOptions('secureAuthOptions()', input, SECURE_AUTH_INPUT);
   const production = (input.environment ?? 'production') === 'production';
   const requireEmailVerification = input.requireEmailVerification ?? true;
   assertSecret(input.secret);

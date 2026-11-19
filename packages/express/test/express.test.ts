@@ -442,4 +442,24 @@ describe('mistakes fail when the route is declared, not in production', () => {
     expect(bad({ trustedOrigins: ['nope'] })).toThrowError(/must be an origin/);
     expect(bad({ csrf: false })).not.toThrow();
   });
+
+  it('refuses a misspelled option instead of ignoring it', async () => {
+    const t = await startApp();
+    const base = { axeda: t.core, principal: async () => null, csrf: false };
+    expect(() =>
+      createAxedaExpress({ ...base, onDenyed: () => {} } as unknown as Parameters<
+        typeof createAxedaExpress
+      >[0]),
+    ).toThrowError(/createAxedaExpress\(\): unknown option "onDenyed"\. Did you mean "onDenied"/);
+    const x = createAxedaExpress(base as Parameters<typeof createAxedaExpress>[0]);
+    // Un alcance mal escrito no puede convertirse en una comprobación en global.
+    expect(() =>
+      x.requirePermission('invoice:read', { scop: resolveScope({ company: 'id' }) } as never),
+    ).toThrowError(
+      /requirePermission\('invoice:read'\): unknown option "scop"\. Did you mean "scope"/,
+    );
+    expect(() => resolveScope({ compnay: 'companyId' } as never)).toThrowError(
+      /resolveScope\(\): unknown option "compnay"\. Did you mean "company"/,
+    );
+  });
 });

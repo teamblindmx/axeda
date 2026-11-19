@@ -17,15 +17,15 @@ acepta y qué pasa cuando uno es incorrecto.
 
 ## Cuándo aparece un error
 
-| Error                                                                                              | Aparece…                                   | Como                                                                |
-| -------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------- |
-| `maxSessionAge` que no es un entero positivo                                                       | al llamar a `axeda({ … })`                 | `AXEDA_INVALID_CONFIG`                                              |
-| Cualquier otra opción del plugin fuera de rango, mal formada o mal escrita **dentro** de un objeto | al crear Better Auth (`betterAuth({ … })`) | `AXEDA_INVALID_CONFIG`, con la ruta y el motivo                     |
-| Una entrada débil de `secureAuthOptions`                                                           | al llamar a `secureAuthOptions({ … })`     | `AXEDA_INVALID_CONFIG`                                              |
-| Una opción de Better Auth con la que Axeda no funciona                                             | al crear Better Auth                       | `AXEDA_INVALID_CONFIG`                                              |
-| Las tablas de Axeda no existen (no migraste)                                                       | en `start()`, o en la primera petición     | el error propio de la base de datos (`no such table: axedaState` …) |
-| La base de datos no tiene transacciones reales                                                     | en `start()`                               | `AXEDA_TRANSACTIONS_UNSUPPORTED`                                    |
-| Una opción mal escrita en el **primer nivel** de `axeda({ … })` (`invitationDelivry`)              | **nunca**: se ignora                       | la función simplemente no se activa. Revisa la ortografía           |
+| Error                                                                                                | Aparece…                                        | Como                                                                |
+| ---------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------- |
+| `maxSessionAge` que no es un entero positivo                                                         | al llamar a `axeda({ … })`                      | `AXEDA_INVALID_CONFIG`                                              |
+| Cualquier otra opción del plugin fuera de rango, mal formada o mal escrita **dentro** de un objeto   | al crear Better Auth (`betterAuth({ … })`)      | `AXEDA_INVALID_CONFIG`, con la ruta y el motivo                     |
+| Una entrada débil de `secureAuthOptions`                                                             | al llamar a `secureAuthOptions({ … })`          | `AXEDA_INVALID_CONFIG`                                              |
+| Una opción de Better Auth con la que Axeda no funciona                                               | al crear Better Auth                            | `AXEDA_INVALID_CONFIG`                                              |
+| Las tablas de Axeda no existen (no migraste)                                                         | en `start()`, o en la primera petición          | el error propio de la base de datos (`no such table: axedaState` …) |
+| La base de datos no tiene transacciones reales                                                       | en `start()`                                    | `AXEDA_TRANSACTIONS_UNSUPPORTED`                                    |
+| Una opción mal escrita (`invitationDelivry`, `scop`, `trustedProxys`…) en cualquier función de Axeda | al llamarla (`axeda()`, `requirePermission()`…) | `AXEDA_INVALID_CONFIG`, con la opción que probablemente querías     |
 
 Los errores de configuración nunca llegan a un navegador como tales: un cliente HTTP ve
 `AXEDA_INTERNAL_ERROR` y el detalle queda en el registro de tu servidor
@@ -186,9 +186,9 @@ Solo `permissions` es obligatoria. Todas las demás opciones tienen un valor por
 | `maxSessionAge`                | entero positivo (segundos) o `false`         | 30 días         | `> 0`, o `false` para apagarlo                           | Lo máximo que vive una sesión desde que se abrió, por mucho que se use. Se comprueba en `axeda({ … })` |
 | `clock`                        | `{ now(): Date }`                            | el del sistema  | —                                                        | Solo para pruebas                                                                                      |
 
-Las claves mal escritas **dentro** de `retention`, `invitations`, `limits` o la definición de una función se
-rechazan. Una clave mal escrita en el **primer nivel** se ignora (mira
-[la tabla de arriba](#cuándo-aparece-un-error)).
+Una clave mal escrita se rechaza, en el primer nivel o dentro de `retention`, `invitations`, `limits`,
+`images`, `staff`, `invitationDelivery` o la definición de una función, con la opción que probablemente
+querías (`unknown option "publicIdentiy". Did you mean "publicIdentity"?`).
 
 ### Claves de permiso
 

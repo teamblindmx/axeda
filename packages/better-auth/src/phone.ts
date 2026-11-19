@@ -1,7 +1,7 @@
 import type { DBAdapter } from '@better-auth/core/db/adapter';
 import { APIError } from 'better-auth/api';
 import type { PhoneNumberOptions } from 'better-auth/plugins';
-import { AxedaError, E164_PATTERN } from '@teamblind/axeda-core';
+import { AxedaError, E164_PATTERN, rejectUnknownOptions } from '@teamblind/axeda-core';
 import { isUniqueViolation } from './errors.js';
 import { MODELS } from './schema.js';
 
@@ -114,7 +114,15 @@ export async function countInWindow(
  * correo; y un tope de envíos **por número** (Better Auth solo limita por IP), porque cada SMS cuesta
  * dinero y un atacante puede pedir códigos para números ajenos. Pasado el tope responde 429.
  */
+const PHONE_INPUT = Object.keys({
+  sendOTP: true,
+  maxSendsPerNumber: true,
+  sendWindowSeconds: true,
+  signUpOnVerification: true,
+} satisfies Record<keyof SecurePhoneNumberInput, true>);
+
 export function securePhoneNumberOptions(input: SecurePhoneNumberInput): SecurePhoneNumberOptions {
+  rejectUnknownOptions('securePhoneNumberOptions()', input, PHONE_INPUT);
   const maxSends = positiveInteger(input.maxSendsPerNumber, DEFAULT_MAX_SENDS, 'maxSendsPerNumber');
   const windowMs =
     positiveInteger(input.sendWindowSeconds, DEFAULT_WINDOW_SECONDS, 'sendWindowSeconds') * 1000;

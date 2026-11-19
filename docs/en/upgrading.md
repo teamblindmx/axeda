@@ -4,12 +4,13 @@
 
 Staff accounts are new and additive. You have to run the database migration.
 
-| What changed                                                                 | Do you need to act?                                                                       |
-| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Staff accounts with a username and a PIN, and `axeda:staff:manage`           | Only if you want them ([Configuration](configuration.md#staff-accounts-username-and-pin)) |
-| A new table, `axedaStaff`                                                    | **Yes**: run the migration                                                                |
-| `AxedaPersistence` needs a `staff` store; `UserAdmin` may implement `delete` | Only if you wrote your own ([below](#your-own-persistence-and-user-administration))       |
-| A cold permission read makes one more query                                  | No: it runs in parallel and only when the cache misses                                    |
+| What changed                                                                   | Do you need to act?                                                                          |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Staff accounts with a username and a PIN, and `axeda:staff:manage`             | Only if you want them ([Configuration](configuration.md#staff-accounts-username-and-pin))    |
+| A new table, `axedaStaff`                                                      | **Yes**: run the migration                                                                   |
+| `AxedaPersistence` needs a `staff` store; `UserAdmin` may implement `delete`   | Only if you wrote your own ([below](#your-own-persistence-and-user-administration))          |
+| A misspelled option now throws `AXEDA_INVALID_CONFIG` instead of being ignored | **Check**: if your app no longer starts, the message names the option and the right spelling |
+| A cold permission read makes one more query                                    | No: it runs in parallel and only when the cache misses                                       |
 
 ### Your own persistence and user administration
 

@@ -53,6 +53,7 @@ export {
 } from './application/services.js';
 export { assertTransactional, isTransactional } from './application/startup-checks.js';
 export { MAX_MENU_DEPTH, type MenuDefinition, type ResolvedMenu } from './config/menus.js';
+export { closestOption, rejectUnknownOptions } from './config/unknown-options.js';
 export { pickLabel, type MenuNode } from './application/menu.js';
 export type { BanInput, UserInput, UserService } from './application/users.js';
 export {
