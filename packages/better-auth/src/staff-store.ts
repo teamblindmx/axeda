@@ -5,6 +5,7 @@ import {
   type StaffFilter,
   type StaffStore,
   type StoredStaffAccount,
+  lockDuration,
 } from '@teamblind/axeda-core';
 import { isUniqueViolation } from './errors.js';
 import { MODELS } from './schema.js';
@@ -20,6 +21,7 @@ interface StaffRow {
   pinHash: string;
   failedAttempts: number;
   lockedUntil?: Date | string | null;
+  lockCount?: number | null;
   createdBy: string;
   createdAt: Date | string;
   pinChangedAt: Date | string;
@@ -39,6 +41,7 @@ const toStaff = (row: StaffRow): StoredStaffAccount => ({
   pinHash: row.pinHash,
   failedAttempts: row.failedAttempts,
   lockedUntil: asDate(row.lockedUntil),
+  lockCount: row.lockCount ?? 0,
   createdBy: row.createdBy,
   createdAt: asDate(row.createdAt) ?? new Date(0),
   pinChangedAt: asDate(row.pinChangedAt) ?? new Date(0),
@@ -95,6 +98,7 @@ export function createStaffStore(adapter: Adapter, now: () => Date): StaffStore 
             pinHash: input.pinHash,
             failedAttempts: 0,
             lockedUntil: null,
+            lockCount: 0,
             createdBy: input.createdBy,
             createdAt: at,
             pinChangedAt: at,
@@ -146,7 +150,7 @@ export function createStaffStore(adapter: Adapter, now: () => Date): StaffStore 
       const row = await adapter.update<StaffRow>({
         model,
         where: byUser(userId),
-        update: { pinHash, pinChangedAt: at, failedAttempts: 0, lockedUntil: null },
+        update: { pinHash, pinChangedAt: at, failedAttempts: 0, lockedUntil: null, lockCount: 0 },
       });
       if (row === null) throw missing(userId);
     },
@@ -173,10 +177,15 @@ export function createStaffStore(adapter: Adapter, now: () => Date): StaffStore 
       });
       if (spent === null) return 'locked';
       if (spent.failedAttempts >= policy.maxAttempts) {
+        // Solo el intento que llegó al tope pasa por aquí (los demás no pasaron la guarda de arriba).
+        const lockCount = spent.lockCount ?? 0;
         await adapter.update({
           model,
           where: byUser(userId),
-          update: { lockedUntil: new Date(at.getTime() + policy.lockMs) },
+          update: {
+            lockedUntil: new Date(at.getTime() + lockDuration(policy, lockCount)),
+            lockCount: lockCount + 1,
+          },
         });
       }
       return 'allowed';
@@ -186,7 +195,7 @@ export function createStaffStore(adapter: Adapter, now: () => Date): StaffStore 
       await adapter.updateMany({
         model,
         where: byUser(userId),
-        update: { failedAttempts: 0, lockedUntil: null },
+        update: { failedAttempts: 0, lockedUntil: null, lockCount: 0 },
       });
     },
 

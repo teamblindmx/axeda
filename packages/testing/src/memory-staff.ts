@@ -4,6 +4,7 @@ import {
   type StaffAccount,
   type StaffStore,
   type StoredStaffAccount,
+  lockDuration,
 } from '@teamblind/axeda-core';
 import { paginate, type Run } from './memory-tenants.js';
 
@@ -43,6 +44,7 @@ export function createStaffStore(state: StaffState, run: Run, now: () => Date): 
             ...input,
             failedAttempts: 0,
             lockedUntil: null,
+            lockCount: 0,
             createdAt: at,
             pinChangedAt: at,
           }),
@@ -70,7 +72,14 @@ export function createStaffStore(state: StaffState, run: Run, now: () => Date): 
       }),
     setPin: (userId, pinHash, at) =>
       run(async () => {
-        put({ ...need(userId), pinHash, pinChangedAt: at, failedAttempts: 0, lockedUntil: null });
+        put({
+          ...need(userId),
+          pinHash,
+          pinChangedAt: at,
+          failedAttempts: 0,
+          lockedUntil: null,
+          lockCount: 0,
+        });
       }),
     consumeAttempt: (userId, at, policy) =>
       run(async () => {
@@ -81,18 +90,23 @@ export function createStaffStore(state: StaffState, run: Run, now: () => Date): 
           account = put({ ...account, lockedUntil: null, failedAttempts: 0 });
         if (account.failedAttempts >= policy.maxAttempts) return 'locked';
         const failedAttempts = account.failedAttempts + 1;
+        const locks = failedAttempts >= policy.maxAttempts;
         put({
           ...account,
           failedAttempts,
-          lockedUntil:
-            failedAttempts >= policy.maxAttempts ? new Date(at.getTime() + policy.lockMs) : null,
+          lockedUntil: locks
+            ? new Date(at.getTime() + lockDuration(policy, account.lockCount))
+            : null,
+          lockCount: locks ? account.lockCount + 1 : account.lockCount,
         });
         return 'allowed';
       }),
     resetAttempts: (userId) =>
       run(async () => {
         const account = state.staff.get(userId);
-        if (account !== undefined) put({ ...account, failedAttempts: 0, lockedUntil: null });
+        if (account !== undefined) {
+          put({ ...account, failedAttempts: 0, lockedUntil: null, lockCount: 0 });
+        }
       }),
     delete: (userId) => run(async () => state.staff.delete(userId)),
     deleteOwnedBy: (owners) =>

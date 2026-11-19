@@ -16,6 +16,7 @@ export interface StaffMemberDto {
   banned: boolean;
   failedAttempts: number;
   lockedUntil: string | null;
+  lockCount: number;
   createdBy: string;
   createdAt: string;
   pinChangedAt: string;
@@ -31,6 +32,7 @@ export const toStaffMemberDto = (member: StaffMember): StaffMemberDto => ({
   banned: member.banned,
   failedAttempts: member.failedAttempts,
   lockedUntil: member.lockedUntil?.toISOString() ?? null,
+  lockCount: member.lockCount,
   createdBy: member.createdBy,
   createdAt: member.createdAt.toISOString(),
   pinChangedAt: member.pinChangedAt.toISOString(),

@@ -32,6 +32,7 @@ export type {
   StaffOwners,
   StaffStore,
 } from './staff.js';
+export { lockDuration } from './staff.js';
 export type { CompanyFeature, FeatureChange, FeatureStore } from './features.js';
 export type {
   MenuAdjustmentChange,

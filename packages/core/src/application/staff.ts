@@ -93,6 +93,9 @@ const createSchema = (maxRoles: number) =>
   });
 const usernameSchema = createSchema(1).shape.username;
 
+/** Lo más que dura un bloqueo, por muchos que lleve seguidos: un día. */
+const MAX_LOCK_MS = 24 * 60 * 60_000;
+
 const signInFailed = (): AxedaError =>
   new AxedaError('AXEDA_STAFF_SIGN_IN_FAILED', 'Wrong company, username or PIN.');
 
@@ -120,7 +123,11 @@ function homeOf(target: TargetScope): {
 export function createStaffService(services: Services): StaffService {
   const { persistence, options } = services;
   const limits = options.staff;
-  const policy = { maxAttempts: limits.maxAttempts, lockMs: limits.lockMinutes * 60_000 };
+  const policy = {
+    maxAttempts: limits.maxAttempts,
+    lockMs: limits.lockMinutes * 60_000,
+    maxLockMs: MAX_LOCK_MS,
+  };
   let dummyHash: Promise<string> | undefined;
 
   function deps(): {
@@ -407,7 +414,7 @@ export function createStaffService(services: Services): StaffService {
       return member(
         await record(actor, userId, 'staff.unlock', async (stores, found) => {
           await stores.staff.resetAttempts(userId);
-          return { ...found, failedAttempts: 0, lockedUntil: null };
+          return { ...found, failedAttempts: 0, lockedUntil: null, lockCount: 0 };
         }),
       );
     },

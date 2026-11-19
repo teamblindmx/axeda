@@ -252,6 +252,8 @@ export const axedaSchema = {
       pinHash: { type: 'string', required: true, input: false },
       failedAttempts: { type: 'number', required: true, defaultValue: 0, input: false },
       lockedUntil: { type: 'date', required: false, input: false },
+      // Bloqueos seguidos: cada uno dura el doble (fuerza bruta lenta).
+      lockCount: { type: 'number', required: false, defaultValue: 0, input: false },
       createdBy: { type: 'string', required: true, input: false },
       createdAt: { type: 'date', required: true, input: false },
       pinChangedAt: { type: 'date', required: true, input: false },

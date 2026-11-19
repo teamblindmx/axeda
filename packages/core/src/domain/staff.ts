@@ -74,6 +74,11 @@ export interface StaffAccount {
   readonly failedAttempts: number;
   /** Bloqueada hasta esta fecha por demasiados intentos; `null` si no lo está. */
   readonly lockedUntil: Date | null;
+  /**
+   * Bloqueos seguidos sin un acierto entre medias. Cada uno dura el doble que el anterior, así que
+   * probar PINs a ritmo lento no sale a cuenta.
+   */
+  readonly lockCount: number;
   readonly createdBy: string;
   readonly createdAt: Date;
   readonly pinChangedAt: Date;
@@ -102,6 +107,7 @@ export const withoutPin = (account: StoredStaffAccount): StaffAccount => ({
   username: account.username,
   failedAttempts: account.failedAttempts,
   lockedUntil: account.lockedUntil,
+  lockCount: account.lockCount,
   createdBy: account.createdBy,
   createdAt: account.createdAt,
   pinChangedAt: account.pinChangedAt,

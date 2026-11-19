@@ -235,6 +235,28 @@ describe('signing in with a username and a PIN', () => {
     );
   });
 
+  it('makes each lock in a row twice as long, so slow guessing does not pay', async () => {
+    const w = await world();
+    const { pin, member } = await w.hire(w.owner);
+    const wrong = pin === '381946' ? '519372' : '381946';
+    const lockLength = async () => {
+      for (let i = 0; i < 5; i++)
+        await rejectsWith(w.signIn('mesero1', wrong), 'AXEDA_STAFF_SIGN_IN_FAILED');
+      const { lockedUntil } = await w.axeda.staff.get(w.owner, member.userId);
+      const length = (lockedUntil?.getTime() ?? 0) - w.clock.current.getTime();
+      w.clock.current = new Date((lockedUntil?.getTime() ?? 0) + 1);
+      return length / MINUTE;
+    };
+    expect([await lockLength(), await lockLength(), await lockLength()]).toEqual([15, 30, 60]);
+    expect((await w.axeda.staff.get(w.owner, member.userId)).lockCount).toBe(3);
+    // Entrar bien vuelve a empezar.
+    expect(await w.signIn('mesero1', pin)).toEqual({ userId: member.userId });
+    expect(await lockLength()).toBe(15);
+    // Por muchos seguidos, un bloqueo nunca pasa de un día.
+    for (let i = 0; i < 8; i++) await lockLength();
+    expect(await lockLength()).toBe(24 * 60);
+  });
+
   it('lets five simultaneous wrong attempts through at most, and an admin unlock', async () => {
     const w = await world();
     const { pin, member } = await w.hire(w.owner);
