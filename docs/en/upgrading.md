@@ -4,15 +4,16 @@
 
 Staff accounts are new and additive. You have to run the database migration.
 
-| What changed                                                                                                      | Do you need to act?                                                                                                    |
-| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Staff accounts with a username and a PIN, and `axeda:staff:manage`                                                | Only if you want them ([Configuration](configuration.md#staff-accounts-username-and-pin))                              |
-| A new table, `axedaStaff`                                                                                         | **Yes**: run the migration                                                                                             |
-| `AxedaPersistence` needs a `staff` store; `UserAdmin` may implement `delete`                                      | Only if you wrote your own ([below](#your-own-persistence-and-user-administration))                                    |
-| A misspelled option now throws `AXEDA_INVALID_CONFIG` instead of being ignored                                    | **Check**: if your app no longer starts, the message names the option and the right spelling                           |
-| Features per company and `axeda:feature:manage`; a new table, `axedaCompanyFeature`                               | Only if you declare features ([Configuration](configuration.md#features-per-company)); the migration creates the table |
-| `/axeda/me` with a place lists concrete permissions instead of wildcards (`invoice:read` rather than `invoice:*`) | Only if your front end looked for a wildcard                                                                           |
-| A cold permission read makes one more query                                                                       | No: it runs in parallel and only when the cache misses                                                                 |
+| What changed                                                                                                      | Do you need to act?                                                                                                             |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Staff accounts with a username and a PIN, and `axeda:staff:manage`                                                | Only if you want them ([Configuration](configuration.md#staff-accounts-username-and-pin))                                       |
+| A new table, `axedaStaff`                                                                                         | **Yes**: run the migration                                                                                                      |
+| `AxedaPersistence` needs a `staff` store; `UserAdmin` may implement `delete`                                      | Only if you wrote your own ([below](#your-own-persistence-and-user-administration))                                             |
+| A misspelled option now throws `AXEDA_INVALID_CONFIG` instead of being ignored                                    | **Check**: if your app no longer starts, the message names the option and the right spelling                                    |
+| Features per company and `axeda:feature:manage`; a new table, `axedaCompanyFeature`                               | Only if you declare features ([Configuration](configuration.md#features-per-company)); the migration creates the table          |
+| `/axeda/me` with a place lists concrete permissions instead of wildcards (`invoice:read` rather than `invoice:*`) | Only if your front end looked for a wildcard                                                                                    |
+| Menus adjustable through the API and `axeda:menu:manage`; a new table, `axedaMenuAdjustment`                      | Only if you want them ([Configuration](configuration.md#adjusting-the-menu-without-deploying)); the migration creates the table |
+| A cold permission read makes one more query                                                                       | No: it runs in parallel and only when the cache misses                                                                          |
 
 ### Your own persistence and user administration
 

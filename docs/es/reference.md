@@ -130,6 +130,12 @@ distinguir un caso de otro. Las sedes se administran desde la compañía, o desd
 cuelgan, con `axeda:site:manage`; `site/list` acepta `businessId` para listar las sedes de un negocio,
 o `businessId=none` para las que cuelgan directamente de la compañía.
 
+`menu-adjustment/set` recibe `{ level, itemKey, hidden?, order?, label? }` (`level` es `{ type: 'global' }`
+o `{ type: 'company', id }`; al menos uno de los tres) y sustituye el ajuste de ese elemento en ese nivel;
+`menu-adjustment/reset` recibe `{ level, itemKey }`; `menu-adjustment/list` recibe
+`?scopeType=global|company&scopeId=…`. Un ajuste es `{ companyId, itemKey, hidden, order, labels, updatedBy,
+updatedAt }`.
+
 `feature/list` responde `{ items: [{ key, name, description, enabled, source }] }` (`source` es `default` o
 `set`); `feature/set` recibe `{ companyId, feature, enabled }` y responde un elemento. Con un lugar,
 `/axeda/me` lista los permisos concretos del catálogo que cuentan ahí, ordenados.

@@ -129,6 +129,12 @@ telling them apart. Sites are managed from the company, or from the business the
 `axeda:site:manage`; `site/list` takes `businessId` to list the sites of one business, or
 `businessId=none` for those that hang directly from the company.
 
+`menu-adjustment/set` takes `{ level, itemKey, hidden?, order?, label? }` (`level` is `{ type: 'global' }`
+or `{ type: 'company', id }`; at least one of the three) and replaces the adjustment of that item at that
+level; `menu-adjustment/reset` takes `{ level, itemKey }`; `menu-adjustment/list` takes
+`?scopeType=global|company&scopeId=…`. An adjustment is `{ companyId, itemKey, hidden, order, labels,
+updatedBy, updatedAt }`.
+
 `feature/list` answers `{ items: [{ key, name, description, enabled, source }] }` (`source` is `default` or
 `set`); `feature/set` takes `{ companyId, feature, enabled }` and answers one item. With a place, `/axeda/me`
 lists the concrete permissions of the catalog that count there, sorted.
