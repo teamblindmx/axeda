@@ -9,6 +9,7 @@ import {
 } from '../domain/permission-key.js';
 import { AxedaError } from '../errors.js';
 import { resolveMenus, type MenuDefinition, type ResolvedMenu } from './menus.js';
+import { resolveFeatures, type FeatureDefinition, type ResolvedFeature } from './features.js';
 
 export interface RoleDefinition {
   readonly name?: string | undefined;
@@ -22,10 +23,17 @@ export interface AxedaOptions {
   readonly permissions: readonly string[];
   /** Funciones declaradas en código (`managed`). La clave es el identificador estable. */
   readonly roles?: Readonly<Record<string, readonly string[] | RoleDefinition>>;
-  /** Días que una compañía o negocio borrado se conserva antes de poder purgarse. */
   /** Menú de la aplicación, declarado en el código (`GET /axeda/menu`). */
   readonly menus?: readonly MenuDefinition[];
-  readonly retention?: { readonly graceDays?: number };
+  readonly retention?: {
+    /** Días que una compañía, negocio o sede borrado se conserva antes de poder purgarse. */
+    readonly graceDays?: number;
+    /**
+     * Días que se conservan los eventos de auditoría; `purgeAudit()` borra los anteriores. Sin
+     * este valor, la auditoría se conserva entera.
+     */
+    readonly auditDays?: number;
+  };
   readonly invitations?: {
     /** Horas de vigencia por defecto. */
     readonly ttlHours?: number;
@@ -37,6 +45,20 @@ export interface AxedaOptions {
     readonly maxPermissionsPerRole?: number;
     /** Usuarios cuyos permisos se guardan en la caché en memoria de cada proceso. */
     readonly maxCachedUsers?: number;
+  };
+  /**
+   * Funcionalidades (módulos) que la plataforma activa por compañía. Sin una funcionalidad, sus
+   * permisos no valen dentro de esa compañía.
+   */
+  readonly features?: Readonly<Record<string, FeatureDefinition>>;
+  /** Personal con usuario y PIN. */
+  readonly staff?: {
+    /** Dígitos de los PIN que se generan, de 6 a 8. Por omisión 6. */
+    readonly pinLength?: number;
+    /** Intentos fallidos seguidos antes de bloquear la cuenta. Por omisión 5. */
+    readonly maxAttempts?: number;
+    /** Minutos que dura el bloqueo. Por omisión 15. */
+    readonly lockMinutes?: number;
   };
   /** Logos, favicons y avatares (necesitan un almacén de objetos). */
   readonly images?: {
@@ -66,12 +88,18 @@ export interface ResolvedOptions {
   readonly catalog: readonly PermissionKey[];
   readonly roles: ReadonlyMap<string, ResolvedRoleDefinition>;
   readonly menus: ResolvedMenu;
-  readonly retention: { readonly graceDays: number };
+  readonly retention: { readonly graceDays: number; readonly auditDays: number | null };
   readonly invitations: { readonly ttlHours: number; readonly maxRoles: number };
   readonly limits: {
     readonly maxAssignmentsPerUser: number;
     readonly maxPermissionsPerRole: number;
     readonly maxCachedUsers: number;
+  };
+  readonly features: ReadonlyMap<string, ResolvedFeature>;
+  readonly staff: {
+    readonly pinLength: number;
+    readonly maxAttempts: number;
+    readonly lockMinutes: number;
   };
   readonly images: {
     readonly maxBytes: number;
@@ -84,6 +112,8 @@ export interface ResolvedOptions {
 
 export const DEFAULT_RETENTION = Object.freeze({ graceDays: 30 });
 export const DEFAULT_INVITATIONS = Object.freeze({ ttlHours: 72, maxRoles: 10 });
+
+export const DEFAULT_STAFF = Object.freeze({ pinLength: 6, maxAttempts: 5, lockMinutes: 15 });
 
 export const DEFAULT_IMAGES = Object.freeze({
   maxBytes: 2 * 1024 * 1024,
@@ -120,7 +150,13 @@ const optionsSchema = z.strictObject({
     )
     .optional(),
   menus: z.array(z.unknown()).optional(),
-  retention: z.strictObject({ graceDays: z.number().int().min(0).max(3650).optional() }).optional(),
+  retention: z
+    .strictObject({
+      graceDays: z.number().int().min(0).max(3650).optional(),
+      // Al menos un día: un valor menor borraría lo que acaba de pasar.
+      auditDays: z.number().int().min(1).max(36_500).optional(),
+    })
+    .optional(),
   invitations: z
     .strictObject({
       ttlHours: z
@@ -137,6 +173,24 @@ const optionsSchema = z.strictObject({
       maxAssignmentsPerUser: limitSchema.optional(),
       maxPermissionsPerRole: limitSchema.optional(),
       maxCachedUsers: limitSchema.optional(),
+    })
+    .optional(),
+  features: z
+    .record(
+      z.string(),
+      z.strictObject({
+        permissions: z.array(z.string()),
+        name: z.string().min(1).max(200).optional(),
+        description: z.string().max(1000).optional(),
+        enabledByDefault: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+  staff: z
+    .strictObject({
+      pinLength: z.number().int().min(6).max(8).optional(),
+      maxAttempts: z.number().int().min(3).max(10).optional(),
+      lockMinutes: z.number().int().min(1).max(1440).optional(),
     })
     .optional(),
   images: z
@@ -227,6 +281,15 @@ const limitsOf = (limits: Shape['limits']): ResolvedOptions['limits'] => ({
 
 const retentionOf = (retention: Shape['retention']): ResolvedOptions['retention'] => ({
   graceDays: retention?.graceDays ?? DEFAULT_RETENTION.graceDays,
+  auditDays: retention?.auditDays ?? null,
+});
+
+const definedOnly = (value: object | undefined) =>
+  Object.fromEntries(Object.entries(value ?? {}).filter(([, item]) => item !== undefined));
+
+const staffOf = (staff: Shape['staff']): ResolvedOptions['staff'] => ({
+  ...DEFAULT_STAFF,
+  ...definedOnly(staff),
 });
 
 /** Los valores por omisión, con lo que se haya indicado encima (un `undefined` no cuenta). */
@@ -257,5 +320,7 @@ export function resolveOptions(options: AxedaOptions): ResolvedOptions {
     retention: retentionOf(shape.retention),
     invitations: invitationsOf(shape.invitations),
     images: imagesOf(shape.images),
+    staff: staffOf(shape.staff),
+    features: resolveFeatures(shape.features, catalog),
   };
 }

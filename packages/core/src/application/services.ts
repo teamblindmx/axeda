@@ -14,6 +14,7 @@ import type { UserAdmin, UserDirectory } from '../ports/identity.js';
 import type { AxedaPersistence, AxedaStores } from '../ports/persistence.js';
 import type { Clock } from '../ports/platform.js';
 import type { ImageProcessor, ObjectStorage } from '../ports/images.js';
+import type { PinHasher } from '../ports/staff.js';
 import type { AuthzSnapshot } from './authz-cache.js';
 import { assertPrincipal, loadSnapshot } from './authz-reader.js';
 
@@ -55,6 +56,8 @@ export interface Services {
   /** Sin esto no se suben imágenes. */
   readonly storage: ObjectStorage | undefined;
   readonly imageProcessor: ImageProcessor | undefined;
+  /** Sin esto no hay personal con usuario y PIN. */
+  readonly pinHasher: PinHasher | undefined;
   /** Espera a que el arranque (transacciones, funciones declaradas) haya terminado bien. */
   readonly ready: () => Promise<void>;
 }
@@ -164,7 +167,7 @@ export async function actorPermissions(
   target: TargetScope,
 ): Promise<PermissionSet> {
   assertPrincipal(actor);
-  const snapshot = await loadSnapshot(stores, actor.userId);
+  const snapshot = await loadSnapshot(stores, actor.userId, services.options.features);
   return effectivePermissions({
     ...actorPolicyData(services, actor, snapshot),
     target,

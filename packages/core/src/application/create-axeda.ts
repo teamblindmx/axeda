@@ -15,6 +15,7 @@ import type { AuditFilter, AxedaPersistence, Page, PageRequest } from '../ports/
 import { systemClock, type Clock } from '../ports/platform.js';
 import type { AuditEvent } from '../domain/audit.js';
 import { createAssignmentService, type AssignmentService } from './assignments.js';
+import { purgeExpiredAudit, type AuditPurgeResult } from './audit-retention.js';
 import { buildMenu, type MenuNode } from './menu.js';
 import { createUserService, type UserService } from './users.js';
 import { AuthzCache } from './authz-cache.js';
@@ -25,6 +26,11 @@ import { createRoleService, type RoleService } from './roles.js';
 import { createInvitationService, type InvitationService } from './invitations.js';
 import { createImageService, type ImageService } from './images.js';
 import type { ImageProcessor, ObjectStorage } from '../ports/images.js';
+import type { PinHasher } from '../ports/staff.js';
+import { createStaffService, type StaffService } from './staff.js';
+import { createFeatureService, hasFeature, type FeatureService } from './features.js';
+import { createMenuAdjustmentService, type MenuAdjustmentService } from './menu-adjustments.js';
+import { applyMenuAdjustments } from '../config/menu-overrides.js';
 import {
   actorPermissions,
   resolveTarget,
@@ -67,6 +73,11 @@ export interface AxedaDependencies {
   readonly storage?: ObjectStorage;
   /** Recodifica las imágenes al completarlas (p. ej. `sharpImageProcessor()`). Opcional. */
   readonly imageProcessor?: ImageProcessor;
+  /**
+   * Hash del PIN del personal (lento y con una clave del servidor). Con Better Auth lo pone el
+   * plugin. Sin esto no hay personal con usuario y PIN.
+   */
+  readonly pinHasher?: PinHasher;
 }
 
 /** Alcances donde se concede un permiso, listos para filtrar las consultas de la aplicación. */
@@ -119,6 +130,20 @@ export interface Axeda {
   readonly users: UserService;
   /** Logos, favicons y avatares con subida directa al almacén (necesita `storage`). */
   readonly images: ImageService;
+  /** Personal con usuario y PIN (meseros, cocineros…), creado por quien administra su lugar. */
+  readonly staff: StaffService;
+  /** Funcionalidades por compañía: verlas (quien ve la compañía) y cambiarlas (la plataforma). */
+  readonly features: FeatureService;
+  /**
+   * ¿Tiene esa compañía la funcionalidad? Para el servidor; no comprueba a nadie. Sus permisos ya
+   * no valen dentro de una compañía que no la tiene: esto es para lo demás (mostrar, cobrar…).
+   */
+  hasFeature(companyId: string, feature: string): Promise<boolean>;
+  /**
+   * Ajustes del menú declarado en el código (ocultar, ordenar, renombrar), globales o de una
+   * compañía, con `axeda:menu:manage` en ese nivel.
+   */
+  readonly menuAdjustments: MenuAdjustmentService;
   /**
    * El menú de la persona en un alcance (global por defecto): solo lo que tiene permiso de ver.
    * Un alcance que no existe o está inactivo da un menú vacío, sin revelar nada.
@@ -140,6 +165,11 @@ export interface Axeda {
    * (p. ej. desde un cron); Axeda no corre tareas en segundo plano.
    */
   purgeDeleted(): Promise<PurgeResult>;
+  /**
+   * Borra los eventos de auditoría con más de `retention.auditDays` días (sin esa opción, lanza
+   * `AXEDA_INVALID_CONFIG`). Como `purgeDeleted()`, la aplicación lo llama desde un cron.
+   */
+  purgeAudit(): Promise<AuditPurgeResult>;
   /** Auditoría: global con `axeda:audit:read` global; de una compañía, con ese permiso allí. */
   listAudit(actor: Actor, filter: AuditFilter, page: PageRequest): Promise<Page<AuditEvent>>;
   /** Crea el primer administrador global (operación del servidor, no de la API). */
@@ -175,7 +205,11 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
   const { persistence } = dependencies;
   const clock = dependencies.clock ?? systemClock;
   const catalogSet: ReadonlySet<PermissionKey> = new Set(resolved.catalog);
-  const reader = new AuthzReader(persistence, new AuthzCache(resolved.limits.maxCachedUsers));
+  const reader = new AuthzReader(
+    persistence,
+    new AuthzCache(resolved.limits.maxCachedUsers),
+    resolved.features,
+  );
 
   let started: Promise<void> | undefined;
   const services: Services = {
@@ -188,6 +222,7 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     userAdmin: dependencies.userAdmin,
     storage: dependencies.storage,
     imageProcessor: dependencies.imageProcessor,
+    pinHasher: dependencies.pinHasher,
     ready: () => start(),
   };
   const start = (): Promise<void> =>
@@ -216,6 +251,8 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
       assignments: snapshot.assignments,
       roles: snapshot.roles,
       unusable,
+      // Las funcionalidades que la compañía de cada asignación no tiene.
+      gated: snapshot.gated,
       now: clock.now(),
       mfaEnabled: principal.twoFactorEnabled,
       banned: principal.banned,
@@ -301,13 +338,25 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     invitations: createInvitationService(services),
     users: createUserService(services),
     images: createImageService(services, tenants.onTenant),
+    staff: createStaffService(services),
+    features: createFeatureService(services, tenants.companies),
+    hasFeature: (companyId, feature) => hasFeature(services, companyId, feature),
+    menuAdjustments: createMenuAdjustmentService(services),
     async menu(principal, menuOptions = {}) {
       const target = await targetOf(menuOptions.scope);
       if (target === null) return [];
-      return buildMenu(resolved.menus, await effective(principal, target), menuOptions.locale);
+      const held = await effective(principal, target);
+      if (resolved.menus.items.size === 0) return [];
+      // Los ajustes globales y, encima, los de la compañía del lugar pedido.
+      const layers = [
+        await persistence.menuAdjustments.list(null),
+        target.type === 'global' ? [] : await persistence.menuAdjustments.list(target.companyId),
+      ];
+      return buildMenu(applyMenuAdjustments(resolved.menus, layers), held, menuOptions.locale);
     },
     publicIdentity: (query) => publicIdentity(services, query),
     purgeDeleted: () => purgeExpiredDeletions(services),
+    purgeAudit: () => purgeExpiredAudit(services),
     async listAudit(actor, filter, page) {
       await start();
       const target = await auditTarget(filter.scope);

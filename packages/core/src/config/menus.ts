@@ -51,15 +51,19 @@ const LOCALE = /^[a-z]{2}(-[A-Za-z0-9]{2,8})?$/;
 const ICON = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
 const text = z.string().trim().min(1).max(100);
+/** Un texto, o un texto por idioma: lo mismo en el código que en un ajuste por API. */
+export const menuLabelSchema = z.union([
+  text,
+  z.record(z.string().regex(LOCALE), text).refine((l) => Object.keys(l).length > 0),
+]);
+export const menuOrderSchema = z.number().int().min(-1_000_000).max(1_000_000);
+
 const itemSchema = z.strictObject({
   key: z.string().regex(KEY),
   parent: z.string().regex(KEY).optional(),
-  label: z.union([
-    text,
-    z.record(z.string().regex(LOCALE), text).refine((l) => Object.keys(l).length > 0),
-  ]),
+  label: menuLabelSchema,
   icon: z.string().regex(ICON).optional(),
-  order: z.number().int().min(-1_000_000).max(1_000_000).optional(),
+  order: menuOrderSchema.optional(),
   // Solo rutas de la propia aplicación: nada de `javascript:`, `//otro-sitio` ni espacios.
   path: z
     .string()
@@ -98,7 +102,7 @@ function parseItems(raw: unknown): Parsed[] {
   });
 }
 
-const labelsOf = (label: Parsed['label']): Record<string, string> =>
+export const labelsOf = (label: z.infer<typeof menuLabelSchema>): Record<string, string> =>
   typeof label === 'string' ? { [DEFAULT_LABEL]: label } : { ...label };
 
 /** Estructura: claves únicas, padres que existen, sin ciclos y sin pasar de la profundidad máxima. */

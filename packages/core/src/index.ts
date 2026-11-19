@@ -7,6 +7,13 @@ export {
 } from './application/create-axeda.js';
 export type { AssignInput, AssignmentService } from './application/assignments.js';
 export type { InvitationInput, InvitationService } from './application/invitations.js';
+export type { StaffInput, StaffMember, StaffService, StaffSignIn } from './application/staff.js';
+export type { CompanyFeatureState, FeatureService } from './application/features.js';
+export type {
+  MenuAdjustmentInput,
+  MenuAdjustmentService,
+  MenuLevel,
+} from './application/menu-adjustments.js';
 export type {
   ImageResult,
   ImageService,
@@ -43,6 +50,7 @@ export type {
   SiteUpdate,
 } from './application/tenants.js';
 export type { PublicIdentity, PurgeResult } from './application/tenant-lifecycle.js';
+export type { AuditPurgeResult } from './application/audit-retention.js';
 export type { BootstrapInput, BootstrapResult } from './application/bootstrap.js';
 export type { RoleInput, RoleService, RoleUpdate } from './application/roles.js';
 export {
@@ -52,10 +60,14 @@ export {
 } from './application/services.js';
 export { assertTransactional, isTransactional } from './application/startup-checks.js';
 export { MAX_MENU_DEPTH, type MenuDefinition, type ResolvedMenu } from './config/menus.js';
+export { applyMenuAdjustments, type MenuAdjustment } from './config/menu-overrides.js';
+export { closestOption, rejectUnknownOptions } from './config/unknown-options.js';
+export { FEATURE_KEY, type FeatureDefinition, type ResolvedFeature } from './config/features.js';
 export { pickLabel, type MenuNode } from './application/menu.js';
 export type { BanInput, UserInput, UserService } from './application/users.js';
 export {
   DEFAULT_IMAGES,
+  DEFAULT_STAFF,
   DEFAULT_LIMITS,
   resolveOptions,
   type AxedaOptions,
@@ -89,6 +101,21 @@ export {
 } from './domain/invitation.js';
 export { isBanned, type ManagedUser } from './domain/user.js';
 export {
+  MAX_PIN_LENGTH,
+  MIN_PIN_LENGTH,
+  PIN_PATTERN,
+  STAFF_EMAIL_DOMAIN,
+  USERNAME_PATTERN,
+  generatePin,
+  homeScopeOf,
+  isStaffEmail,
+  isWeakPin,
+  normalizeUsername,
+  withoutPin,
+  type StaffAccount,
+  type StoredStaffAccount,
+} from './domain/staff.js';
+export {
   SLUG_PATTERN,
   businessKey,
   companyKey,
@@ -102,6 +129,7 @@ export {
 } from './domain/tenant.js';
 export {
   MAX_AUDIT_METADATA_BYTES,
+  auditIdFloor,
   createAuditIdFactory,
   type AuditAction,
   type AuditEvent,

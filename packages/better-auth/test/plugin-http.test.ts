@@ -88,6 +88,8 @@ describe('every endpoint requires a session and a permission', () => {
     unprivileged?: number[];
     /** No exige sesión. */
     public?: true;
+    /** Estados válidos para el administrador global, si no son «cualquiera menos 401, 403 y 500». */
+    admin?: number[];
   }
   const NOPE = { id: 'x', version: 1 };
   const SAMPLES: Record<string, Sample> = {
@@ -153,6 +155,53 @@ describe('every endpoint requires a session and a permission', () => {
     },
     '/axeda/image/complete': { method: 'POST', body: { uploadId: 'x' }, unprivileged: [501] },
     '/axeda/image/remove': { method: 'POST', body: { purpose: 'company.logo', targetId: 'x' } },
+    // Ajustes del menú: solo con axeda:menu:manage.
+    '/axeda/menu-adjustment/list': { method: 'GET', query: { scopeType: 'company', scopeId: 'x' } },
+    '/axeda/menu-adjustment/set': {
+      method: 'POST',
+      body: { level: { type: 'global' }, itemKey: 'reports', hidden: true },
+      unprivileged: [403],
+    },
+    '/axeda/menu-adjustment/reset': {
+      method: 'POST',
+      body: { level: { type: 'global' }, itemKey: 'reports' },
+      unprivileged: [403],
+    },
+    // Funcionalidades: ver las de una compañía que no existe es 404; cambiarlas, solo la plataforma.
+    '/axeda/feature/list': { method: 'GET', query: { companyId: 'x' } },
+    '/axeda/feature/set': {
+      method: 'POST',
+      body: { companyId: 'x', feature: 'nope', enabled: true },
+      // El administrador global pasa el permiso y recibe 400: esa funcionalidad no está declarada.
+      admin: [400],
+    },
+    // Personal. Entrar con PIN no pide sesión: con datos falsos es 401 para todos.
+    '/axeda/staff/sign-in': {
+      method: 'POST',
+      body: { company: 'x', username: 'nobody', pin: '381946' },
+      unprivileged: [401],
+      public: true,
+      admin: [401],
+    },
+    '/axeda/staff/list': { method: 'GET', query: { scopeType: 'company', scopeId: 'x' } },
+    '/axeda/staff/get': { method: 'GET', query: { userId: 'x' } },
+    '/axeda/staff/create': {
+      method: 'POST',
+      body: { scope: { type: 'company', id: 'x' }, username: 'mesero1', name: 'M' },
+    },
+    '/axeda/staff/rename': { method: 'POST', body: { userId: 'x', username: 'abc' } },
+    '/axeda/staff/reset-pin': { method: 'POST', body: { userId: 'x' } },
+    '/axeda/staff/unlock': { method: 'POST', body: { userId: 'x' } },
+    '/axeda/staff/suspend': { method: 'POST', body: { userId: 'x' } },
+    '/axeda/staff/reactivate': { method: 'POST', body: { userId: 'x' } },
+    '/axeda/staff/remove': { method: 'POST', body: { userId: 'x' } },
+    // Solo el personal tiene PIN: una cuenta completa recibe 404.
+    '/axeda/staff/change-pin': {
+      method: 'POST',
+      body: { currentPin: '381946', newPin: '582039' },
+      unprivileged: [404],
+      admin: [404],
+    },
     // Usuarios (solo global) y menú (cada persona ve el suyo).
     '/axeda/user/list': { method: 'GET' },
     '/axeda/user/create': { method: 'POST', body: { email: 'walker@test.dev', name: 'W' } },
@@ -230,7 +279,12 @@ describe('every endpoint requires a session and a permission', () => {
     const { app, admin } = await world();
     for (const path of Object.keys(SAMPLES)) {
       const response = await send(app, path, admin.cookie);
-      expect([401, 403, 500], `${path} → ${response.status}`).not.toContain(response.status);
+      const expected = SAMPLES[path]?.admin;
+      if (expected === undefined) {
+        expect([401, 403, 500], `${path} → ${response.status}`).not.toContain(response.status);
+      } else {
+        expect(expected, `${path} → ${response.status}`).toContain(response.status);
+      }
     }
   });
 });
@@ -537,4 +591,23 @@ describe.each(serverKinds)('on a database server (%s)', (kind) => {
     ]);
     expect((await app.get('/axeda/audit/list', admin.cookie)).json.items.length).toBeGreaterThan(2);
   }, 60_000);
+});
+
+describe('the address in the audit log', () => {
+  it('follows Better Auth trustedProxies, like its rate limit', async () => {
+    const { app, admin } = await world({
+      betterAuth: { advanced: { ipAddress: { trustedProxies: ['10.0.0.0/8'] } } },
+    });
+    // Detrás de un proxy de confianza: la dirección real es la anterior a la del proxy.
+    const response = await app.send('/axeda/role/create', {
+      method: 'POST',
+      headers: { cookie: admin.cookie, 'x-forwarded-for': '203.0.113.7, 10.0.0.1' },
+      body: { key: 'viewer', name: 'Viewer', permissions: ['invoice:read'] },
+    });
+    expect(response.status).toBe(200);
+    const events = await app.plugin
+      .persistence()
+      .audit.list({ action: 'role.create' }, { limit: 1 });
+    expect(events.items[0]?.ip).toBe('203.0.113.7');
+  });
 });

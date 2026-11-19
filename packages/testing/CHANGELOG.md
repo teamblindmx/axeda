@@ -1,5 +1,54 @@
 # @teamblind/axeda-testing
 
+## 0.1.0-alpha.4
+
+### Minor Changes
+
+- 16d834d: Audit retention: set `retention.auditDays` and call `purgeAudit()` on a schedule (like `purgeDeleted()`) to delete the audit events older than that many days. Without the option the audit log is kept in full, as before, and `purgeAudit()` throws `AXEDA_INVALID_CONFIG` instead of deleting anything.
+
+  - It deletes in batches of 500 by primary key, outside a transaction, so a large backlog never holds a long lock and an interrupted run simply continues next time. No new index or migration is needed.
+  - A run that deletes something records an `audit.purge` event (system actor) with the cut-off and the count.
+  - `AuditStore` gains `deleteBefore(before, limit)`, checked by `runPersistenceContract`; `auditIdFloor` is exported for stores that key events by Axeda's audit ids.
+
+- c26c30e: Add features per company: the modules a platform sells, switched on per company by the platform.
+
+  - `axeda({ features: { inventory: { permissions: ['inventory:*'] } } })` declares each feature and the permissions that depend on it (never Axeda ones). A feature is off unless `enabledByDefault`.
+  - Where a company does not have a feature, its permissions do not count for anyone inside that company, whatever their roles (even `*`): `can`, `effectivePermissions`, `scopesFor`, `scopeFilter`, the menu and the no-escalation check follow. Global assignments are not cut.
+  - `axeda.hasFeature(companyId, feature)`, `axeda.features.list` / `set` and the endpoints `GET /axeda/feature/list` and `POST /axeda/feature/set`; switching needs the new global permission `axeda:feature:manage`, is audited (`feature.set`) and takes effect on the next check.
+  - `/axeda/me` with a place now lists the concrete permissions of the catalog that count there, sorted, instead of the raw keys (a wildcard with exceptions would not tell the truth). `PermissionSet` gains `concrete(catalog)`.
+  - A `features` store in `AxedaPersistence` (Better Auth table `axedaCompanyFeature`), checked by `runPersistenceContract`. With features declared, a cold permission read makes one more query.
+
+- ea22d5a: Adjust the menu through the API without deploying: hide an item (with everything under it), reorder it among its siblings or rename it per language, for everyone (global) or inside one company, whose businesses and sites inherit it.
+
+  - New permission `axeda:menu:manage` (global or company), `axeda.menuAdjustments.list` / `set` / `reset` and the endpoints `/axeda/menu-adjustment/{list,set,reset}` (typed client: `client.axeda.menuAdjustment.*`).
+  - Only items declared in code can be adjusted; their path and permission never change, so an adjustment can neither add a link nor show an option to someone without its permission. Company adjustments win over global ones field by field.
+  - Changes are audited (`menu.adjust`, `menu.reset`); purging a company deletes its adjustments. `applyMenuAdjustments` is exported for custom menus.
+  - A `menuAdjustments` store in `AxedaPersistence` (Better Auth table `axedaMenuAdjustment`), checked by `runPersistenceContract`.
+
+- 8f974cf: Add staff accounts: people who sign in with a username and a PIN, created by an administrator (waiters, cooks…), for businesses that work with shared terminals.
+
+  - New permission `axeda:staff:manage`, valid in a company, a business or a site. With it, `axeda.staff` creates staff there or below with a random PIN of 6 to 8 digits returned once, lists them by place, renames them, resets the PIN (closing their sessions), unlocks, suspends, reactivates and removes them. Staff change their own PIN by giving the current one.
+  - Usernames are unique within a company; signing in takes the company slug, the username and the PIN. `axeda.staff.signIn` answers the same `AXEDA_STAFF_SIGN_IN_FAILED` (401) for every failure, hashes even when there is no account, and locks an account after 5 wrong PINs for 15 minutes (`options.staff`); simultaneous attempts never go past the limit.
+  - A staff account never administers Axeda: a role with any Axeda permission (or `*`) cannot be given to it, and its effective permissions drop them even if a role is edited later.
+  - The PIN is not a password of the identity system: it lives in Axeda's own store, hashed with the new `pinHasher` dependency. Purging or deleting a company, business or site for good also removes its staff and their users.
+  - New: `options.staff`, `UserAdmin.delete`, error codes `AXEDA_USERNAME_TAKEN`, `AXEDA_STAFF_NOT_FOUND` and `AXEDA_STAFF_SIGN_IN_FAILED`, audit actions `staff.*`, a `staff` store in `AxedaPersistence` (Better Auth table `axedaStaff`) checked by `runPersistenceContract`, and `createTestPinHasher()` in `@teamblind/axeda-testing`.
+
+### Patch Changes
+
+- fde7b4b: Security review of staff accounts:
+
+  - **Resetting a PIN no longer lets a manager take over someone with more permissions.** A new PIN means signing in as that person, so `staff/reset-pin` now also requires the actor to hold every permission the account holds, wherever it holds it (`403`, reason `exceeds_granter_permissions`, with the missing permissions).
+  - **Each lock in a row lasts twice as long** (15 minutes, 30, 1 hour…, up to a day) until the right PIN gets in, so slow PIN guessing no longer gets 5 tries every 15 minutes forever. Staff accounts gain `lockCount`; `AttemptPolicy` gains `maxLockMs` and `lockDuration` is exported for custom stores.
+  - **The audit log records the client address behind trusted proxies.** Axeda now reads it with Better Auth's own `advanced.ipAddress` options (`trustedProxies`, `ipAddressHeaders`), as its rate limiter does, instead of ignoring them.
+
+- Updated dependencies [16d834d]
+- Updated dependencies [c26c30e]
+- Updated dependencies [ea22d5a]
+- Updated dependencies [8f974cf]
+- Updated dependencies [fde7b4b]
+- Updated dependencies [a9f5bde]
+  - @teamblind/axeda-core@0.1.0-alpha.4
+
 ## 0.1.0-alpha.3
 
 ### Minor Changes

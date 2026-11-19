@@ -2,6 +2,9 @@ import type { AuditAction, AuditEvent, AuditTargetType, NewAuditEvent } from '..
 import type { Page, PageRequest } from './paging.js';
 import type { BusinessStore, CompanyStore, InvitationStore, SiteStore } from './tenants.js';
 import type { ImageStore } from './images.js';
+import type { StaffStore } from './staff.js';
+import type { FeatureStore } from './features.js';
+import type { MenuAdjustmentStore } from './menu-adjustments.js';
 import type { PermissionKey } from '../domain/permission-key.js';
 import type { Role, RoleAssignment, RoleStatus } from '../domain/role.js';
 import type { AssignmentScope } from '../domain/scope.js';
@@ -85,12 +88,19 @@ export interface AuditFilter {
 }
 
 /**
- * Registro de auditoría. Solo se añade: no hay actualizar ni borrar. Los identificadores
- * ordenan cronológicamente, así que `list` devuelve primero lo más reciente.
+ * Registro de auditoría. Solo se añade: no hay actualizar, y solo se borra lo antiguo por la
+ * retención. Los identificadores ordenan cronológicamente, así que `list` devuelve primero lo
+ * más reciente.
  */
 export interface AuditStore {
   append(event: NewAuditEvent): Promise<AuditEvent>;
   list(filter: AuditFilter, page: PageRequest): Promise<Page<AuditEvent>>;
+  /**
+   * Borra hasta `limit` de los eventos más antiguos de antes de `before` (al milisegundo; lo de
+   * ese mismo milisegundo se queda) y devuelve cuántos borró. Menos de `limit` significa que no
+   * queda ninguno anterior.
+   */
+  deleteBefore(before: Date, limit: number): Promise<number>;
 }
 
 export interface AxedaStores {
@@ -99,6 +109,9 @@ export interface AxedaStores {
   readonly sites: SiteStore;
   readonly invitations: InvitationStore;
   readonly images: ImageStore;
+  readonly staff: StaffStore;
+  readonly features: FeatureStore;
+  readonly menuAdjustments: MenuAdjustmentStore;
   readonly roles: RoleStore;
   readonly assignments: AssignmentStore;
   readonly authz: AuthzStateStore;

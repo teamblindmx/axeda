@@ -1,4 +1,8 @@
-import { AXEDA_PERMISSION_SCOPES, AXEDA_PERMISSIONS } from '../domain/axeda-permissions.js';
+import {
+  AXEDA_CATALOG,
+  AXEDA_PERMISSION_SCOPES,
+  AXEDA_PERMISSIONS,
+} from '../domain/axeda-permissions.js';
 import { covers, parsePermissionKey, type PermissionKey } from '../domain/permission-key.js';
 import type { Role } from '../domain/role.js';
 import type { ScopeType } from '../domain/scope.js';
@@ -8,7 +12,8 @@ export type GrantDenialReason =
   | 'role_inactive'
   | 'missing_assignment_permission'
   | 'permission_not_valid_in_scope'
-  | 'exceeds_granter_permissions';
+  | 'exceeds_granter_permissions'
+  | 'pin_account_cannot_administer';
 
 export type GrantDecision =
   | { readonly allowed: true }
@@ -29,6 +34,13 @@ export interface GrantInput {
    * una invitación usa `axeda:invitation:manage`.
    */
   readonly via?: PermissionKey | undefined;
+  /** Quien recibe: una cuenta de personal (usuario y PIN) nunca recibe permisos de Axeda. */
+  readonly grantee?: { readonly pinAccount: boolean } | undefined;
+}
+
+/** Los permisos de la función que dan poder de administración de Axeda (también por comodín). */
+export function administrativePermissions(permissions: readonly PermissionKey[]): PermissionKey[] {
+  return permissions.filter((held) => AXEDA_CATALOG.some((axedaKey) => covers(held, axedaKey)));
 }
 
 const deny = (
@@ -58,6 +70,10 @@ export function authorizeGrant(input: GrantInput): GrantDecision {
   const { granter, role, scopeType } = input;
 
   if (role.status !== 'active') return deny('role_inactive');
+  if (input.grantee?.pinAccount === true) {
+    const administrative = administrativePermissions(role.permissions);
+    if (administrative.length > 0) return deny('pin_account_cannot_administer', administrative);
+  }
   if (!granter.allows(input.via ?? AXEDA_PERMISSIONS.assignmentManage)) {
     return deny('missing_assignment_permission');
   }

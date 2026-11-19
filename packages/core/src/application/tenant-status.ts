@@ -102,7 +102,32 @@ function siteUsable(loaded: Loaded, siteId: string): boolean {
  * devuelven las claves de alcance (`company:<id>`, `business:<id>`, `site:<id>`).
  */
 export async function loadUnusable(stores: TenantStores, ids: TenantIds): Promise<Set<string>> {
+  return (await loadTenantContext(stores, ids)).unusable;
+}
+
+/**
+ * Lo que no puede conceder poder y, para cada compañía, negocio o sede pedidos, a qué compañía
+ * pertenece (por `scopeKey`): lo necesitan las funcionalidades por compañía.
+ */
+export async function loadTenantContext(
+  stores: TenantStores,
+  ids: TenantIds,
+): Promise<{ unusable: Set<string>; companyOf: Map<string, string> }> {
   const loaded = await loadTenants(stores, ids);
+  const companyOf = new Map<string, string>();
+  for (const companyId of ids.companyIds) companyOf.set(companyKey(companyId), companyId);
+  for (const businessId of ids.businessIds) {
+    const business = loaded.businesses.get(businessId);
+    if (business !== undefined) companyOf.set(businessKey(businessId), business.companyId);
+  }
+  for (const siteId of ids.siteIds) {
+    const site = loaded.sites.get(siteId);
+    if (site !== undefined) companyOf.set(siteKey(siteId), site.companyId);
+  }
+  return { unusable: unusableOf(loaded, ids), companyOf };
+}
+
+function unusableOf(loaded: Loaded, ids: TenantIds): Set<string> {
   const unusable = new Set<string>();
   for (const companyId of loaded.companyIds) {
     if (loaded.companyUsable.get(companyId) !== true) unusable.add(companyKey(companyId));

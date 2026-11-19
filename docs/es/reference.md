@@ -4,27 +4,32 @@
 
 Valores aceptados, rangos y qué pasa cuando uno es incorrecto: [Configuración](configuration.md#2-el-plugin-axeda).
 
-| Opción                         | Tipo                                                                           | Por omisión | Significado                                                                                  |
-| ------------------------------ | ------------------------------------------------------------------------------ | ----------- | -------------------------------------------------------------------------------------------- |
-| `permissions`                  | `string[]`                                                                     | —           | Tu catálogo de permisos (concretos, sin comodines). **Obligatoria**                          |
-| `roles`                        | `Record<clave, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`        | Funciones declaradas, sincronizadas al arrancar                                              |
-| `menus`                        | `MenuDefinition[]`                                                             | `[]`        | El menú, declarado en el código                                                              |
-| `retention.graceDays`          | `number` (0–3650)                                                              | `30`        | Días que una compañía o negocio borrado puede restaurarse                                    |
-| `invitations.ttlHours`         | `number`                                                                       | `72`        | Vigencia por defecto de una invitación                                                       |
-| `invitations.maxRoles`         | `number` (1–50)                                                                | `10`        | Funciones por invitación                                                                     |
-| `limits.maxAssignmentsPerUser` | `number`                                                                       | `50`        | Asignaciones que puede tener un usuario                                                      |
-| `limits.maxPermissionsPerRole` | `number`                                                                       | `100`       | Permisos en una función                                                                      |
-| `limits.maxCachedUsers`        | `number`                                                                       | `10000`     | Usuarios cuyos permisos guarda en caché cada proceso                                         |
-| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                          | apagado     | Cómo se entregan las invitaciones. Sin esto están desactivadas                               |
-| `publicIdentity`               | `boolean`                                                                      | `false`     | Expone `GET /axeda/public/identity` (el único endpoint sin sesión)                           |
-| `maxSessionAge`                | `number` (segundos) o `false`                                                  | 30 días     | Lo máximo que vive una sesión desde el inicio, por mucho que se use                          |
-| `storage`                      | `ObjectStorage` (p. ej. `s3Storage()` de `@teamblind/axeda-storage`)           | apagado     | Dónde se guardan logos, favicons y fotos de perfil. Sin esto las imágenes están desactivadas |
-| `imageProcessor`               | `ImageProcessor` (p. ej. `sharpImageProcessor()`)                              | ninguno     | Recodifica cada imagen al completar su subida                                                |
-| `images.maxBytes`              | `number` (1 KiB–20 MiB)                                                        | 2 MiB       | La imagen más grande                                                                         |
-| `images.maxDimension`          | `number` (16–8192)                                                             | `4096`      | Píxeles por lado de un logo o una foto de perfil                                             |
-| `images.faviconMaxDimension`   | `number` (16–8192)                                                             | `1024`      | Píxeles por lado de un favicon                                                               |
-| `images.uploadTtlMinutes`      | `number` (1–60)                                                                | `10`        | Minutos para completar una subida                                                            |
-| `images.maxPendingPerUser`     | `number` (1–100)                                                               | `10`        | Subidas que una persona puede dejar abiertas                                                 |
+| Opción                         | Tipo                                                                           | Por omisión | Significado                                                                                   |
+| ------------------------------ | ------------------------------------------------------------------------------ | ----------- | --------------------------------------------------------------------------------------------- |
+| `permissions`                  | `string[]`                                                                     | —           | Tu catálogo de permisos (concretos, sin comodines). **Obligatoria**                           |
+| `roles`                        | `Record<clave, string[] \| { name?, description?, permissions, requireMfa? }>` | `{}`        | Funciones declaradas, sincronizadas al arrancar                                               |
+| `menus`                        | `MenuDefinition[]`                                                             | `[]`        | El menú, declarado en el código                                                               |
+| `retention.graceDays`          | `number` (0–3650)                                                              | `30`        | Días que una compañía o negocio borrado puede restaurarse                                     |
+| `retention.auditDays`          | `number` (1–36500)                                                             | ninguno     | Días que se conservan los eventos de auditoría; `purgeAudit()` borra los anteriores           |
+| `invitations.ttlHours`         | `number`                                                                       | `72`        | Vigencia por defecto de una invitación                                                        |
+| `invitations.maxRoles`         | `number` (1–50)                                                                | `10`        | Funciones por invitación                                                                      |
+| `limits.maxAssignmentsPerUser` | `number`                                                                       | `50`        | Asignaciones que puede tener un usuario                                                       |
+| `limits.maxPermissionsPerRole` | `number`                                                                       | `100`       | Permisos en una función                                                                       |
+| `limits.maxCachedUsers`        | `number`                                                                       | `10000`     | Usuarios cuyos permisos guarda en caché cada proceso                                          |
+| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`                                          | apagado     | Cómo se entregan las invitaciones. Sin esto están desactivadas                                |
+| `publicIdentity`               | `boolean`                                                                      | `false`     | Expone `GET /axeda/public/identity` (el único endpoint sin sesión)                            |
+| `maxSessionAge`                | `number` (segundos) o `false`                                                  | 30 días     | Lo máximo que vive una sesión desde el inicio, por mucho que se use                           |
+| `storage`                      | `ObjectStorage` (p. ej. `s3Storage()` de `@teamblind/axeda-storage`)           | apagado     | Dónde se guardan logos, favicons y fotos de perfil. Sin esto las imágenes están desactivadas  |
+| `imageProcessor`               | `ImageProcessor` (p. ej. `sharpImageProcessor()`)                              | ninguno     | Recodifica cada imagen al completar su subida                                                 |
+| `images.maxBytes`              | `number` (1 KiB–20 MiB)                                                        | 2 MiB       | La imagen más grande                                                                          |
+| `images.maxDimension`          | `number` (16–8192)                                                             | `4096`      | Píxeles por lado de un logo o una foto de perfil                                              |
+| `images.faviconMaxDimension`   | `number` (16–8192)                                                             | `1024`      | Píxeles por lado de un favicon                                                                |
+| `images.uploadTtlMinutes`      | `number` (1–60)                                                                | `10`        | Minutos para completar una subida                                                             |
+| `features`                     | `Record<clave, { permissions, name?, description?, enabledByDefault? }>`       | `{}`        | Módulos que la plataforma enciende por compañía; sus permisos no cuentan donde están apagados |
+| `staff.pinLength`              | `number` (6–8)                                                                 | `6`         | Dígitos de los PIN que genera Axeda                                                           |
+| `staff.maxAttempts`            | `number` (3–10)                                                                | `5`         | PIN incorrectos seguidos antes de bloquear la cuenta                                          |
+| `staff.lockMinutes`            | `number` (1–1440)                                                              | `15`        | Cuánto dura el primer bloqueo; cada bloqueo seguido lo duplica, hasta un día                  |
+| `images.maxPendingPerUser`     | `number` (1–100)                                                               | `10`        | Subidas que una persona puede dejar abiertas                                                  |
 
 `acceptUrl` debe construirse con tu URL base configurada, nunca con la cabecera `Host` de una petición.
 
@@ -48,55 +53,71 @@ Máximo 200 elementos y 3 niveles. La etiqueta se elige por idioma exacto, luego
 Todos cuelgan de la ruta base de Better Auth (`/api/auth`). Todos exigen sesión salvo el último.
 «Por objetivo» significa que el permiso se comprueba en el alcance de lo que se modifica.
 
-| Método | Ruta                          | Requiere                                                                                   | Se comprueba en      |
-| ------ | ----------------------------- | ------------------------------------------------------------------------------------------ | -------------------- |
-| GET    | `/axeda/me`                   | (sesión)                                                                                   | propio               |
-| GET    | `/axeda/permission/list`      | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
-| GET    | `/axeda/role/list`            | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
-| GET    | `/axeda/role/get`             | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
-| POST   | `/axeda/role/create`          | `axeda:role:manage`                                                                        | global               |
-| POST   | `/axeda/role/update`          | `axeda:role:manage`                                                                        | global               |
-| POST   | `/axeda/role/set-status`      | `axeda:role:manage`                                                                        | global               |
-| POST   | `/axeda/role/delete`          | `axeda:role:manage`                                                                        | global               |
-| GET    | `/axeda/assignment/list`      | `axeda:assignment:manage`                                                                  | por objetivo         |
-| POST   | `/axeda/assignment/create`    | `axeda:assignment:manage`                                                                  | parámetro de alcance |
-| POST   | `/axeda/assignment/revoke`    | `axeda:assignment:manage`                                                                  | por objetivo         |
-| GET    | `/axeda/audit/list`           | `axeda:audit:read`                                                                         | parámetro de alcance |
-| GET    | `/axeda/company/list`         | pertenencia                                                                                | por objetivo         |
-| GET    | `/axeda/company/get`          | pertenencia                                                                                | por objetivo         |
-| POST   | `/axeda/company/create`       | `axeda:company:manage`                                                                     | global               |
-| POST   | `/axeda/company/update`       | `axeda:company:manage`                                                                     | por objetivo         |
-| POST   | `/axeda/company/set-status`   | `axeda:company:manage`                                                                     | global               |
-| POST   | `/axeda/company/delete`       | `axeda:company:manage`                                                                     | global               |
-| POST   | `/axeda/company/restore`      | `axeda:company:manage`                                                                     | global               |
-| GET    | `/axeda/business/list`        | pertenencia                                                                                | por objetivo         |
-| GET    | `/axeda/business/get`         | pertenencia                                                                                | por objetivo         |
-| POST   | `/axeda/business/create`      | `axeda:business:manage`                                                                    | por objetivo         |
-| POST   | `/axeda/business/update`      | `axeda:business:manage`                                                                    | por objetivo         |
-| POST   | `/axeda/business/set-status`  | `axeda:business:manage`                                                                    | por objetivo         |
-| POST   | `/axeda/business/delete`      | `axeda:business:manage`                                                                    | por objetivo         |
-| POST   | `/axeda/business/restore`     | `axeda:business:manage`                                                                    | por objetivo         |
-| GET    | `/axeda/site/list`            | pertenencia                                                                                | por objetivo         |
-| GET    | `/axeda/site/get`             | pertenencia                                                                                | por objetivo         |
-| POST   | `/axeda/site/create`          | `axeda:site:manage`                                                                        | por objetivo         |
-| POST   | `/axeda/site/update`          | `axeda:site:manage`                                                                        | por objetivo         |
-| POST   | `/axeda/site/set-status`      | `axeda:site:manage`                                                                        | por objetivo         |
-| POST   | `/axeda/site/delete`          | `axeda:site:manage`                                                                        | por objetivo         |
-| POST   | `/axeda/site/restore`         | `axeda:site:manage`                                                                        | por objetivo         |
-| GET    | `/axeda/invitation/list`      | `axeda:invitation:manage`                                                                  | parámetro de alcance |
-| POST   | `/axeda/invitation/create`    | `axeda:invitation:manage`                                                                  | parámetro de alcance |
-| POST   | `/axeda/invitation/accept`    | (sesión; autorizan el secreto y un correo o teléfono verificado)                           | propio               |
-| POST   | `/axeda/invitation/revoke`    | `axeda:invitation:manage`                                                                  | por objetivo         |
-| POST   | `/axeda/image/upload`         | El permiso que edita la entidad; en `user.avatar`, la propia persona o `axeda:user:manage` | por objetivo         |
-| POST   | `/axeda/image/complete`       | (sesión; solo quien pidió la subida)                                                       | propio               |
-| POST   | `/axeda/image/remove`         | Igual que `image/upload`                                                                   | por objetivo         |
-| GET    | `/axeda/user/list`            | `axeda:user:manage`                                                                        | global               |
-| POST   | `/axeda/user/create`          | `axeda:user:manage`                                                                        | global               |
-| POST   | `/axeda/user/ban`             | `axeda:user:manage`                                                                        | global               |
-| POST   | `/axeda/user/unban`           | `axeda:user:manage`                                                                        | global               |
-| POST   | `/axeda/user/revoke-sessions` | `axeda:user:manage`                                                                        | global               |
-| GET    | `/axeda/menu`                 | (sesión; solo lista lo que puedes usar)                                                    | propio               |
-| GET    | `/axeda/public/identity`      | (pública, apagada salvo `publicIdentity`)                                                  | —                    |
+| Método | Ruta                           | Requiere                                                                                   | Se comprueba en      |
+| ------ | ------------------------------ | ------------------------------------------------------------------------------------------ | -------------------- |
+| GET    | `/axeda/me`                    | (sesión)                                                                                   | propio               |
+| GET    | `/axeda/permission/list`       | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
+| GET    | `/axeda/role/list`             | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
+| GET    | `/axeda/role/get`              | `axeda:role:manage` o `axeda:assignment:manage`                                            | cualquiera           |
+| POST   | `/axeda/role/create`           | `axeda:role:manage`                                                                        | global               |
+| POST   | `/axeda/role/update`           | `axeda:role:manage`                                                                        | global               |
+| POST   | `/axeda/role/set-status`       | `axeda:role:manage`                                                                        | global               |
+| POST   | `/axeda/role/delete`           | `axeda:role:manage`                                                                        | global               |
+| GET    | `/axeda/assignment/list`       | `axeda:assignment:manage`                                                                  | por objetivo         |
+| POST   | `/axeda/assignment/create`     | `axeda:assignment:manage`                                                                  | parámetro de alcance |
+| POST   | `/axeda/assignment/revoke`     | `axeda:assignment:manage`                                                                  | por objetivo         |
+| GET    | `/axeda/audit/list`            | `axeda:audit:read`                                                                         | parámetro de alcance |
+| GET    | `/axeda/company/list`          | pertenencia                                                                                | por objetivo         |
+| GET    | `/axeda/company/get`           | pertenencia                                                                                | por objetivo         |
+| POST   | `/axeda/company/create`        | `axeda:company:manage`                                                                     | global               |
+| POST   | `/axeda/company/update`        | `axeda:company:manage`                                                                     | por objetivo         |
+| POST   | `/axeda/company/set-status`    | `axeda:company:manage`                                                                     | global               |
+| POST   | `/axeda/company/delete`        | `axeda:company:manage`                                                                     | global               |
+| POST   | `/axeda/company/restore`       | `axeda:company:manage`                                                                     | global               |
+| GET    | `/axeda/business/list`         | pertenencia                                                                                | por objetivo         |
+| GET    | `/axeda/business/get`          | pertenencia                                                                                | por objetivo         |
+| POST   | `/axeda/business/create`       | `axeda:business:manage`                                                                    | por objetivo         |
+| POST   | `/axeda/business/update`       | `axeda:business:manage`                                                                    | por objetivo         |
+| POST   | `/axeda/business/set-status`   | `axeda:business:manage`                                                                    | por objetivo         |
+| POST   | `/axeda/business/delete`       | `axeda:business:manage`                                                                    | por objetivo         |
+| POST   | `/axeda/business/restore`      | `axeda:business:manage`                                                                    | por objetivo         |
+| GET    | `/axeda/site/list`             | pertenencia                                                                                | por objetivo         |
+| GET    | `/axeda/site/get`              | pertenencia                                                                                | por objetivo         |
+| POST   | `/axeda/site/create`           | `axeda:site:manage`                                                                        | por objetivo         |
+| POST   | `/axeda/site/update`           | `axeda:site:manage`                                                                        | por objetivo         |
+| POST   | `/axeda/site/set-status`       | `axeda:site:manage`                                                                        | por objetivo         |
+| POST   | `/axeda/site/delete`           | `axeda:site:manage`                                                                        | por objetivo         |
+| POST   | `/axeda/site/restore`          | `axeda:site:manage`                                                                        | por objetivo         |
+| GET    | `/axeda/invitation/list`       | `axeda:invitation:manage`                                                                  | parámetro de alcance |
+| POST   | `/axeda/invitation/create`     | `axeda:invitation:manage`                                                                  | parámetro de alcance |
+| POST   | `/axeda/invitation/accept`     | (sesión; autorizan el secreto y un correo o teléfono verificado)                           | propio               |
+| POST   | `/axeda/invitation/revoke`     | `axeda:invitation:manage`                                                                  | por objetivo         |
+| POST   | `/axeda/image/upload`          | El permiso que edita la entidad; en `user.avatar`, la propia persona o `axeda:user:manage` | por objetivo         |
+| POST   | `/axeda/image/complete`        | (sesión; solo quien pidió la subida)                                                       | propio               |
+| POST   | `/axeda/image/remove`          | Igual que `image/upload`                                                                   | por objetivo         |
+| POST   | `/axeda/staff/sign-in`         | (público; la compañía, el usuario y el PIN)                                                | —                    |
+| GET    | `/axeda/staff/list`            | `axeda:staff:manage`                                                                       | parámetro de alcance |
+| GET    | `/axeda/staff/get`             | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/create`          | `axeda:staff:manage`                                                                       | parámetro de alcance |
+| POST   | `/axeda/staff/rename`          | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/reset-pin`       | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/unlock`          | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/suspend`         | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/reactivate`      | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/remove`          | `axeda:staff:manage`                                                                       | por objetivo         |
+| POST   | `/axeda/staff/change-pin`      | (sesión; tu propio PIN, dando el actual)                                                   | propio               |
+| GET    | `/axeda/feature/list`          | (sesión; quien ve la compañía)                                                             | por objetivo         |
+| POST   | `/axeda/feature/set`           | `axeda:feature:manage`                                                                     | global               |
+| GET    | `/axeda/menu-adjustment/list`  | `axeda:menu:manage`                                                                        | parámetro de alcance |
+| POST   | `/axeda/menu-adjustment/set`   | `axeda:menu:manage`                                                                        | parámetro de alcance |
+| POST   | `/axeda/menu-adjustment/reset` | `axeda:menu:manage`                                                                        | parámetro de alcance |
+| GET    | `/axeda/user/list`             | `axeda:user:manage`                                                                        | global               |
+| POST   | `/axeda/user/create`           | `axeda:user:manage`                                                                        | global               |
+| POST   | `/axeda/user/ban`              | `axeda:user:manage`                                                                        | global               |
+| POST   | `/axeda/user/unban`            | `axeda:user:manage`                                                                        | global               |
+| POST   | `/axeda/user/revoke-sessions`  | `axeda:user:manage`                                                                        | global               |
+| GET    | `/axeda/menu`                  | (sesión; solo lista lo que puedes usar)                                                    | propio               |
+| GET    | `/axeda/public/identity`       | (pública, apagada salvo `publicIdentity`)                                                  | —                    |
 
 Los endpoints de Better Auth solo admiten `GET` y `POST`, por eso las modificaciones y los borrados
 son `POST`. Los endpoints de Axeda tienen límite de peticiones por dirección: 120 por minuto, y 30
@@ -109,6 +130,22 @@ oculte cosas. Un lugar que no existe, que no es suyo o que está inactivo da una
 distinguir un caso de otro. Las sedes se administran desde la compañía, o desde el negocio del que
 cuelgan, con `axeda:site:manage`; `site/list` acepta `businessId` para listar las sedes de un negocio,
 o `businessId=none` para las que cuelgan directamente de la compañía.
+
+`menu-adjustment/set` recibe `{ level, itemKey, hidden?, order?, label? }` (`level` es `{ type: 'global' }`
+o `{ type: 'company', id }`; al menos uno de los tres) y sustituye el ajuste de ese elemento en ese nivel;
+`menu-adjustment/reset` recibe `{ level, itemKey }`; `menu-adjustment/list` recibe
+`?scopeType=global|company&scopeId=…`. Un ajuste es `{ companyId, itemKey, hidden, order, labels, updatedBy,
+updatedAt }`.
+
+`feature/list` responde `{ items: [{ key, name, description, enabled, source }] }` (`source` es `default` o
+`set`); `feature/set` recibe `{ companyId, feature, enabled }` y responde un elemento. Con un lugar,
+`/axeda/me` lista los permisos concretos del catálogo que cuentan ahí, ordenados.
+
+`staff/create` recibe `{ scope, username, name, roleIds? }` y responde `{ member, pin }`: el PIN, solo ahí.
+`staff/sign-in` recibe `{ company, username, pin }` (el slug de la compañía) y responde `{ userId, name }`
+con la cookie de sesión. Un empleado es `{ userId, companyId, businessId, siteId, username, name, banned,
+failedAttempts, lockedUntil, lockCount, createdBy, createdAt, pinChangedAt }`, nunca con el PIN (`lockCount`:
+bloqueos seguidos, cada uno el doble que el anterior, hasta un día).
 
 `image/upload` recibe `{ purpose, targetId, contentType, size }`. `purpose` es `company.logo`,
 `company.favicon`, `business.logo`, `business.favicon`, `site.logo`, `site.favicon` o `user.avatar`;
@@ -127,35 +164,38 @@ si no usas el acceso por teléfono.
 Los errores tienen la forma `{ code, message }`. Los códigos son estables; los mensajes están en
 inglés y pueden cambiar, así que decide por `code`.
 
-| Código                       | Estado | Significado                                                                                       |
-| ---------------------------- | ------ | ------------------------------------------------------------------------------------------------- |
-| `AXEDA_INVALID_INPUT`        | 400    | La entrada no pasó la validación                                                                  |
-| `AXEDA_INVALID_PERMISSION`   | 400    | No es un permiso bien formado                                                                     |
-| `AXEDA_UNKNOWN_PERMISSION`   | 400    | Un permiso que no está en el catálogo                                                             |
-| `AXEDA_INVITATION_INVALID`   | 400    | Invitación incorrecta, caducada, usada o revocada, o el correo o el teléfono no coincide          |
-| `AXEDA_IMAGE_INVALID`        | 400    | El archivo subido no es una imagen aceptada o es demasiado grande (`details.reason` dice por qué) |
-| `AXEDA_UPLOAD_INVALID`       | 400    | Subida desconocida, caducada, ya usada o de otra persona, o aún no se subió nada                  |
-| `AXEDA_FORBIDDEN`            | 403    | No tienes permiso para esto                                                                       |
-| `AXEDA_MFA_REQUIRED`         | 403    | La función exige un 2FA que el usuario no tiene activado                                          |
-| `AXEDA_USER_BANNED`          | 403    | La cuenta está suspendida (al iniciar sesión)                                                     |
-| `AXEDA_ROLE_NOT_FOUND`       | 404    |                                                                                                   |
-| `AXEDA_ASSIGNMENT_NOT_FOUND` | 404    |                                                                                                   |
-| `AXEDA_USER_NOT_FOUND`       | 404    |                                                                                                   |
-| `AXEDA_COMPANY_NOT_FOUND`    | 404    |                                                                                                   |
-| `AXEDA_BUSINESS_NOT_FOUND`   | 404    |                                                                                                   |
-| `AXEDA_SITE_NOT_FOUND`       | 404    |                                                                                                   |
-| `AXEDA_EMAIL_TAKEN`          | 409    | Ya existe una cuenta con ese correo                                                               |
-| `AXEDA_ROLE_KEY_TAKEN`       | 409    |                                                                                                   |
-| `AXEDA_ROLE_MANAGED`         | 409    | La función está declarada en el código y no se cambia aquí                                        |
-| `AXEDA_VERSION_CONFLICT`     | 409    | Alguien la cambió antes; recarga y reintenta                                                      |
-| `AXEDA_ASSIGNMENT_EXISTS`    | 409    |                                                                                                   |
-| `AXEDA_LIMIT_EXCEEDED`       | 409    | Se alcanzó un límite configurado                                                                  |
-| `AXEDA_ALREADY_BOOTSTRAPPED` | 409    | Ya existe una administración global                                                               |
-| `AXEDA_SLUG_TAKEN`           | 409    |                                                                                                   |
-| `AXEDA_INVITATION_EXISTS`    | 409    | Ya hay una invitación pendiente para ese correo o teléfono y alcance                              |
-| `AXEDA_FEATURE_DISABLED`     | 501    | Las invitaciones o la administración de usuarios no están configuradas                            |
-| `AXEDA_DELIVERY_FAILED`      | 502    | Tu `invitationDelivery.send` lanzó un error                                                       |
-| `AXEDA_INTERNAL_ERROR`       | 500    | Cualquier cosa inesperada; el detalle queda en los registros de tu servidor                       |
+| Código                       | Estado | Significado                                                                                                       |
+| ---------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------- |
+| `AXEDA_INVALID_INPUT`        | 400    | La entrada no pasó la validación                                                                                  |
+| `AXEDA_INVALID_PERMISSION`   | 400    | No es un permiso bien formado                                                                                     |
+| `AXEDA_UNKNOWN_PERMISSION`   | 400    | Un permiso que no está en el catálogo                                                                             |
+| `AXEDA_INVITATION_INVALID`   | 400    | Invitación incorrecta, caducada, usada o revocada, o el correo o el teléfono no coincide                          |
+| `AXEDA_IMAGE_INVALID`        | 400    | El archivo subido no es una imagen aceptada o es demasiado grande (`details.reason` dice por qué)                 |
+| `AXEDA_UPLOAD_INVALID`       | 400    | Subida desconocida, caducada, ya usada o de otra persona, o aún no se subió nada                                  |
+| `AXEDA_FORBIDDEN`            | 403    | No tienes permiso para esto                                                                                       |
+| `AXEDA_MFA_REQUIRED`         | 403    | La función exige un 2FA que el usuario no tiene activado                                                          |
+| `AXEDA_USER_BANNED`          | 403    | La cuenta está suspendida (al iniciar sesión)                                                                     |
+| `AXEDA_ROLE_NOT_FOUND`       | 404    |                                                                                                                   |
+| `AXEDA_ASSIGNMENT_NOT_FOUND` | 404    |                                                                                                                   |
+| `AXEDA_USER_NOT_FOUND`       | 404    |                                                                                                                   |
+| `AXEDA_COMPANY_NOT_FOUND`    | 404    |                                                                                                                   |
+| `AXEDA_BUSINESS_NOT_FOUND`   | 404    |                                                                                                                   |
+| `AXEDA_SITE_NOT_FOUND`       | 404    |                                                                                                                   |
+| `AXEDA_STAFF_NOT_FOUND`      | 404    |                                                                                                                   |
+| `AXEDA_STAFF_SIGN_IN_FAILED` | 401    | Compañía, usuario o PIN incorrectos, o la cuenta está bloqueada, suspendida o su lugar inactivo (nunca dice cuál) |
+| `AXEDA_EMAIL_TAKEN`          | 409    | Ya existe una cuenta con ese correo                                                                               |
+| `AXEDA_ROLE_KEY_TAKEN`       | 409    |                                                                                                                   |
+| `AXEDA_ROLE_MANAGED`         | 409    | La función está declarada en el código y no se cambia aquí                                                        |
+| `AXEDA_VERSION_CONFLICT`     | 409    | Alguien la cambió antes; recarga y reintenta                                                                      |
+| `AXEDA_ASSIGNMENT_EXISTS`    | 409    |                                                                                                                   |
+| `AXEDA_LIMIT_EXCEEDED`       | 409    | Se alcanzó un límite configurado                                                                                  |
+| `AXEDA_ALREADY_BOOTSTRAPPED` | 409    | Ya existe una administración global                                                                               |
+| `AXEDA_SLUG_TAKEN`           | 409    |                                                                                                                   |
+| `AXEDA_USERNAME_TAKEN`       | 409    | Ese usuario ya existe en esta compañía                                                                            |
+| `AXEDA_INVITATION_EXISTS`    | 409    | Ya hay una invitación pendiente para ese correo o teléfono y alcance                                              |
+| `AXEDA_FEATURE_DISABLED`     | 501    | Las invitaciones o la administración de usuarios no están configuradas                                            |
+| `AXEDA_DELIVERY_FAILED`      | 502    | Tu `invitationDelivery.send` lanzó un error                                                                       |
+| `AXEDA_INTERNAL_ERROR`       | 500    | Cualquier cosa inesperada; el detalle queda en los registros de tu servidor                                       |
 
 Los problemas de configuración (`AXEDA_INVALID_CONFIG`, `AXEDA_TRANSACTIONS_UNSUPPORTED`,
 `AXEDA_DATA_CORRUPT`) nunca llegan al cliente como tales: aparecen como `AXEDA_INTERNAL_ERROR`.
@@ -212,6 +252,7 @@ Obtén la instancia con `axedaPlugin.instance()` una vez creado Better Auth.
 | `publicIdentity({ company, business? })`                                           | Nombre y logos públicos de una compañía o negocio activo                                                  |
 | `listAudit(actor, filter, page)`                                                   | Una página de eventos de auditoría                                                                        |
 | `purgeDeleted()`                                                                   | Elimina para siempre lo que pasó su periodo de gracia, con sus imágenes, y las subidas que nadie completó |
+| `purgeAudit()`                                                                     | Borra los eventos de auditoría con más de `retention.auditDays` días y apunta un evento `audit.purge`     |
 | `bootstrap({ userId })`                                                            | Crea la primera administración global (una vez)                                                           |
 
 Un `Principal` es `{ userId, authzVersion?, twoFactorEnabled?, banned? }`. Constrúyelo siempre con

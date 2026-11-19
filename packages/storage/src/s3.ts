@@ -1,4 +1,9 @@
-import { AxedaError, type ObjectInfo, type ObjectStorage } from '@teamblind/axeda-core';
+import {
+  AxedaError,
+  rejectUnknownOptions,
+  type ObjectInfo,
+  type ObjectStorage,
+} from '@teamblind/axeda-core';
 import { EMPTY_SHA256, presignUrl, sha256Hex, signRequest, uriEncode } from './sigv4.js';
 
 export interface S3StorageOptions {
@@ -55,7 +60,20 @@ function baseUrl(name: string, value: string): URL {
 /** Nombre de bucket de S3: 3 a 63 caracteres en minúsculas, números, puntos y guiones. */
 const BUCKET = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
 
+const S3_OPTIONS = Object.keys({
+  endpoint: true,
+  bucket: true,
+  accessKeyId: true,
+  secretAccessKey: true,
+  region: true,
+  publicBaseUrl: true,
+  signContentLength: true,
+  fetch: true,
+  now: true,
+} satisfies Record<keyof S3StorageOptions, true>);
+
 function validate(options: S3StorageOptions) {
+  rejectUnknownOptions('s3Storage()', options, S3_OPTIONS);
   const endpoint = baseUrl('endpoint', options.endpoint);
   if (endpoint.pathname !== '/' && endpoint.pathname !== '') {
     invalid('endpoint must not include a path (the bucket goes in "bucket").');

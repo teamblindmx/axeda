@@ -1,4 +1,9 @@
-import { AxedaError, type ImageFormat, type ImageProcessor } from '@teamblind/axeda-core';
+import {
+  AxedaError,
+  rejectUnknownOptions,
+  type ImageFormat,
+  type ImageProcessor,
+} from '@teamblind/axeda-core';
 
 /** Lo que se usa de `sharp`: así el paquete no depende de sus tipos ni lo carga si no se usa. */
 export interface SharpPipeline {
@@ -44,7 +49,13 @@ async function importSharp(): Promise<SharpFactory> {
  *
  * `sharp` es una dependencia _peer_ opcional: instálala tú (`npm install sharp`).
  */
+const SHARP_OPTIONS = Object.keys({
+  quality: true,
+  load: true,
+} satisfies Record<keyof SharpImageProcessorOptions, true>);
+
 export function sharpImageProcessor(options: SharpImageProcessorOptions = {}): ImageProcessor {
+  rejectUnknownOptions('sharpImageProcessor()', options, SHARP_OPTIONS);
   const quality = options.quality ?? 82;
   if (!Number.isInteger(quality) || quality < 1 || quality > 100) {
     throw new AxedaError(

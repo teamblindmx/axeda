@@ -10,11 +10,15 @@ import {
   type ImageProcessor,
   type InvitationMessage,
   type ObjectStorage,
+  rejectUnknownOptions,
 } from '@teamblind/axeda-core';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { createEndpoints } from './endpoints.js';
 import { createUserEndpoints } from './endpoints-users.js';
 import { createImageEndpoints } from './endpoints-images.js';
+import { createStaffEndpoints } from './endpoints-staff.js';
+import { createFeatureEndpoints } from './endpoints-features.js';
+import { createMenuAdjustmentEndpoints } from './endpoints-menu-adjustments.js';
 import {
   createInvitationEndpoints,
   createSiteEndpoints,
@@ -25,6 +29,7 @@ import { axedaSchema } from './schema.js';
 import { cappedExpiry, resolveMaxSessionAge, sessionBeingRefreshed } from './session-lifetime.js';
 import { createBetterAuthPersistence } from './stores.js';
 import { createBetterAuthUserAdmin } from './user-admin.js';
+import { createBetterAuthPinHasher } from './pin-hasher.js';
 import { createBetterAuthUserDirectory } from './users.js';
 
 /** Cómo hacer llegar una invitación. Sin esto las invitaciones están desactivadas. */
@@ -68,6 +73,33 @@ export interface AxedaPluginOptions extends AxedaOptions {
   readonly imageProcessor?: ImageProcessor;
 }
 
+/**
+ * Las opciones que existen. El `satisfies` obliga a tenerlas todas y solo esas: una opción nueva
+ * que no se añada aquí no compila.
+ */
+const PLUGIN_OPTIONS = Object.keys({
+  permissions: true,
+  roles: true,
+  menus: true,
+  retention: true,
+  invitations: true,
+  limits: true,
+  images: true,
+  staff: true,
+  features: true,
+  clock: true,
+  invitationDelivery: true,
+  publicIdentity: true,
+  maxSessionAge: true,
+  storage: true,
+  imageProcessor: true,
+} satisfies Record<keyof AxedaPluginOptions, true>);
+
+const DELIVERY_OPTIONS = Object.keys({
+  acceptUrl: true,
+  send: true,
+} satisfies Record<keyof InvitationDeliveryOptions, true>);
+
 interface BanRow {
   banned?: boolean | null;
   banExpires?: Date | string | null;
@@ -83,6 +115,8 @@ function coreOptions(options: AxedaPluginOptions): AxedaOptions {
     ...(options.invitations === undefined ? {} : { invitations: options.invitations }),
     ...(options.menus === undefined ? {} : { menus: options.menus }),
     ...(options.images === undefined ? {} : { images: options.images }),
+    ...(options.staff === undefined ? {} : { staff: options.staff }),
+    ...(options.features === undefined ? {} : { features: options.features }),
   };
 }
 
@@ -136,6 +170,8 @@ function assertSafeAuthOptions(options: object): void {
 const RATE_LIMITS = [
   // El único endpoint sin sesión, más estricto (T10: enumeración).
   { pathMatcher: (path: string) => path.startsWith('/axeda/public/'), max: 30, window: 60 },
+  // Entrar con PIN: además del bloqueo por cuenta, pocos intentos por dirección (T4: fuerza bruta).
+  { pathMatcher: (path: string) => path === '/axeda/staff/sign-in', max: 10, window: 60 },
   { pathMatcher: (path: string) => path.startsWith('/axeda/'), max: 120, window: 60 },
 ];
 
@@ -150,6 +186,13 @@ const RATE_LIMITS = [
  * ```
  */
 export function axeda(options: AxedaPluginOptions) {
+  // Una opción mal escrita no puede apagar algo en silencio.
+  rejectUnknownOptions('axeda()', options, PLUGIN_OPTIONS);
+  rejectUnknownOptions(
+    'axeda({ invitationDelivery })',
+    options.invitationDelivery,
+    DELIVERY_OPTIONS,
+  );
   const maxSessionAge = resolveMaxSessionAge(options.maxSessionAge);
   let core: Axeda | undefined;
   let persistence: AxedaPersistence | undefined;
@@ -174,6 +217,9 @@ export function axeda(options: AxedaPluginOptions) {
       ...createInvitationEndpoints(instance),
       ...createUserEndpoints(instance),
       ...createImageEndpoints(instance),
+      ...createStaffEndpoints(instance),
+      ...createFeatureEndpoints(instance),
+      ...createMenuAdjustmentEndpoints(instance),
       // Siempre registrado (los tipos del cliente no dependen de la configuración); si está
       // desactivado responde 404, igual que una compañía que no existe.
       ...createPublicEndpoints(instance, () => options.publicIdentity === true),
@@ -207,6 +253,8 @@ export function axeda(options: AxedaPluginOptions) {
         ...(clock === undefined ? {} : { clock }),
         ...(storage === undefined ? {} : { storage }),
         ...(imageProcessor === undefined ? {} : { imageProcessor }),
+        // El PIN del personal: el hash de contraseñas de Better Auth con una clave de su `secret`.
+        pinHasher: createBetterAuthPinHasher(ctx),
         ...(invitationDelivery === undefined
           ? {}
           : {
@@ -275,6 +323,8 @@ export function axeda(options: AxedaPluginOptions) {
                 // Las claves foráneas ya lo hacen en SQL; MongoDB no las tiene. Se deja constancia.
                 after: async (user: { id: string }) => {
                   await stores.assignments.deleteForUser(user.id);
+                  // Su cuenta de personal, si la tenía (en SQL ya la borra la clave foránea).
+                  await stores.staff.delete(user.id);
                   // Su foto de perfil: el registro y el objeto. Un fallo del almacén no impide el
                   // borrado del usuario; el objeto queda huérfano, sin nadie que lo enlace.
                   await core?.images.forgetUser(user.id).catch(() => 0);

@@ -16,15 +16,15 @@ This page explains every option, what values are accepted and what happens when 
 
 ## When a mistake shows up
 
-| Mistake                                                                            | Shows up…                                         | As                                                       |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------------- |
-| `maxSessionAge` not a positive whole number                                        | when you call `axeda({ … })`                      | `AXEDA_INVALID_CONFIG`                                   |
-| Any other plugin option out of range, malformed or misspelled **inside** an object | when Better Auth is created (`betterAuth({ … })`) | `AXEDA_INVALID_CONFIG`, with the path and the reason     |
-| A weak `secureAuthOptions` input                                                   | when you call `secureAuthOptions({ … })`          | `AXEDA_INVALID_CONFIG`                                   |
-| A Better Auth option Axeda will not run with                                       | when Better Auth is created                       | `AXEDA_INVALID_CONFIG`                                   |
-| The Axeda tables do not exist (you did not migrate)                                | at `start()`, or at the first request             | the database's own error (`no such table: axedaState` …) |
-| The database has no real transactions                                              | at `start()`                                      | `AXEDA_TRANSACTIONS_UNSUPPORTED`                         |
-| A misspelled option at the **top level** of `axeda({ … })` (`invitationDelivry`)   | **never**: it is ignored                          | the feature is simply off. Check the spelling            |
+| Mistake                                                                                   | Shows up…                                            | As                                                          |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------- |
+| `maxSessionAge` not a positive whole number                                               | when you call `axeda({ … })`                         | `AXEDA_INVALID_CONFIG`                                      |
+| Any other plugin option out of range, malformed or misspelled **inside** an object        | when Better Auth is created (`betterAuth({ … })`)    | `AXEDA_INVALID_CONFIG`, with the path and the reason        |
+| A weak `secureAuthOptions` input                                                          | when you call `secureAuthOptions({ … })`             | `AXEDA_INVALID_CONFIG`                                      |
+| A Better Auth option Axeda will not run with                                              | when Better Auth is created                          | `AXEDA_INVALID_CONFIG`                                      |
+| The Axeda tables do not exist (you did not migrate)                                       | at `start()`, or at the first request                | the database's own error (`no such table: axedaState` …)    |
+| The database has no real transactions                                                     | at `start()`                                         | `AXEDA_TRANSACTIONS_UNSUPPORTED`                            |
+| A misspelled option (`invitationDelivry`, `scop`, `trustedProxys`…) in any Axeda function | when you call it (`axeda()`, `requirePermission()`…) | `AXEDA_INVALID_CONFIG`, naming the option it probably meant |
 
 Configuration errors never reach a browser as such: an HTTP client sees `AXEDA_INTERNAL_ERROR` and the
 detail stays in your server log ([error codes](reference.md#error-codes)).
@@ -166,24 +166,26 @@ Only `permissions` is required. Every other option has a default.
 
 ### Options
 
-| Option                         | Type                                         | Default      | Accepted values                           | Notes                                                                                    |
-| ------------------------------ | -------------------------------------------- | ------------ | ----------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `permissions`                  | `string[]`                                   | — (required) | see [Permission keys](#permission-keys)   | The catalog of your application                                                          |
-| `roles`                        | `Record<string, string[] \| RoleDefinition>` | `{}`         | see [Roles](#roles-declared-in-code)      | Roles that ship with your app, created and kept in sync by `start()`                     |
-| `menus`                        | `MenuDefinition[]`                           | `[]`         | see [Menu items](reference.md#menu-items) | Served by `GET /axeda/menu`, filtered by what the caller may do                          |
-| `retention.graceDays`          | integer                                      | `30`         | 0 to 3650                                 | Days a deleted company or business is kept before it can be purged                       |
-| `invitations.ttlHours`         | integer                                      | `72`         | 1 to 720                                  | Default life of an invitation                                                            |
-| `invitations.maxRoles`         | integer                                      | `10`         | 1 to 50                                   | Roles one invitation may carry                                                           |
-| `limits.maxAssignmentsPerUser` | integer                                      | `50`         | 1 to 10000                                | A grant (or an accepted invitation) over the limit answers `AXEDA_LIMIT_EXCEEDED`        |
-| `limits.maxPermissionsPerRole` | integer                                      | `100`        | 1 to 10000                                | A role with more permissions than this is refused                                        |
-| `limits.maxCachedUsers`        | integer                                      | `10000`      | 1 to 10000                                | Users whose permissions each process keeps in memory. Memory grows with this value       |
-| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`        | off          | two functions                             | Without it, creating an invitation answers `AXEDA_FEATURE_DISABLED` (501)                |
-| `publicIdentity`               | `boolean`                                    | `false`      | `true` / `false`                          | Publishes `GET /axeda/public/identity`, the only endpoint that needs no session          |
-| `maxSessionAge`                | positive integer (seconds) or `false`        | 30 days      | `> 0`, or `false` to turn it off          | Longest a session lives from sign-in, however much it is used. Checked at `axeda({ … })` |
-| `clock`                        | `{ now(): Date }`                            | system clock | —                                         | For tests only                                                                           |
+| Option                         | Type                                         | Default            | Accepted values                           | Notes                                                                                     |
+| ------------------------------ | -------------------------------------------- | ------------------ | ----------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `permissions`                  | `string[]`                                   | — (required)       | see [Permission keys](#permission-keys)   | The catalog of your application                                                           |
+| `roles`                        | `Record<string, string[] \| RoleDefinition>` | `{}`               | see [Roles](#roles-declared-in-code)      | Roles that ship with your app, created and kept in sync by `start()`                      |
+| `menus`                        | `MenuDefinition[]`                           | `[]`               | see [Menu items](reference.md#menu-items) | Served by `GET /axeda/menu`, filtered by what the caller may do                           |
+| `retention.graceDays`          | integer                                      | `30`               | 0 to 3650                                 | Days a deleted company or business is kept before it can be purged                        |
+| `retention.auditDays`          | integer                                      | off (kept in full) | 1 to 36500                                | Days audit events are kept; `purgeAudit()` deletes older ones ([below](#audit-retention)) |
+| `invitations.ttlHours`         | integer                                      | `72`               | 1 to 720                                  | Default life of an invitation                                                             |
+| `invitations.maxRoles`         | integer                                      | `10`               | 1 to 50                                   | Roles one invitation may carry                                                            |
+| `limits.maxAssignmentsPerUser` | integer                                      | `50`               | 1 to 10000                                | A grant (or an accepted invitation) over the limit answers `AXEDA_LIMIT_EXCEEDED`         |
+| `limits.maxPermissionsPerRole` | integer                                      | `100`              | 1 to 10000                                | A role with more permissions than this is refused                                         |
+| `limits.maxCachedUsers`        | integer                                      | `10000`            | 1 to 10000                                | Users whose permissions each process keeps in memory. Memory grows with this value        |
+| `invitationDelivery`           | `{ acceptUrl(token), send(message) }`        | off                | two functions                             | Without it, creating an invitation answers `AXEDA_FEATURE_DISABLED` (501)                 |
+| `publicIdentity`               | `boolean`                                    | `false`            | `true` / `false`                          | Publishes `GET /axeda/public/identity`, the only endpoint that needs no session           |
+| `maxSessionAge`                | positive integer (seconds) or `false`        | 30 days            | `> 0`, or `false` to turn it off          | Longest a session lives from sign-in, however much it is used. Checked at `axeda({ … })`  |
+| `clock`                        | `{ now(): Date }`                            | system clock       | —                                         | For tests only                                                                            |
 
-Misspelled keys **inside** `retention`, `invitations`, `limits` or a role definition are rejected. A
-misspelled key at the **top level** is ignored (see [the table above](#when-a-mistake-shows-up)).
+A misspelled key is rejected, at the top level or inside `retention`, `invitations`, `limits`, `images`,
+`staff`, `invitationDelivery` or a role definition, with the option it probably meant
+(`unknown option "publicIdentiy". Did you mean "publicIdentity"?`).
 
 ### Permission keys
 
@@ -302,6 +304,106 @@ const { data } = await client.axeda.image.complete({ uploadId: ticket.data.uploa
   completed. Block `/uploads/*` on your public domain and add a lifecycle rule (see the
   [storage package](https://github.com/teamblindmx/axeda/tree/main/packages/storage#setting-up-cloudflare-r2)).
 
+### Adjusting the menu without deploying
+
+The menu is still declared in code (`menus`), with the permission each option needs. On top of it, whoever
+holds `axeda:menu:manage` can **hide** an item (and everything under it), **reorder** it among its siblings
+or **rename** it, per language:
+
+```ts
+await client.axeda.menuAdjustment.set({
+  level: { type: 'company', id: companyId }, // or { type: 'global' } for everyone
+  itemKey: 'reports',
+  label: { es: 'Análisis', en: 'Analytics' },
+  order: 0,
+});
+await client.axeda.menuAdjustment.reset({
+  level: { type: 'company', id: companyId },
+  itemKey: 'reports',
+});
+```
+
+- **Two levels.** Global adjustments (permission in global) apply to everyone; a company's (permission in that
+  company) apply on top inside it, field by field. Businesses and sites use their company's menu.
+- **Nothing new can be added.** Only items declared in code can be adjusted; their path and their permission
+  never change, so an adjustment cannot add a link nor show an option to someone without its permission.
+- Changes are audited (`menu.adjust`, `menu.reset`) and take effect on the next `GET /axeda/menu`.
+
+### Features per company
+
+Declare the modules your platform sells, and the permissions that depend on each one:
+
+```ts
+const axedaPlugin = axeda({
+  permissions: ['inventory:read', 'inventory:write', 'invoice:read'],
+  features: {
+    inventory: { name: 'Inventory', permissions: ['inventory:*'] },
+    reports: { name: 'Reports', permissions: ['invoice:read'], enabledByDefault: true },
+  },
+});
+```
+
+- **Off unless switched on.** A feature is off for every company unless `enabledByDefault` says otherwise.
+  Only the platform switches it per company (`POST /axeda/feature/set`, with `axeda:feature:manage` in
+  global): a company cannot switch on a module it did not pay for.
+- **Its permissions do not count where it is off.** If a company does not have `inventory`, `inventory:*`
+  does not count for anyone **inside that company**, whatever roles they hold, even `*`. `can()`,
+  `scopeFilter()` and the menu follow. Global assignments (the platform) are not cut.
+- **Administration never depends on a plan**: a feature cannot list an `axeda:` permission.
+- `axeda.hasFeature(companyId, 'inventory')` answers on the server; `GET /axeda/feature/list?companyId=…`
+  tells a front end which modules the company has.
+
+### Staff accounts: username and PIN
+
+Nothing to install: the plugin brings the endpoints and hashes PINs with Better Auth's password hashing and
+a key derived from its `secret`. You decide who may create staff by giving `axeda:staff:manage`.
+
+```ts
+const axedaPlugin = axeda({
+  permissions: ['order:create', 'order:read'],
+  staff: { pinLength: 6, maxAttempts: 5, lockMinutes: 15 }, // the defaults
+});
+```
+
+An administrator creates a staff member and hands over the PIN, which is shown only in this answer:
+
+```ts
+const { data } = await client.axeda.staff.create({
+  scope: { type: 'business', id: businessId },
+  username: 'waiter1',
+  name: 'Ana López',
+  roleIds: [waiterRoleId],
+});
+// data.pin, for example '381946'
+```
+
+On the terminal, the staff member signs in; the answer sets the session cookie as any other sign-in:
+
+```ts
+await fetch('https://api.acme.com/api/auth/axeda/staff/sign-in', {
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ company: 'acme', username: 'waiter1', pin: '381946' }),
+});
+```
+
+- **Every failure looks the same**: `401 AXEDA_STAFF_SIGN_IN_FAILED`, whether the company or the username do not
+  exist, the PIN is wrong, or the account is locked or suspended. Show one message.
+- **Lock.** After `maxAttempts` wrong PINs in a row the account is locked for `lockMinutes`, even for the right
+  PIN. Each lock in a row lasts twice the previous one (15 minutes, 30, 1 hour…, never more than a day) until
+  the right PIN gets in, so guessing slowly does not pay. An administrator can unlock it (`staff/unlock`) or
+  reset the PIN (`staff/reset-pin`, which also closes its sessions). There is also a limit of 10 sign-ins a
+  minute per address.
+- **Resetting a PIN is signing in as that person**, so it needs more than `axeda:staff:manage`: whoever resets it
+  must hold every permission the account holds, wherever it holds it. Otherwise `403` with
+  `reason: 'exceeds_granter_permissions'` and the missing permissions.
+- **The PIN is not a Better Auth password**: it does not work on `/sign-in/email`, and "forgot my password" does
+  not apply. A staff member changes it with `staff/change-pin`, giving the current one.
+- **Weak PINs are refused** (`111111`, `123456`, `121212`…), both generated and chosen.
+- **Shared terminals.** Sessions follow `maxSessionAge` like any other; on a shared device, sign out at the
+  end of each shift.
+
 ### Session lifetime
 
 Two limits apply, and the shorter one wins:
@@ -313,6 +415,25 @@ Two limits apply, and the shorter one wins:
 
 While the limit holds a session back, Better Auth writes the session row on every request during the
 last `expiresIn` minus `updateAge` of its life (6 days with the preset), instead of once a day.
+
+### Audit retention
+
+The audit log only grows unless you set how long to keep it. With `retention.auditDays`, call
+`purgeAudit()` on a schedule, as you do with `purgeDeleted()`; Axeda runs nothing in the background:
+
+```ts
+// For example once a day, from your cron or scheduler.
+const axedaInstance = plugin.instance();
+await axedaInstance.purgeDeleted();
+await axedaInstance.purgeAudit(); // { removed, before }
+```
+
+- It deletes the events older than that many days, in batches and outside a transaction: if it stops halfway,
+  the next call carries on.
+- When it deletes something it records an `audit.purge` event, with the cut-off and how many it removed.
+- Without `retention.auditDays` it throws `AXEDA_INVALID_CONFIG` instead of deleting anything.
+- What the law or your auditors ask you to keep is yours to decide. If you must keep more than the database
+  should hold, export the old events before purging them.
 
 ---
 
@@ -412,7 +533,7 @@ The `AXEDA_TEST_*` variables belong to the test suite and the benchmark, not to 
 - [ ] Roles that use `requireMfa` have Better Auth's `twoFactor` plugin installed.
 - [ ] `maxSessionAge` matches your policy (30 days by default).
 - [ ] The first administrator was created with `bootstrap`.
-- [ ] You archive the audit log yourself: retention is not automatic and the table only grows.
+- [ ] `retention.auditDays` is set and `purgeAudit()` runs on a schedule, or you archive the audit log yourself.
 - [ ] MongoDB runs as a replica set; MySQL tables created before the `action` index were bounded.
 
 ## Troubleshooting

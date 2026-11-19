@@ -12,6 +12,9 @@ export const MODELS = {
   invitation: 'axedaInvitation',
   throttle: 'axedaThrottle',
   image: 'axedaImage',
+  staff: 'axedaStaff',
+  companyFeature: 'axedaCompanyFeature',
+  menuAdjustment: 'axedaMenuAdjustment',
 } as const;
 
 /** Fila única de `axedaState` que guarda la versión de política. */
@@ -229,6 +232,69 @@ export const axedaSchema = {
       windowStartsAt: { type: 'date', required: true, input: false },
     },
     indexes: [{ fields: ['key'], unique: true }],
+  },
+  /**
+   * Personal con usuario y PIN. El PIN **no** es una contraseña de Better Auth: vive aquí, con un
+   * hash lento y una clave del servidor, y solo lo acepta `/axeda/staff/sign-in`.
+   */
+  [MODELS.staff]: {
+    fields: {
+      userId: {
+        type: 'string',
+        required: true,
+        input: false,
+        references: { model: 'user', field: 'id', onDelete: 'cascade' },
+      },
+      companyId: { type: 'string', required: true, input: false },
+      businessId: { type: 'string', required: false, input: false },
+      siteId: { type: 'string', required: false, input: false },
+      username: { type: 'string', required: true, input: false },
+      pinHash: { type: 'string', required: true, input: false },
+      failedAttempts: { type: 'number', required: true, defaultValue: 0, input: false },
+      lockedUntil: { type: 'date', required: false, input: false },
+      // Bloqueos seguidos: cada uno dura el doble (fuerza bruta lenta).
+      lockCount: { type: 'number', required: false, defaultValue: 0, input: false },
+      createdBy: { type: 'string', required: true, input: false },
+      createdAt: { type: 'date', required: true, input: false },
+      pinChangedAt: { type: 'date', required: true, input: false },
+    },
+    indexes: [
+      { fields: ['userId'], unique: true },
+      { fields: ['companyId', 'username'], unique: true },
+      { fields: ['businessId'] },
+      { fields: ['siteId'] },
+    ],
+  },
+  /**
+   * El estado de cada funcionalidad en cada compañía, solo si la plataforma lo cambió (si no, vale el
+   * valor por omisión declarado en el código).
+   */
+  [MODELS.companyFeature]: {
+    fields: {
+      // Sin clave foránea: al purgar una compañía el núcleo borra su estado (también en MongoDB).
+      companyId: { type: 'string', required: true, input: false },
+      feature: { type: 'string', required: true, input: false },
+      enabled: { type: 'boolean', required: true, input: false },
+      updatedBy: { type: 'string', required: true, input: false },
+      updatedAt: { type: 'date', required: true, input: false },
+    },
+    indexes: [{ fields: ['companyId', 'feature'], unique: true }],
+  },
+  /**
+   * Ajustes del menú del código: ocultar, ordenar o renombrar un elemento, globales (`companyId`
+   * vacío) o de una compañía.
+   */
+  [MODELS.menuAdjustment]: {
+    fields: {
+      companyId: { type: 'string', required: true, input: false },
+      itemKey: { type: 'string', required: true, input: false },
+      hidden: { type: 'boolean', required: false, input: false },
+      sortOrder: { type: 'number', required: false, input: false },
+      labels: { type: 'json', required: false, input: false },
+      updatedBy: { type: 'string', required: true, input: false },
+      updatedAt: { type: 'date', required: true, input: false },
+    },
+    indexes: [{ fields: ['companyId', 'itemKey'], unique: true }],
   },
   /** Logos, favicons y avatares: primero la subida pendiente y después la imagen lista. */
   [MODELS.image]: {

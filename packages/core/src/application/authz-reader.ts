@@ -1,9 +1,53 @@
 import type { Principal, Role } from '../domain/role.js';
+import { administrativePermissions } from '../policy/grant.js';
 import type { TargetScope } from '../domain/scope.js';
 import { AxedaError } from '../errors.js';
 import type { AxedaStores } from '../ports/persistence.js';
 import type { AuthzCache, AuthzSnapshot } from './authz-cache.js';
-import { loadUnusable, tenantIdsOf, tenantIdsOfTarget } from './tenant-status.js';
+import {
+  loadTenantContext,
+  loadUnusable,
+  tenantIdsOf,
+  tenantIdsOfTarget,
+} from './tenant-status.js';
+import type { ResolvedFeature } from '../config/features.js';
+import type { PermissionKey } from '../domain/permission-key.js';
+
+const NOTHING_GATED: ReadonlyMap<string, readonly PermissionKey[]> = new Map();
+
+/**
+ * Para cada alcance de asignación, los permisos de las funcionalidades que su compañía no tiene
+ * (encendidas o no según la plataforma, o su valor por omisión). Sin funcionalidades declaradas no
+ * consulta nada.
+ */
+async function gatedScopes(
+  stores: AxedaStores,
+  features: ReadonlyMap<string, ResolvedFeature> | undefined,
+  companyOf: ReadonlyMap<string, string>,
+): Promise<ReadonlyMap<string, readonly PermissionKey[]>> {
+  const companyIds = [...new Set(companyOf.values())];
+  if (features === undefined || features.size === 0 || companyIds.length === 0) {
+    return NOTHING_GATED;
+  }
+  const states = await stores.features.listForCompanies(companyIds);
+  const enabled = (companyId: string, feature: ResolvedFeature) =>
+    states.find((state) => state.companyId === companyId && state.feature === feature.key)
+      ?.enabled ?? feature.enabledByDefault;
+  const blocked = new Map(
+    companyIds.map((companyId) => [
+      companyId,
+      [...features.values()]
+        .filter((feature) => !enabled(companyId, feature))
+        .flatMap((feature) => feature.permissions),
+    ]),
+  );
+  const gated = new Map<string, readonly PermissionKey[]>();
+  for (const [scope, companyId] of companyOf) {
+    const permissions = blocked.get(companyId) ?? [];
+    if (permissions.length > 0) gated.set(scope, permissions);
+  }
+  return gated;
+}
 
 export function assertPrincipal(principal: Principal): void {
   if (typeof principal?.userId !== 'string' || principal.userId.length === 0) {
@@ -15,17 +59,41 @@ export function assertPrincipal(principal: Principal): void {
  * Lee las asignaciones de un usuario, las funciones que usan y qué compañías y negocios de sus
  * asignaciones no pueden conceder poder, directamente de los almacenes.
  */
-export async function loadSnapshot(stores: AxedaStores, userId: string): Promise<AuthzSnapshot> {
+export async function loadSnapshot(
+  stores: AxedaStores,
+  userId: string,
+  features?: ReadonlyMap<string, ResolvedFeature>,
+): Promise<AuthzSnapshot> {
+  // Una tras otra, nunca en paralelo: esto también corre dentro de transacciones, y MongoDB no
+  // admite varias operaciones a la vez en la misma (tampoco SQLite, con su única conexión).
   const assignments = await stores.assignments.listForUser(userId);
+  const staff = await stores.staff.get(userId);
+  const pinAccount = staff !== null;
   const roleIds = [...new Set(assignments.map((assignment) => assignment.roleId))];
   const roles = new Map<string, Role>(
-    (await stores.roles.getMany(roleIds)).map((role) => [role.id, role]),
+    (await stores.roles.getMany(roleIds)).map((role) => [
+      role.id,
+      pinAccount ? withoutAdministration(role) : role,
+    ]),
   );
-  const unusable = await loadUnusable(
+  const { unusable, companyOf } = await loadTenantContext(
     stores,
     tenantIdsOf(assignments.map((assignment) => assignment.scope)),
   );
-  return { assignments, roles, unusable };
+  const gated = await gatedScopes(stores, features, companyOf);
+  return { assignments, roles, unusable, pinAccount, gated };
+}
+
+/**
+ * La función tal como la vive una cuenta de personal: sin ningún permiso que cubra uno de Axeda.
+ * Así, aunque alguien edite después una función que ya tiene asignada, no gana poder de
+ * administración (un `*` no le da nada; un `invoice:*` sigue valiendo).
+ */
+function withoutAdministration(role: Role): Role {
+  const administrative = new Set(administrativePermissions(role.permissions));
+  return administrative.size === 0
+    ? role
+    : { ...role, permissions: role.permissions.filter((key) => !administrative.has(key)) };
 }
 
 export interface Read {
@@ -62,9 +130,16 @@ export class AuthzReader {
   #targetsVersion = -1;
   readonly #targets = new Map<string, ReadonlySet<string>>();
 
-  constructor(stores: AxedaStores, cache: AuthzCache) {
+  readonly #features: ReadonlyMap<string, ResolvedFeature> | undefined;
+
+  constructor(
+    stores: AxedaStores,
+    cache: AuthzCache,
+    features?: ReadonlyMap<string, ResolvedFeature>,
+  ) {
     this.#stores = stores;
     this.#cache = cache;
+    this.#features = features;
   }
 
   async read(principal: Principal): Promise<Read> {
@@ -80,7 +155,7 @@ export class AuthzReader {
     const cached = this.#cache.get(userId, authzVersion, policyVersion);
     if (cached !== undefined) return { snapshot: cached, policyVersion };
 
-    const snapshot = await loadSnapshot(this.#stores, userId);
+    const snapshot = await loadSnapshot(this.#stores, userId, this.#features);
     this.#cache.set(userId, authzVersion, policyVersion, snapshot);
     return { snapshot, policyVersion };
   }

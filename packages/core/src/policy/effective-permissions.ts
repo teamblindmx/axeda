@@ -3,17 +3,46 @@ import type { Role, RoleAssignment } from '../domain/role.js';
 import { assignmentApplies, scopeKey, type TargetScope } from '../domain/scope.js';
 import { businessKey, companyKey, siteKey } from '../domain/tenant.js';
 
+/**
+ * Un permiso concedido y lo que no cubre: los permisos de las funcionalidades que la compañía de esa
+ * asignación no tiene. Un `*` en una compañía sin inventario vale para todo menos `inventory:*`.
+ */
+export interface Grant {
+  readonly key: PermissionKey;
+  readonly except: readonly PermissionKey[];
+}
+
+const NO_EXCEPTIONS: readonly PermissionKey[] = Object.freeze([]);
+
 /** Resultado de unir los permisos de todas las funciones aplicables en un alcance. */
 export class PermissionSet {
+  /** Los permisos concedidos (algunos pueden tener excepciones: para saber, `allows`). */
   readonly keys: readonly PermissionKey[];
+  readonly #grants: readonly Grant[];
 
-  constructor(keys: Iterable<PermissionKey>) {
-    this.keys = Object.freeze([...new Set(keys)].sort());
+  constructor(grants: Iterable<PermissionKey | Grant>) {
+    const list = [...grants].map((grant) =>
+      typeof grant === 'string' ? { key: grant, except: NO_EXCEPTIONS } : grant,
+    );
+    // Un permiso concedido sin excepciones hace innecesarias las copias con excepciones.
+    const free = new Set(list.filter((grant) => grant.except.length === 0).map((g) => g.key));
+    this.#grants = Object.freeze(
+      list.filter((grant) => grant.except.length === 0 || !free.has(grant.key)),
+    );
+    this.keys = Object.freeze([...new Set(list.map((grant) => grant.key))].sort());
   }
 
   /** ¿Se concede `required`? Si nada coincide, no: se deniega por defecto. */
   allows(required: PermissionKey): boolean {
-    return this.keys.some((held) => covers(held, required));
+    return this.#grants.some(
+      (grant) =>
+        covers(grant.key, required) && !grant.except.some((blocked) => covers(blocked, required)),
+    );
+  }
+
+  /** Los permisos del catálogo que de verdad se conceden, sin comodines y ordenados (para un frontend). */
+  concrete(catalog: readonly PermissionKey[]): PermissionKey[] {
+    return catalog.filter((key) => this.allows(key)).sort();
   }
 
   /** ¿Cubre este conjunto todos los permisos indicados? */
@@ -45,7 +74,21 @@ export interface PolicyData {
    * borrados o inexistentes. Una asignación en uno de ellos no cuenta.
    */
   readonly unusable?: ReadonlySet<string> | undefined;
+  /**
+   * Por alcance de asignación (`scopeKey`): los permisos de las funcionalidades que su compañía no
+   * tiene. No cuentan para esa asignación. Las globales nunca se recortan.
+   */
+  readonly gated?: ReadonlyMap<string, readonly PermissionKey[]> | undefined;
 }
+
+/** Lo que no cubre una asignación por las funcionalidades de su compañía. */
+const gatedFor = (data: PolicyData, assignment: RoleAssignment): readonly PermissionKey[] =>
+  data.gated?.get(scopeKey(assignment.scope)) ?? NO_EXCEPTIONS;
+
+const grantsOf = (data: PolicyData, assignment: RoleAssignment, role: Role): Grant[] => {
+  const except = gatedFor(data, assignment);
+  return role.permissions.map((key) => ({ key, except }));
+};
 
 export interface EffectivePermissionsInput extends PolicyData {
   readonly target: TargetScope;
@@ -98,11 +141,13 @@ export function effectivePermissions(input: EffectivePermissionsInput): Permissi
   if (input.ignoreTargetStatus !== true && targetIsUnusable(input.target, input.unusable)) {
     return EMPTY_PERMISSIONS;
   }
-  const keys: PermissionKey[] = [];
+  const grants: Grant[] = [];
   for (const { assignment, role } of liveRoles(input)) {
-    if (assignmentApplies(assignment.scope, input.target)) keys.push(...role.permissions);
+    if (assignmentApplies(assignment.scope, input.target)) {
+      grants.push(...grantsOf(input, assignment, role));
+    }
   }
-  return new PermissionSet(keys);
+  return new PermissionSet(grants);
 }
 
 /**
@@ -110,7 +155,9 @@ export function effectivePermissions(input: EffectivePermissionsInput): Permissi
  * puede ver listados de administración (cada operación vuelve a comprobar su alcance concreto).
  */
 export function permissionsHeldAnywhere(data: PolicyData): PermissionSet {
-  return new PermissionSet(liveRoles(data).flatMap(({ role }) => role.permissions));
+  return new PermissionSet(
+    liveRoles(data).flatMap(({ assignment, role }) => grantsOf(data, assignment, role)),
+  );
 }
 
 /** Alcances de asignación donde el usuario tiene `permission` (por herencia, los de abajo no se listan). */
@@ -120,7 +167,8 @@ export function scopesGranting(
 ): RoleAssignment['scope'][] {
   const scopes = new Map<string, RoleAssignment['scope']>();
   for (const { assignment, role } of liveRoles(data)) {
-    if (role.permissions.some((held) => covers(held, permission))) {
+    const blocked = gatedFor(data, assignment).some((gated) => covers(gated, permission));
+    if (!blocked && role.permissions.some((held) => covers(held, permission))) {
       const { scope } = assignment;
       scopes.set(scope.type === 'global' ? 'global' : `${scope.type}:${scope.id}`, scope);
     }

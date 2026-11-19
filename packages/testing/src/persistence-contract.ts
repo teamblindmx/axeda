@@ -10,13 +10,16 @@ import {
 } from '@teamblind/axeda-core';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { defineImageContract } from './image-contract.js';
+import { defineStaffContract } from './staff-contract.js';
+import { defineFeatureContract } from './feature-contract.js';
+import { defineMenuAdjustmentContract } from './menu-adjustment-contract.js';
 import { defineTenantContract } from './tenant-contract.js';
 
 /**
  * Usuarios que la suite usa. Las persistencias respaldadas por una base con claves foráneas
  * (Better Auth) deben tenerlos creados antes de empezar; la de memoria los ignora.
  */
-export const CONTRACT_USERS: readonly string[] = ['u1', 'u2'];
+export const CONTRACT_USERS: readonly string[] = ['u1', 'u2', 's1', 's2', 's3'];
 
 export type PersistenceFactory = (
   users: readonly string[],
@@ -52,6 +55,9 @@ export function runPersistenceContract(name: string, create: PersistenceFactory)
 
     defineTenantContract(() => db);
     defineImageContract(() => db);
+    defineStaffContract(() => db);
+    defineFeatureContract(() => db);
+    defineMenuAdjustmentContract(() => db);
 
     describe('roles', () => {
       it('creates a role with defaults and reads it back by id and by key', async () => {
@@ -423,6 +429,29 @@ export function runPersistenceContract(name: string, create: PersistenceFactory)
         expect(await count({ actorId: 'a2', scope: { type: 'company', id: 'B' } })).toBe(1);
         expect(await count({ actorId: 'nobody' })).toBe(0);
         expect(await count({})).toBe(4);
+      });
+
+      it('deletes the oldest events before a moment, a batch at a time, and keeps the rest', async () => {
+        // Pasa al menos un milisegundo, para que el corte quede entre dos eventos.
+        const tick = async () => {
+          const start = Date.now();
+          while (Date.now() <= start) await new Promise((resolve) => setTimeout(resolve, 1));
+        };
+        for (let index = 0; index < 3; index += 1) {
+          await db.audit.append(event({ targetId: `old-${index}` }));
+        }
+        await tick();
+        const cutoff = new Date();
+        await tick();
+        const kept = await db.audit.append(event({ targetId: 'new' }));
+
+        expect(await db.audit.deleteBefore(cutoff, 2)).toBe(2);
+        const middle = (await db.audit.list({}, { limit: 10 })).items.map((item) => item.targetId);
+        // Primero se van los más antiguos.
+        expect(middle).toEqual(['new', 'old-2']);
+        expect(await db.audit.deleteBefore(cutoff, 2)).toBe(1);
+        expect(await db.audit.deleteBefore(cutoff, 2)).toBe(0);
+        expect((await db.audit.list({}, { limit: 10 })).items).toEqual([kept]);
       });
 
       it('is rolled back with the transaction that wrote it', async () => {

@@ -1,5 +1,8 @@
 # Conceptos
 
+| `axeda:feature:manage` | global | Encender o apagar las funcionalidades de una compañía (solo la plataforma) |
+| `axeda:menu:manage` | global, compañía | Ocultar, ordenar o renombrar opciones del menú para todos (global) o dentro de una compañía |
+
 ## La jerarquía
 
 Axeda decide en cuatro niveles. Un permiso siempre se comprueba **en un alcance**:
@@ -45,6 +48,7 @@ Un permiso es `recurso:acción` (`invoice:read`); los propios de Axeda se ven as
 | `axeda:company:manage`    | global, compañía                | Administrar compañías                                                     |
 | `axeda:business:manage`   | global, compañía                | Administrar negocios                                                      |
 | `axeda:site:manage`       | global, compañía, negocio       | Administrar sedes (desde la compañía, o desde el negocio del que cuelgan) |
+| `axeda:staff:manage`      | global, compañía, negocio, sede | Crear y administrar cuentas de personal (usuario y PIN) ahí y debajo      |
 | `axeda:invitation:manage` | global, compañía, negocio, sede | Invitar personas                                                          |
 | `axeda:user:manage`       | global                          | Listar, crear, bloquear y desbloquear usuarios                            |
 | `axeda:audit:read`        | global, compañía                | Leer la auditoría                                                         |
@@ -127,6 +131,21 @@ Auth. Un **bloqueo** (opcionalmente hasta una fecha):
 
 Un bloqueo temporal se levanta solo al llegar su fecha; no hace falta ninguna tarea.
 
+## Personal con usuario y PIN
+
+Los dueños y los administradores tienen cuenta completa (correo, contraseña, teléfono…). Las personas que
+trabajan en un lugar, como los meseros y cocineros de un restaurante, pueden tener en cambio una **cuenta
+de personal**: un usuario y un PIN de 6 a 8 dígitos, que crea quien tiene `axeda:staff:manage` ahí.
+
+- Un dueño con el permiso en la compañía crea personal en cualquier parte de ella; el encargado de un
+  negocio, solo en ese negocio y sus sedes. Cada uno ve y administra solo al personal de su lugar.
+- El usuario es único **dentro de la compañía**, así que dos restaurantes pueden tener cada uno su
+  `mesero1`. Para entrar se da la compañía (su slug), el usuario y el PIN. Una terminal puede dejar la
+  compañía ya puesta.
+- El PIN lo genera Axeda y se muestra una vez al administrador; el empleado puede cambiarlo después.
+- Una cuenta de personal **nunca administra Axeda**: no puede recibir una función con ningún permiso
+  `axeda:`, y si una función que ya tiene gana uno después, para ella no cuenta.
+
 ## Menús
 
 Declaras el menú en el código. Toda entrada con ruta debe decir qué permiso requiere; un grupo no
@@ -147,4 +166,6 @@ efecto en la siguiente petición, en cada instancia del servidor.
 Toda acción administrativa, con éxito o denegada, se añade a un registro de auditoría: quién, qué,
 sobre qué objetivo, en qué alcance, desde qué dirección. Solo se añade, nunca se modifica; las
 denegaciones se registran aunque la operación se haya deshecho. Se lee con
-`GET /axeda/audit/list` y el permiso `axeda:audit:read`.
+`GET /axeda/audit/list` y el permiso `axeda:audit:read`. Se conserva entero salvo que definas
+`retention.auditDays` y llames a `purgeAudit()` de forma programada
+([Configuración](configuration.md#retención-de-la-auditoría)).

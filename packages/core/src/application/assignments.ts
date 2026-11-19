@@ -164,9 +164,16 @@ export function createAssignmentService(services: Services): AssignmentService {
     role: Role,
     scope: AssignmentScope,
     target: TargetScope,
+    granteeId: string,
   ): Promise<void> {
     const granter = await actorPermissions(stores, services, actor, target);
-    const decision = authorizeGrant({ granter, role, scopeType: scope.type });
+    const pinAccount = (await stores.staff.get(granteeId)) !== null;
+    const decision = authorizeGrant({
+      granter,
+      role,
+      scopeType: scope.type,
+      grantee: { pinAccount },
+    });
     if (!decision.allowed) throw forbid(decision.reason, decision.permissions);
   }
 
@@ -176,7 +183,7 @@ export function createAssignmentService(services: Services): AssignmentService {
       const all = await persistence.assignments.listForUser(userId);
       if (userId === actor.userId) return all;
 
-      const snapshot = await loadSnapshot(persistence, actor.userId);
+      const snapshot = await loadSnapshot(persistence, actor.userId, services.options.features);
       const managed = scopesGranting(
         actorPolicyData(services, actor, snapshot),
         AXEDA_PERMISSIONS.assignmentManage,
@@ -240,7 +247,7 @@ export function createAssignmentService(services: Services): AssignmentService {
               `Role "${role.key}" requires two-factor authentication, which the user has not enabled.`,
             );
           }
-          await assertCanAssign(stores, actor, role, scope, target);
+          await assertCanAssign(stores, actor, role, scope, target, userId);
 
           if (
             (await stores.assignments.countForUser(userId)) >= options.limits.maxAssignmentsPerUser

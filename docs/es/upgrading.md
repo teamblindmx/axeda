@@ -1,5 +1,29 @@
 # Actualizar
 
+## De `0.1.0-alpha.3` a `0.1.0-alpha.4`
+
+Las cuentas de personal son nuevas y solo se suman. Tienes que ejecutar la migración de la base de datos.
+
+| Qué cambió                                                                                                   | ¿Tienes que hacer algo?                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| Cuentas de personal con usuario y PIN, y `axeda:staff:manage`                                                | Solo si las quieres ([Configuración](configuration.md#cuentas-de-personal-usuario-y-pin))                                     |
+| Una tabla nueva, `axedaStaff`                                                                                | **Sí**: ejecuta la migración                                                                                                  |
+| `AxedaPersistence` necesita un almacén `staff`; `UserAdmin` puede implementar `delete`                       | Solo si escribiste los tuyos ([abajo](#tu-propia-persistencia-y-administración-de-usuarios))                                  |
+| Una opción mal escrita ahora lanza `AXEDA_INVALID_CONFIG` en vez de ignorarse                                | **Revisa**: si tu aplicación deja de arrancar, el mensaje dice la opción y cómo se escribe                                    |
+| Funcionalidades por compañía y `axeda:feature:manage`; una tabla nueva, `axedaCompanyFeature`                | Solo si declaras funcionalidades ([Configuración](configuration.md#funcionalidades-por-compañía)); la migración crea la tabla |
+| `/axeda/me` con un lugar lista permisos concretos en vez de comodines (`invoice:read` en vez de `invoice:*`) | Solo si tu frontend buscaba un comodín                                                                                        |
+| Menús ajustables por API y `axeda:menu:manage`; una tabla nueva, `axedaMenuAdjustment`                       | Solo si los quieres ([Configuración](configuration.md#ajustar-el-menú-sin-desplegar)); la migración crea la tabla             |
+| Una lectura de permisos en frío hace una consulta más                                                        | No: solo cuando falla la caché                                                                                                |
+| Retención de la auditoría: `retention.auditDays` y `purgeAudit()`                                            | Solo si la quieres ([Configuración](configuration.md#retención-de-la-auditoría)); no se borra nada si no la llamas            |
+
+### Tu propia persistencia y administración de usuarios
+
+Añade un almacén `staff` (`StaffStore`): usuarios únicos por compañía, intentos gastados de forma atómica
+antes de comprobar el PIN, y borrar las cuentas de lo que se purga. `runPersistenceContract` lo comprueba.
+El personal necesita además `UserAdmin.delete` y la dependencia `pinHasher` de `createAxeda` (el plugin de
+Better Auth pone las dos). El almacén de auditoría necesita `deleteBefore(before, limit)`: borrar hasta `limit`
+de los eventos más antiguos de antes de ese instante y devolver cuántos.
+
 ## De `0.1.0-alpha.2` a `0.1.0-alpha.3`
 
 Las imágenes son nuevas y solo se suman: nada de lo que ya usas cambia su comportamiento. Tienes que

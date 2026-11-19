@@ -56,4 +56,6 @@ export interface UserAdmin {
   revokeSessions(userId: string): Promise<number>;
   /** Cambia la foto de perfil (`null` la quita). Sin esto no hay avatares. */
   setImage?(userId: string, url: string | null): Promise<void>;
+  /** Borra el usuario (con sus sesiones). Sin esto no hay personal con usuario y PIN. */
+  delete?(userId: string): Promise<void>;
 }

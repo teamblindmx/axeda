@@ -2,7 +2,7 @@
 
 The Better Auth plugin for Axeda: schema, `/axeda/*` endpoints, the typed client, `secureAuthOptions()`, `securePhoneNumberOptions()` for access by phone, and the stores that persist everything through Better Auth's database adapter. It runs on SQLite, PostgreSQL, MySQL and MongoDB.
 
-> **Status:** alpha (`0.1.0-alpha.3`); the API can still change before 1.0. Install with `npm install @teamblind/axeda-better-auth@alpha better-auth @better-auth/core`. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
+> **Status:** alpha (`0.1.0-alpha.4`); the API can still change before 1.0. Install with `npm install @teamblind/axeda-better-auth@alpha better-auth @better-auth/core`. Documentation: [English](https://github.com/teamblindmx/axeda/tree/main/docs/en) · [Español](https://github.com/teamblindmx/axeda/tree/main/docs/es).
 
 ## Install
 
@@ -63,6 +63,7 @@ Axeda reads no environment variables: everything is passed in code.
 | What Axeda manages                                      | `axeda({ … })`                                                         | `permissions`                                      |
 | Access by phone number (optional)                       | `phoneNumber(securePhoneNumberOptions({ … }))`                         | `sendOTP`                                          |
 | Images: logos, favicons and profile pictures (optional) | `axeda({ storage: s3Storage({ … }) })` with `@teamblind/axeda-storage` | `storage`                                          |
+| Staff with a username and a PIN (optional)              | `axeda({ staff: { … } })` and the permission `axeda:staff:manage`      | nothing                                            |
 
 Every option, its accepted values, its default and what happens when it is wrong are in the
 [Configuration guide](https://github.com/teamblindmx/axeda/blob/main/docs/en/configuration.md).
