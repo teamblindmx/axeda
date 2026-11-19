@@ -50,6 +50,7 @@ export type {
   SiteUpdate,
 } from './application/tenants.js';
 export type { PublicIdentity, PurgeResult } from './application/tenant-lifecycle.js';
+export type { AuditPurgeResult } from './application/audit-retention.js';
 export type { BootstrapInput, BootstrapResult } from './application/bootstrap.js';
 export type { RoleInput, RoleService, RoleUpdate } from './application/roles.js';
 export {

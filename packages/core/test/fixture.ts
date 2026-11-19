@@ -163,10 +163,12 @@ export async function createFixture(
   } = {},
 ): Promise<Fixture> {
   const forcedIds: string[] = [];
+  const clock = { current: new Date('2026-06-01T12:00:00.000Z') };
   const persistence = createMemoryPersistence({
     nextId: () => forcedIds.shift() ?? globalThis.crypto.randomUUID(),
+    // El mismo reloj que Axeda: la fecha de lo guardado (p. ej. la auditoría) sigue a `clock`.
+    now: () => clock.current,
   });
-  const clock = { current: new Date('2026-06-01T12:00:00.000Z') };
   const directory = createMemoryUserDirectory([], { now: () => clock.current });
   const fakeClock: Clock = { now: () => clock.current };
   const sent: InvitationMessage[] = [];

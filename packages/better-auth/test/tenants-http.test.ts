@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createAuditIdFactory } from '@teamblind/axeda-core';
 import { createHttpApp, BASE_URL, type HttpApp } from './support/http.js';
 
 async function world() {
@@ -570,5 +571,39 @@ describe('purging deleted companies', () => {
     expect(await persistence.companies.get(acme.id)).toBeNull();
     expect(await persistence.businesses.get(shop.id)).toBeNull();
     expect(await persistence.assignments.countForUser(alice.id)).toBe(0);
+  });
+});
+
+describe('audit retention with Better Auth', () => {
+  it('purgeAudit() deletes the events older than retention.auditDays', async () => {
+    const app = await createHttpApp({ plugin: { retention: { auditDays: 30 } } });
+    const admin = await app.signUp('admin');
+    await app.plugin.instance().bootstrap({ userId: admin.id });
+    // Un evento de hace 40 días, con un identificador de esa fecha (así lo escribe Axeda).
+    const old = new Date(Date.now() - 40 * 86_400_000);
+    const context = await app.auth.$context;
+    await context.adapter.create({
+      model: 'axedaAudit',
+      forceAllowId: true,
+      data: {
+        id: createAuditIdFactory()(old),
+        actorId: admin.id,
+        action: 'role.create',
+        targetType: 'role',
+        targetId: 'r1',
+        scopeType: null,
+        scopeId: null,
+        outcome: 'success',
+        ip: null,
+        userAgent: null,
+        metadata: {},
+        at: old,
+      },
+    });
+
+    const result = await app.plugin.instance().purgeAudit();
+    expect(result.removed).toBe(1);
+    const left = await app.plugin.persistence().audit.list({}, { limit: 10 });
+    expect(left.items.map((event) => event.action)).toEqual(['audit.purge', 'bootstrap']);
   });
 });
