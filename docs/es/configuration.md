@@ -397,9 +397,13 @@ await fetch('https://api.acme.com/api/auth/axeda/staff/sign-in', {
 - **Todos los fallos se ven igual**: `401 AXEDA_STAFF_SIGN_IN_FAILED`, tanto si no existen la compañía o el
   usuario como si el PIN está mal o la cuenta está bloqueada o suspendida. Muestra un solo mensaje.
 - **Bloqueo.** Tras `maxAttempts` PIN incorrectos seguidos la cuenta se bloquea `lockMinutes`, incluso con el
-  PIN correcto. Un administrador puede desbloquearla (`staff/unlock`) o restablecer el PIN
-  (`staff/reset-pin`, que además cierra sus sesiones). Hay también un límite de 10 entradas por minuto
-  por dirección.
+  PIN correcto. Cada bloqueo seguido dura el doble que el anterior (15 minutos, 30, 1 hora…, nunca más de un día)
+  hasta que se entra con el PIN correcto, así que probar PINs despacio no sale a cuenta. Un administrador puede
+  desbloquearla (`staff/unlock`) o restablecer el PIN (`staff/reset-pin`, que además cierra sus sesiones).
+  Hay también un límite de 10 entradas por minuto por dirección.
+- **Restablecer un PIN es entrar como esa persona**, así que pide más que `axeda:staff:manage`: quien lo
+  restablece debe tener todos los permisos que tiene la cuenta, en cada lugar donde los tiene. Si no,
+  `403` con `reason: 'exceeds_granter_permissions'` y los permisos que faltan.
 - **El PIN no es una contraseña de Better Auth**: no sirve en `/sign-in/email`, y «olvidé mi contraseña» no
   aplica. El empleado lo cambia con `staff/change-pin`, dando el actual.
 - **Los PIN débiles se rechazan** (`111111`, `123456`, `121212`…), tanto los generados como los elegidos.

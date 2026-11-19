@@ -391,8 +391,13 @@ await fetch('https://api.acme.com/api/auth/axeda/staff/sign-in', {
 - **Every failure looks the same**: `401 AXEDA_STAFF_SIGN_IN_FAILED`, whether the company or the username do not
   exist, the PIN is wrong, or the account is locked or suspended. Show one message.
 - **Lock.** After `maxAttempts` wrong PINs in a row the account is locked for `lockMinutes`, even for the right
-  PIN. An administrator can unlock it (`staff/unlock`) or reset the PIN (`staff/reset-pin`, which also closes
-  its sessions). There is also a limit of 10 sign-ins a minute per address.
+  PIN. Each lock in a row lasts twice the previous one (15 minutes, 30, 1 hour…, never more than a day) until
+  the right PIN gets in, so guessing slowly does not pay. An administrator can unlock it (`staff/unlock`) or
+  reset the PIN (`staff/reset-pin`, which also closes its sessions). There is also a limit of 10 sign-ins a
+  minute per address.
+- **Resetting a PIN is signing in as that person**, so it needs more than `axeda:staff:manage`: whoever resets it
+  must hold every permission the account holds, wherever it holds it. Otherwise `403` with
+  `reason: 'exceeds_granter_permissions'` and the missing permissions.
 - **The PIN is not a Better Auth password**: it does not work on `/sign-in/email`, and "forgot my password" does
   not apply. A staff member changes it with `staff/change-pin`, giving the current one.
 - **Weak PINs are refused** (`111111`, `123456`, `121212`…), both generated and chosen.

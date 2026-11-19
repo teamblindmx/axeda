@@ -28,7 +28,7 @@ Valores aceptados, rangos y qué pasa cuando uno es incorrecto: [Configuración]
 | `features`                     | `Record<clave, { permissions, name?, description?, enabledByDefault? }>`       | `{}`        | Módulos que la plataforma enciende por compañía; sus permisos no cuentan donde están apagados |
 | `staff.pinLength`              | `number` (6–8)                                                                 | `6`         | Dígitos de los PIN que genera Axeda                                                           |
 | `staff.maxAttempts`            | `number` (3–10)                                                                | `5`         | PIN incorrectos seguidos antes de bloquear la cuenta                                          |
-| `staff.lockMinutes`            | `number` (1–1440)                                                              | `15`        | Cuánto dura el bloqueo                                                                        |
+| `staff.lockMinutes`            | `number` (1–1440)                                                              | `15`        | Cuánto dura el primer bloqueo; cada bloqueo seguido lo duplica, hasta un día                  |
 | `images.maxPendingPerUser`     | `number` (1–100)                                                               | `10`        | Subidas que una persona puede dejar abiertas                                                  |
 
 `acceptUrl` debe construirse con tu URL base configurada, nunca con la cabecera `Host` de una petición.
@@ -144,7 +144,8 @@ updatedAt }`.
 `staff/create` recibe `{ scope, username, name, roleIds? }` y responde `{ member, pin }`: el PIN, solo ahí.
 `staff/sign-in` recibe `{ company, username, pin }` (el slug de la compañía) y responde `{ userId, name }`
 con la cookie de sesión. Un empleado es `{ userId, companyId, businessId, siteId, username, name, banned,
-failedAttempts, lockedUntil, createdBy, createdAt, pinChangedAt }`, nunca con el PIN.
+failedAttempts, lockedUntil, lockCount, createdBy, createdAt, pinChangedAt }`, nunca con el PIN (`lockCount`:
+bloqueos seguidos, cada uno el doble que el anterior, hasta un día).
 
 `image/upload` recibe `{ purpose, targetId, contentType, size }`. `purpose` es `company.logo`,
 `company.favicon`, `business.logo`, `business.favicon`, `site.logo`, `site.favicon` o `user.avatar`;
