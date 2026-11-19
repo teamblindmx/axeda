@@ -10,6 +10,11 @@ export type { InvitationInput, InvitationService } from './application/invitatio
 export type { StaffInput, StaffMember, StaffService, StaffSignIn } from './application/staff.js';
 export type { CompanyFeatureState, FeatureService } from './application/features.js';
 export type {
+  MenuAdjustmentInput,
+  MenuAdjustmentService,
+  MenuLevel,
+} from './application/menu-adjustments.js';
+export type {
   ImageResult,
   ImageService,
   ImageTarget,

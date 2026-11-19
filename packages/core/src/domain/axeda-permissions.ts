@@ -13,6 +13,7 @@ export const AXEDA_PERMISSIONS = Object.freeze({
   invitationManage: key('axeda:invitation:manage'),
   staffManage: key('axeda:staff:manage'),
   featureManage: key('axeda:feature:manage'),
+  menuManage: key('axeda:menu:manage'),
   userManage: key('axeda:user:manage'),
   auditRead: key('axeda:audit:read'),
 });
@@ -31,6 +32,8 @@ export const AXEDA_PERMISSION_SCOPES: Readonly<Record<string, readonly ScopeType
     [AXEDA_PERMISSIONS.staffManage]: ['global', 'company', 'business', 'site'],
     // Las funcionalidades son de la plataforma (planes, contratos): una compañía no se las enciende.
     [AXEDA_PERMISSIONS.featureManage]: ['global'],
+    // El menú de todos (global) o el de una compañía; negocios y sedes heredan el de su compañía.
+    [AXEDA_PERMISSIONS.menuManage]: ['global', 'company'],
     [AXEDA_PERMISSIONS.userManage]: ['global'],
     [AXEDA_PERMISSIONS.auditRead]: ['global', 'company'],
   });

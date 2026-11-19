@@ -47,12 +47,22 @@ export type AuditAction =
   | 'staff.remove'
   | 'staff.sign_in'
   | 'feature.set'
+  | 'menu.adjust'
+  | 'menu.reset'
   | 'bootstrap';
 
 export type AuditOutcome = 'success' | 'denied';
 
 export type AuditTargetType =
-  'role' | 'assignment' | 'user' | 'company' | 'business' | 'site' | 'invitation' | 'system';
+  | 'role'
+  | 'assignment'
+  | 'user'
+  | 'company'
+  | 'business'
+  | 'site'
+  | 'invitation'
+  | 'menu'
+  | 'system';
 
 export interface AuditEvent {
   readonly id: string;

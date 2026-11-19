@@ -48,6 +48,7 @@ async function purgeOwned(
   const images = await stores.images.deleteOwnedBy(owners);
   const staff = await stores.staff.deleteOwnedBy(owners);
   await stores.features.deleteForCompanies(owners.companyIds);
+  await stores.menuAdjustments.deleteForCompanies(owners.companyIds);
   return { images, staff };
 }
 
