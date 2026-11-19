@@ -25,6 +25,8 @@ import { createRoleService, type RoleService } from './roles.js';
 import { createInvitationService, type InvitationService } from './invitations.js';
 import { createImageService, type ImageService } from './images.js';
 import type { ImageProcessor, ObjectStorage } from '../ports/images.js';
+import type { PinHasher } from '../ports/staff.js';
+import { createStaffService, type StaffService } from './staff.js';
 import {
   actorPermissions,
   resolveTarget,
@@ -67,6 +69,11 @@ export interface AxedaDependencies {
   readonly storage?: ObjectStorage;
   /** Recodifica las imágenes al completarlas (p. ej. `sharpImageProcessor()`). Opcional. */
   readonly imageProcessor?: ImageProcessor;
+  /**
+   * Hash del PIN del personal (lento y con una clave del servidor). Con Better Auth lo pone el
+   * plugin. Sin esto no hay personal con usuario y PIN.
+   */
+  readonly pinHasher?: PinHasher;
 }
 
 /** Alcances donde se concede un permiso, listos para filtrar las consultas de la aplicación. */
@@ -119,6 +126,8 @@ export interface Axeda {
   readonly users: UserService;
   /** Logos, favicons y avatares con subida directa al almacén (necesita `storage`). */
   readonly images: ImageService;
+  /** Personal con usuario y PIN (meseros, cocineros…), creado por quien administra su lugar. */
+  readonly staff: StaffService;
   /**
    * El menú de la persona en un alcance (global por defecto): solo lo que tiene permiso de ver.
    * Un alcance que no existe o está inactivo da un menú vacío, sin revelar nada.
@@ -188,6 +197,7 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     userAdmin: dependencies.userAdmin,
     storage: dependencies.storage,
     imageProcessor: dependencies.imageProcessor,
+    pinHasher: dependencies.pinHasher,
     ready: () => start(),
   };
   const start = (): Promise<void> =>
@@ -301,6 +311,7 @@ export function createAxeda(options: AxedaOptions, dependencies: AxedaDependenci
     invitations: createInvitationService(services),
     users: createUserService(services),
     images: createImageService(services, tenants.onTenant),
+    staff: createStaffService(services),
     async menu(principal, menuOptions = {}) {
       const target = await targetOf(menuOptions.scope);
       if (target === null) return [];

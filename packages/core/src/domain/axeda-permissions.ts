@@ -11,6 +11,7 @@ export const AXEDA_PERMISSIONS = Object.freeze({
   businessManage: key('axeda:business:manage'),
   siteManage: key('axeda:site:manage'),
   invitationManage: key('axeda:invitation:manage'),
+  staffManage: key('axeda:staff:manage'),
   userManage: key('axeda:user:manage'),
   auditRead: key('axeda:audit:read'),
 });
@@ -25,6 +26,8 @@ export const AXEDA_PERMISSION_SCOPES: Readonly<Record<string, readonly ScopeType
     // Las sedes se administran desde arriba: la compañía, o el negocio del que cuelgan.
     [AXEDA_PERMISSIONS.siteManage]: ['global', 'company', 'business'],
     [AXEDA_PERMISSIONS.invitationManage]: ['global', 'company', 'business', 'site'],
+    // El personal se crea en una compañía, un negocio o una sede, por quien lo administra ahí.
+    [AXEDA_PERMISSIONS.staffManage]: ['global', 'company', 'business', 'site'],
     [AXEDA_PERMISSIONS.userManage]: ['global'],
     [AXEDA_PERMISSIONS.auditRead]: ['global', 'company'],
   });

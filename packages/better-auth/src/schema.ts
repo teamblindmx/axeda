@@ -12,6 +12,7 @@ export const MODELS = {
   invitation: 'axedaInvitation',
   throttle: 'axedaThrottle',
   image: 'axedaImage',
+  staff: 'axedaStaff',
 } as const;
 
 /** Fila única de `axedaState` que guarda la versión de política. */
@@ -229,6 +230,36 @@ export const axedaSchema = {
       windowStartsAt: { type: 'date', required: true, input: false },
     },
     indexes: [{ fields: ['key'], unique: true }],
+  },
+  /**
+   * Personal con usuario y PIN. El PIN **no** es una contraseña de Better Auth: vive aquí, con un
+   * hash lento y una clave del servidor, y solo lo acepta `/axeda/staff/sign-in`.
+   */
+  [MODELS.staff]: {
+    fields: {
+      userId: {
+        type: 'string',
+        required: true,
+        input: false,
+        references: { model: 'user', field: 'id', onDelete: 'cascade' },
+      },
+      companyId: { type: 'string', required: true, input: false },
+      businessId: { type: 'string', required: false, input: false },
+      siteId: { type: 'string', required: false, input: false },
+      username: { type: 'string', required: true, input: false },
+      pinHash: { type: 'string', required: true, input: false },
+      failedAttempts: { type: 'number', required: true, defaultValue: 0, input: false },
+      lockedUntil: { type: 'date', required: false, input: false },
+      createdBy: { type: 'string', required: true, input: false },
+      createdAt: { type: 'date', required: true, input: false },
+      pinChangedAt: { type: 'date', required: true, input: false },
+    },
+    indexes: [
+      { fields: ['userId'], unique: true },
+      { fields: ['companyId', 'username'], unique: true },
+      { fields: ['businessId'] },
+      { fields: ['siteId'] },
+    ],
   },
   /** Logos, favicons y avatares: primero la subida pendiente y después la imagen lista. */
   [MODELS.image]: {

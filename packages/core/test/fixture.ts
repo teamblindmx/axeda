@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import {
   createMemoryPersistence,
   createMemoryStorage,
+  createTestPinHasher,
   createMemoryUserDirectory,
   type MemoryStorage,
 } from '@teamblind/axeda-testing';
@@ -13,6 +14,7 @@ import {
   type Axeda,
   type AxedaOptions,
   type AxedaPersistence,
+  type AxedaStores,
   type Business,
   type Clock,
   type Company,
@@ -75,6 +77,38 @@ export interface Fixture {
  * esperaría por siempre. La memoria no lo sufre de la misma forma, así que se simula aquí.
  * Se sigue el contexto asíncrono, de modo que dos peticiones concurrentes no se confunden.
  */
+/**
+ * Guarda: dentro de una transacción, una operación cada vez. MongoDB no admite varias a la vez en
+ * la misma transacción (y SQLite tiene una sola conexión): un `Promise.all` de consultas dentro de
+ * una transacción pasa en memoria y en PostgreSQL, y rompe en MongoDB.
+ */
+function oneAtATime(stores: AxedaStores): AxedaStores {
+  let busy: string | null = null;
+  const guarded: Record<string, unknown> = {};
+  for (const [name, store] of Object.entries(stores) as [string, Record<string, unknown>][]) {
+    const copy: Record<string, unknown> = {};
+    for (const [method, fn] of Object.entries(store)) {
+      copy[method] =
+        typeof fn !== 'function'
+          ? fn
+          : async (...args: unknown[]) => {
+              const label = `${name}.${method}`;
+              if (busy !== null) {
+                throw new Error(`${label} ran while ${busy} was running in the same transaction`);
+              }
+              busy = label;
+              try {
+                return await (fn as (...a: unknown[]) => Promise<unknown>).apply(store, args);
+              } finally {
+                busy = null;
+              }
+            };
+    }
+    guarded[name] = copy;
+  }
+  return guarded as unknown as AxedaStores;
+}
+
 function guardAgainstQueriesInsideTransactions(persistence: AxedaPersistence): {
   outside: <A extends unknown[], R>(
     name: string,
@@ -93,7 +127,7 @@ function guardAgainstQueriesInsideTransactions(persistence: AxedaPersistence): {
 
   const realTransaction = persistence.transaction.bind(persistence);
   persistence.transaction = (callback) =>
-    realTransaction((stores) => inTransaction.run(true, () => callback(stores)));
+    realTransaction((stores) => inTransaction.run(true, () => callback(oneAtATime(stores))));
 
   const wrap = <T extends object>(store: T, label: string): void => {
     for (const key of Object.keys(store) as Array<keyof T>) {
@@ -112,6 +146,7 @@ function guardAgainstQueriesInsideTransactions(persistence: AxedaPersistence): {
     'businesses',
     'invitations',
     'images',
+    'staff',
   ] as const) {
     wrap(persistence[label], label);
   }
@@ -120,7 +155,12 @@ function guardAgainstQueriesInsideTransactions(persistence: AxedaPersistence): {
 
 export async function createFixture(
   options: AxedaOptions = BASE_OPTIONS,
-  extra: { invitations?: boolean; images?: boolean; imageProcessor?: ImageProcessor } = {},
+  extra: {
+    invitations?: boolean;
+    images?: boolean;
+    imageProcessor?: ImageProcessor;
+    staff?: boolean;
+  } = {},
 ): Promise<Fixture> {
   const forcedIds: string[] = [];
   const persistence = createMemoryPersistence({
@@ -149,6 +189,7 @@ export async function createFixture(
     setBan: outside('UserAdmin.setBan', directory.setBan),
     revokeSessions: outside('UserAdmin.revokeSessions', directory.revokeSessions),
     setImage: outside('UserAdmin.setImage', directory.setImage),
+    delete: outside('UserAdmin.delete', directory.delete),
   };
   // El almacén de objetos es un efecto externo: nunca dentro de una transacción.
   const memoryStorage = createMemoryStorage();
@@ -160,6 +201,7 @@ export async function createFixture(
     write: outside('ObjectStorage.write', memoryStorage.write),
     delete: outside('ObjectStorage.delete', memoryStorage.delete),
   };
+  const pinHasher = createTestPinHasher();
   const axeda = createAxeda(options, {
     persistence,
     users,
@@ -167,6 +209,7 @@ export async function createFixture(
     clock: fakeClock,
     ...(extra.invitations === false ? {} : { invitations: delivery }),
     ...(extra.images === false ? {} : { storage }),
+    ...(extra.staff === false ? {} : { pinHasher }),
     ...(extra.imageProcessor === undefined ? {} : { imageProcessor: extra.imageProcessor }),
   });
 

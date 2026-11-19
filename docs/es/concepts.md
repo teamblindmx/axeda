@@ -45,6 +45,7 @@ Un permiso es `recurso:acción` (`invoice:read`); los propios de Axeda se ven as
 | `axeda:company:manage`    | global, compañía                | Administrar compañías                                                     |
 | `axeda:business:manage`   | global, compañía                | Administrar negocios                                                      |
 | `axeda:site:manage`       | global, compañía, negocio       | Administrar sedes (desde la compañía, o desde el negocio del que cuelgan) |
+| `axeda:staff:manage`      | global, compañía, negocio, sede | Crear y administrar cuentas de personal (usuario y PIN) ahí y debajo      |
 | `axeda:invitation:manage` | global, compañía, negocio, sede | Invitar personas                                                          |
 | `axeda:user:manage`       | global                          | Listar, crear, bloquear y desbloquear usuarios                            |
 | `axeda:audit:read`        | global, compañía                | Leer la auditoría                                                         |

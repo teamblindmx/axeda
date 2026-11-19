@@ -27,6 +27,9 @@ export type AxedaErrorCode =
   | 'AXEDA_DELIVERY_FAILED'
   | 'AXEDA_IMAGE_INVALID'
   | 'AXEDA_UPLOAD_INVALID'
+  | 'AXEDA_USERNAME_TAKEN'
+  | 'AXEDA_STAFF_NOT_FOUND'
+  | 'AXEDA_STAFF_SIGN_IN_FAILED'
   | 'AXEDA_DATA_CORRUPT';
 
 export interface AxedaErrorOptions {

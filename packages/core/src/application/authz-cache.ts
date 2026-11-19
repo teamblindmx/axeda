@@ -6,6 +6,8 @@ export interface AuthzSnapshot {
   readonly roles: ReadonlyMap<string, Role>;
   /** Compañías y negocios de sus asignaciones que no pueden conceder poder (`scopeKey`). */
   readonly unusable: ReadonlySet<string>;
+  /** Es una cuenta de personal (usuario y PIN): sus funciones ya vienen sin permisos de Axeda. */
+  readonly pinAccount: boolean;
 }
 
 interface Entry {
