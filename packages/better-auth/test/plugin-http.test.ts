@@ -88,6 +88,8 @@ describe('every endpoint requires a session and a permission', () => {
     unprivileged?: number[];
     /** No exige sesión. */
     public?: true;
+    /** Estados válidos para el administrador global, si no son «cualquiera menos 401, 403 y 500». */
+    admin?: number[];
   }
   const NOPE = { id: 'x', version: 1 };
   const SAMPLES: Record<string, Sample> = {
@@ -153,6 +155,33 @@ describe('every endpoint requires a session and a permission', () => {
     },
     '/axeda/image/complete': { method: 'POST', body: { uploadId: 'x' }, unprivileged: [501] },
     '/axeda/image/remove': { method: 'POST', body: { purpose: 'company.logo', targetId: 'x' } },
+    // Personal. Entrar con PIN no pide sesión: con datos falsos es 401 para todos.
+    '/axeda/staff/sign-in': {
+      method: 'POST',
+      body: { company: 'x', username: 'nobody', pin: '381946' },
+      unprivileged: [401],
+      public: true,
+      admin: [401],
+    },
+    '/axeda/staff/list': { method: 'GET', query: { scopeType: 'company', scopeId: 'x' } },
+    '/axeda/staff/get': { method: 'GET', query: { userId: 'x' } },
+    '/axeda/staff/create': {
+      method: 'POST',
+      body: { scope: { type: 'company', id: 'x' }, username: 'mesero1', name: 'M' },
+    },
+    '/axeda/staff/rename': { method: 'POST', body: { userId: 'x', username: 'abc' } },
+    '/axeda/staff/reset-pin': { method: 'POST', body: { userId: 'x' } },
+    '/axeda/staff/unlock': { method: 'POST', body: { userId: 'x' } },
+    '/axeda/staff/suspend': { method: 'POST', body: { userId: 'x' } },
+    '/axeda/staff/reactivate': { method: 'POST', body: { userId: 'x' } },
+    '/axeda/staff/remove': { method: 'POST', body: { userId: 'x' } },
+    // Solo el personal tiene PIN: una cuenta completa recibe 404.
+    '/axeda/staff/change-pin': {
+      method: 'POST',
+      body: { currentPin: '381946', newPin: '582039' },
+      unprivileged: [404],
+      admin: [404],
+    },
     // Usuarios (solo global) y menú (cada persona ve el suyo).
     '/axeda/user/list': { method: 'GET' },
     '/axeda/user/create': { method: 'POST', body: { email: 'walker@test.dev', name: 'W' } },
@@ -230,7 +259,12 @@ describe('every endpoint requires a session and a permission', () => {
     const { app, admin } = await world();
     for (const path of Object.keys(SAMPLES)) {
       const response = await send(app, path, admin.cookie);
-      expect([401, 403, 500], `${path} → ${response.status}`).not.toContain(response.status);
+      const expected = SAMPLES[path]?.admin;
+      if (expected === undefined) {
+        expect([401, 403, 500], `${path} → ${response.status}`).not.toContain(response.status);
+      } else {
+        expect(expected, `${path} → ${response.status}`).toContain(response.status);
+      }
     }
   });
 });

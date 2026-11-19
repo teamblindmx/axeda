@@ -128,6 +128,21 @@ Auth. Un **bloqueo** (opcionalmente hasta una fecha):
 
 Un bloqueo temporal se levanta solo al llegar su fecha; no hace falta ninguna tarea.
 
+## Personal con usuario y PIN
+
+Los dueños y los administradores tienen cuenta completa (correo, contraseña, teléfono…). Las personas que
+trabajan en un lugar, como los meseros y cocineros de un restaurante, pueden tener en cambio una **cuenta
+de personal**: un usuario y un PIN de 6 a 8 dígitos, que crea quien tiene `axeda:staff:manage` ahí.
+
+- Un dueño con el permiso en la compañía crea personal en cualquier parte de ella; el encargado de un
+  negocio, solo en ese negocio y sus sedes. Cada uno ve y administra solo al personal de su lugar.
+- El usuario es único **dentro de la compañía**, así que dos restaurantes pueden tener cada uno su
+  `mesero1`. Para entrar se da la compañía (su slug), el usuario y el PIN. Una terminal puede dejar la
+  compañía ya puesta.
+- El PIN lo genera Axeda y se muestra una vez al administrador; el empleado puede cambiarlo después.
+- Una cuenta de personal **nunca administra Axeda**: no puede recibir una función con ningún permiso
+  `axeda:`, y si una función que ya tiene gana uno después, para ella no cuenta.
+
 ## Menús
 
 Declaras el menú en el código. Toda entrada con ruta debe decir qué permiso requiere; un grupo no

@@ -63,6 +63,7 @@ Axeda reads no environment variables: everything is passed in code.
 | What Axeda manages                                      | `axeda({ … })`                                                         | `permissions`                                      |
 | Access by phone number (optional)                       | `phoneNumber(securePhoneNumberOptions({ … }))`                         | `sendOTP`                                          |
 | Images: logos, favicons and profile pictures (optional) | `axeda({ storage: s3Storage({ … }) })` with `@teamblind/axeda-storage` | `storage`                                          |
+| Staff with a username and a PIN (optional)              | `axeda({ staff: { … } })` and the permission `axeda:staff:manage`      | nothing                                            |
 
 Every option, its accepted values, its default and what happens when it is wrong are in the
 [Configuration guide](https://github.com/teamblindmx/axeda/blob/main/docs/en/configuration.md).

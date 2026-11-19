@@ -132,6 +132,12 @@ export function createBetterAuthUserAdmin(
       }
     },
 
+    async delete(userId) {
+      await need(userId);
+      // Con el `internalAdapter`: así corren los ganchos (los de Axeda borran lo suyo).
+      await internalAdapter.deleteUser(userId);
+    },
+
     async setImage(userId, url) {
       await need(userId);
       await internalAdapter.updateUser(userId, { image: url });
