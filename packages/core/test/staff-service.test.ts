@@ -199,6 +199,34 @@ describe('managing staff', () => {
     expect(await w.persistence.staff.get(member.userId)).toBeNull();
     await rejectsWith(w.signIn('mesera.1', fresh), 'AXEDA_STAFF_SIGN_IN_FAILED');
   });
+
+  it('does not let a manager reset the PIN of someone holding permissions they lack', async () => {
+    const w = await world();
+    const { member, pin } = await w.hire(w.manager);
+    // La plataforma le da algo que el encargado no tiene, en la compañía: ya no le basta con staff:manage.
+    const refunds = await w.role('refunds', ['invoice:delete']);
+    await w.axeda.assignments.assign(w.admin, {
+      userId: member.userId,
+      roleId: refunds.id,
+      scope: { type: 'company', id: 'A' },
+    });
+    const error = await rejectsWith(
+      w.axeda.staff.resetPin(w.manager, member.userId),
+      'AXEDA_FORBIDDEN',
+    );
+    expect(error.details).toMatchObject({
+      reason: 'exceeds_granter_permissions',
+      permissions: ['invoice:delete'],
+    });
+    // El PIN no cambió y el intento quedó en la auditoría.
+    expect(await w.signIn('mesero1', pin)).toEqual({ userId: member.userId });
+    const denied = await w.axeda.listAudit(w.admin, { action: 'staff.reset_pin' }, { limit: 5 });
+    expect(denied.items.map((event) => [event.actorId, event.outcome])).toEqual([
+      ['manager', 'denied'],
+    ]);
+    // Quien sí tiene esos permisos puede.
+    expect((await w.axeda.staff.resetPin(w.owner, member.userId)).pin).toMatch(/^\d{6}$/);
+  });
 });
 
 describe('signing in with a username and a PIN', () => {
